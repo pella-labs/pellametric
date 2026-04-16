@@ -13,7 +13,7 @@ Every IDE/coding-agent adapter implements one interface so the collector can loa
 
 ```ts
 // packages/sdk/adapter.ts (draft)
-import type { Event } from "@devmetrics/schema";
+import type { Event } from "@bematist/schema";
 
 export interface AdapterContext {
   /** Per-machine writable dir, ~/.devmetrics/adapters/<id>/ */
@@ -124,4 +124,5 @@ The collector reuses _patterns_ from `~/dev/gauntlet/knowledge-graph` (= `@pella
 
 ## Changelog
 
-- 2026-04-16 — initial draft
+- 2026-04-16 — initial draft.
+- 2026-04-16 — Sprint-0 M0: `@devmetrics/schema` import path → `@bematist/schema` (repo renamed; see PRD §D32). Product name stays DevMetrics.

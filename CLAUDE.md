@@ -1,6 +1,6 @@
 # DevMetrics — Project Conventions
 
-> **Read this first.** These rules are LOCKED from `dev-docs/PRD.md` and `dev-docs/summary.md`. Do not change without updating those docs first and flagging the decision explicitly. The PRD is the consolidated union of five parallel research artifacts (see `dev-docs/archived/` for the originals); every rule here traces back to a numbered Decision (D1–D31) or locked constraint in that PRD.
+> **Read this first.** These rules are LOCKED from `dev-docs/PRD.md` and `dev-docs/summary.md`. Do not change without updating those docs first and flagging the decision explicitly. The PRD is the consolidated union of five parallel research artifacts (see `dev-docs/archived/` for the originals); every rule here traces back to a numbered Decision (D1–D32) or locked constraint in that PRD.
 
 ## Independence statement (D1)
 
@@ -179,7 +179,7 @@ devmetrics serve --embedded
 - Table `events` schema in `packages/schema/clickhouse/0001_events.sql` per PRD §5.3.
 - `ORDER BY (org_id, ts, dev_id)` — matches 3 of 4 headline queries. Use projections for repo and cluster lookups.
 - `PARTITION BY (toYYYYMM(ts), cityHash64(org_id) % 16)` — tenant isolation for GDPR drops.
-- `ReplacingMergeTree(client_event_id)` for ClickHouse-side dedup; **Redis `SETNX` is the authoritative idempotency gate at ingest time.**
+- `ReplacingMergeTree(ts)` for ClickHouse-side dedup (was `(client_event_id)` — CH 25+ rejects UUID as version col, see PRD §D32 + `contracts/09` Changelog); **Redis `SETNX` is the authoritative idempotency gate at ingest time.**
 - **TTL ONLY for Tier B (90d) and Tier C (30d). Tier A retention via partition drop worker (D7) — NEVER TTL** (BLOCKER C1 fix).
 - Aggregates retained indefinitely with `HMAC(engineer_id, tenant_salt)` pseudonymization (GDPR Art. 17(3)(e) carve-out).
 - Materialized views: `dev_daily_rollup`, `prompt_cluster_stats`, `repo_weekly_rollup`, `cluster_assignment_mv`. Read paths use MVs, not raw events, where possible.
@@ -436,4 +436,4 @@ DEVMETRICS_DRY_RUN                        # 1 = log what would be sent, send not
 
 - If a rule here conflicts with `dev-docs/PRD.md`, the PRD wins — update this file.
 - If a rule here conflicts with `dev-docs/archived/CLAUDE.old.md`, **this file wins** (the archive is historical).
-- If a decision isn't covered by an existing D1–D31: flag it explicitly, propose an amendment to `dev-docs/PRD.md`, get sign-off, then update both.
+- If a decision isn't covered by an existing D1–D32: flag it explicitly, propose an amendment to `dev-docs/PRD.md`, get sign-off, then update both.

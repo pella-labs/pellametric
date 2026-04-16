@@ -85,7 +85,7 @@ CREATE TABLE events (
   -- Catch-all for unknown attributes (D16)
   raw_attrs            String                          -- JSON blob
 )
-ENGINE = ReplacingMergeTree(client_event_id)
+ENGINE = ReplacingMergeTree(ts)
 PARTITION BY (toYYYYMM(ts), cityHash64(org_id) % 16)
 ORDER BY (org_id, ts, engineer_id)
 SETTINGS index_granularity = 8192;
@@ -95,7 +95,9 @@ Why `ORDER BY (org_id, ts, engineer_id)`: matches 3 of 4 headline queries (org-s
 
 Why `PARTITION BY (toYYYYMM(ts), cityHash64(org_id) % 16)`: tenant isolation — `DROP PARTITION WHERE cityHash64(org_id) % 16 = X AND toYYYYMM(ts) = Y` for GDPR erasure (D15).
 
-`ReplacingMergeTree(client_event_id)` is a safety net only. **Authoritative idempotency is Redis SETNX at ingest** (D14) — async ReplacingMergeTree replacement leaks duplicate spend into live dashboards if relied upon.
+Why `ReplacingMergeTree(ts)` (not `(client_event_id)`): ClickHouse 25+ rejects UUID as the version column for ReplacingMergeTree — the version col must be an integer, Date, DateTime, or DateTime64. `ts` is DateTime64(3,'UTC') and preserves "keep latest by ORDER BY key" semantics. Discovered at Sprint-0 M0 (2026-04-16); see Changelog.
+
+`ReplacingMergeTree(ts)` is a safety net only. **Authoritative idempotency is Redis SETNX at ingest** (D14) — async ReplacingMergeTree replacement leaks duplicate spend into live dashboards if relied upon.
 
 ### Projections (additive — don't change ORDER BY)
 
@@ -222,4 +224,5 @@ If the 24h Bun↔ClickHouse soak shows flakes via `@clickhouse/client` HTTP, swi
 
 ## Changelog
 
-- 2026-04-16 — initial draft
+- 2026-04-16 — initial draft.
+- 2026-04-16 — Sprint-0 M0: switch `events` engine to `ReplacingMergeTree(ts)` (was `(client_event_id)`). Additive — the discriminator changed but ORDER BY key is unchanged and Redis SETNX remains the authoritative dedup. Reason: ClickHouse 25+ rejects UUID as the version column for ReplacingMergeTree (must be integer/Date/DateTime/DateTime64). Confirmed via failing `0001_events.sql` apply in D-seed.

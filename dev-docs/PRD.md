@@ -159,7 +159,7 @@ Managers and individual contributors both hit the same Next.js 16 app; **role in
 │  ClickHouse 25 (events + rollups)                     │       │
 │     • ORDER BY (org_id, ts, dev_id) + projections     │       │
 │     • PARTITION BY (toYYYYMM(ts), cityHash64(org)%16) │       │
-│     • ReplacingMergeTree(client_event_id)             │       │
+│     • ReplacingMergeTree(ts) (see §D32)               │       │
 │  Next.js 16 web (standalone) — manager + IC views     │       │
 │  Redis 7 (cache + rate limit + dedup)                 │       │
 │  S3-compatible spillover + ClickHouse MergeTree TTL   │       │
@@ -819,6 +819,7 @@ Anchor: Helicone $20 / seat, Langfuse $59 / mo, Anthropic Team Analytics bundled
 | D29 | **`AI-Assisted:` commit trailer is the primary opt-in attribution path for non-Claude-Code agents.** Avoids Copilot Metrics API (org-gated, Enterprise-only). Local `post-commit` git hook appends `AI-Assisted: devmetrics-<sessionId>`. | Works across every agent (Claude, Codex, Cursor, Continue, Cline, Roo, Kilo); TOS-compatible for personal API keys; merges cleanly with `code_edit_tool.decision=accept` primary anchor + `git log` fallback. |
 | D30 | **Developer notified of every manager view of their drill page.** Audit-log row at view-time; daily digest by default; immediate-notification option available. | Transparency primitive from `analytics-product/`. Turns the audit-log from a passive compliance artifact into an active trust signal for the IC. |
 | D31 | **Promote-to-Playbook is the Team Impact subscore's primary signal source.** | Without explicit positive-consent sharing, Team Impact has no non-gameable data source. Clio clustering + IC promotion + downstream cluster-membership adoption closes the loop. |
+| D32 | **Repo/code slug `bematist`, product name `DevMetrics`, CLI binary `devmetrics`, env var prefix `DEVMETRICS_*`.** GitHub repo slug and workspace package names use `bematist`/`@bematist/*` (internal, changed Sprint 0 kickoff 2026-04-16 when the repo was renamed from `devmetrics`). Product name in all docs, UI, marketing, CLI binary name, and env var prefixes stay **DevMetrics** / `devmetrics` / `DEVMETRICS_*` — user-facing and locked. Also: ClickHouse events engine is `ReplacingMergeTree(ts)` not `(client_event_id)` — CH 25+ rejects UUID as the version column. See `contracts/09-storage-schema.md` Changelog. | Clean separation between code slug (freely renamable) and product identity (locked for legal/contract stability). Avoids PRD/CLAUDE.md churn every time a repo is renamed, while keeping code identifiers aligned with the GitHub URL contributors see. |
 
 ---
 

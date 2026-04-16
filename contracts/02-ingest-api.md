@@ -94,7 +94,7 @@ Authorization: Bearer dm_<orgId>_<rand>
 
 1. **Ingest is the only writer.** No path bypasses it.
 2. **Server-derived identity overrides client-claimed.** Tenant/engineer come from JWT.
-3. **Idempotency via Redis SETNX is authoritative.** ClickHouse `ReplacingMergeTree(client_event_id)` is a safety net only.
+3. **Idempotency via Redis SETNX is authoritative.** ClickHouse `ReplacingMergeTree(ts)` is a safety net only (see `09-storage-schema.md` Changelog for why not `client_event_id`).
 4. **Server-side redaction runs BEFORE write.** Even if collector already redacted (defense-in-depth), the server is authoritative — redaction rules can update without redeploying every dev's binary.
 5. **No endpoint accepts un-versioned events.** Missing `schema_version` → 400.
 
@@ -106,4 +106,5 @@ Authorization: Bearer dm_<orgId>_<rand>
 
 ## Changelog
 
-- 2026-04-16 — initial draft
+- 2026-04-16 — initial draft.
+- 2026-04-16 — Sprint-0 M0: reference `ReplacingMergeTree(ts)` instead of `(client_event_id)` in Invariants §3 — see `09-storage-schema.md` Changelog for the CH 25 UUID-version-col constraint.

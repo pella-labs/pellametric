@@ -5,12 +5,12 @@
   "type": "module",
   "main": "src/index.ts",
   "bin": {
-    "bematist": "./src/cli.ts"
+    "devmetrics": "./src/cli.ts"
   },
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "bun src/index.ts",
-    "build": "bun build --compile --minify --sourcemap --target=bun src/cli.ts --outfile dist/bematist",
+    "build": "bun build --compile --minify --sourcemap --target=bun src/cli.ts --outfile dist/devmetrics",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
