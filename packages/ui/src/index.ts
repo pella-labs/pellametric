@@ -43,6 +43,11 @@ export {
   type AreaChartProps,
 } from "./charts/AreaChart";
 export { ChartTableToggle } from "./charts/ChartTableToggle";
+export {
+  ScatterChart,
+  type ScatterChartProps,
+  type ScatterDatum,
+} from "./charts/ScatterChart";
 
 // Motion
 export { fadeIn, slideUp, stagger } from "./motion/presets";

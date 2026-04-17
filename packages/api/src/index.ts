@@ -34,6 +34,9 @@ export * as schemas from "./schemas";
 export { getSummary } from "./queries/dashboard";
 export { getMyViewHistory } from "./queries/audit";
 export { getSession } from "./queries/session";
+export { listTeams, getTwoByTwo } from "./queries/team";
+export { listClusters, CLUSTER_CONTRIBUTOR_FLOOR } from "./queries/cluster";
+export { getWeeklyDigest, filterByConfidence } from "./queries/insights";
 
 // Mutations
 export { revealSession } from "./mutations/session";
