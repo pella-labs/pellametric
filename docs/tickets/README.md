@@ -22,9 +22,31 @@
 | `D1-06` | RLS on every org-scoped table + INT9 cross-tenant probe | pending | — |
 | `D1-07` | Plan-B Go sidecar skeleton (F15 / INT0 fallback) | pending | — |
 
-Sprint 2 (Workstream H-AI) will add `D2-*` tickets once Sprint 1 closes.
+## Index (Sprint 2 — Workstream H-AI)
 
-## Dependency graph
+| ID | Title | Status | Blocked by | Start now? |
+|---|---|---|---|---|
+| `D2-01` | Embed provider abstraction | pending | — | YES |
+| `D2-02` | Insight Engine skeleton (H4a–H4f) | pending | — | YES |
+| `D2-03` | Anomaly detector heuristics | pending | — | YES |
+| `D2-04` | LLM-judge adversarial eval harness | pending | — | YES |
+| `D2-05` | Embedding cache integration (Redis + Postgres) | pending | D2-01, D1-05 | NO |
+| `D2-06` | Nightly cluster recompute (OpenAI Batch API) | pending | D2-01, D2-05, D1-02, D1-05 | NO |
+| `D2-07` | Twin Finder | pending | D2-01, D2-05, D2-06, D1-02 | NO |
+| `D2-08` | Gateway cluster labeler | pending | D2-06 | NO |
+
+### Sprint 2 dependency graph
+
+```
+D2-01 ─┬─> D2-05 ──> (L1/L2 cache wired)
+       ├─> D2-06 ─┬─> D2-08 (labeler)
+       │          └─> D2-07 (Twin Finder)
+D2-02, D2-03, D2-04 parallel (no D1 hard deps for skeleton/math/eval)
+```
+
+Parallelizable start on day 1: **D2-01, D2-02, D2-03, D2-04**. The rest gate on either D2-01 or its downstream.
+
+## Dependency graph (Sprint 1)
 
 ```
 D1-00 (done) ─┬─> D1-01 ─┬─> D1-02 ─> D1-03
