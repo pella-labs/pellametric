@@ -20,9 +20,11 @@
         "bematist": "./src/cli.ts",
       },
       "dependencies": {
+        "@bematist/config": "workspace:*",
         "@bematist/fixtures": "workspace:*",
         "@bematist/schema": "workspace:*",
         "@bematist/sdk": "workspace:*",
+        "pino": "^9.5.0",
         "zod": "^3.23.8",
       },
       "devDependencies": {

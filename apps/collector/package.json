@@ -15,9 +15,11 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@bematist/config": "workspace:*",
     "@bematist/sdk": "workspace:*",
     "@bematist/schema": "workspace:*",
     "@bematist/fixtures": "workspace:*",
+    "pino": "^9.5.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

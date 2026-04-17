@@ -61,4 +61,12 @@ redis-data/
 .claude/settings.local.json
 .claude/skills/
 .agents/skills/
+
+# Personal scope / review docs (untracked)
+DAVID_SCOPE.md
+STUDY_GUIDE.md
+
+# Git worktrees (isolated feature branches)
+.worktrees/
+
 docs/superpowers/

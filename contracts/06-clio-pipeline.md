@@ -161,3 +161,4 @@ bun run test:privacy     # MERGE BLOCKER
 
 - 2026-04-16 — initial draft.
 - 2026-04-16 — Sprint-0 M0: `@devmetrics/schema` import path → `@bematist/schema` (repo renamed; see PRD §D32). Product name stays DevMetrics.
+- 2026-04-16 — M1 follow-up: confirmed `@bematist/*` package references across code snippets in this contract (additive; no behavioral change).
