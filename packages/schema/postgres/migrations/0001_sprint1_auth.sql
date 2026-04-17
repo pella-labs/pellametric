@@ -1,13 +1,13 @@
 -- SPRINT1_DRAFT_NEEDS_JORGE_REVIEW
 -- Creates the ingest_keys table used by apps/ingest/src/auth/verifyIngestKey.ts.
--- Bearer format: dm_<orgId>_<keyId>_<secret> → row lookup by (org_id, id) →
+-- Bearer format: bm_<orgId>_<keyId>_<secret> → row lookup by (org_id, id) →
 -- timingSafeEqual(sha256(secret), key_sha256). See contracts/02-ingest-api.md §Auth.
 --
 -- Jorge: please review before M1. Column names / FK cascade behaviour are
 -- candidates for rename; migration will be rebased on feedback.
 
 CREATE TABLE IF NOT EXISTS "ingest_keys" (
-	"id"           text        PRIMARY KEY,            -- format: dm_<orgId>_<rand> last segment
+	"id"           text        PRIMARY KEY,            -- format: bm_<orgId>_<rand> last segment
 	"org_id"       uuid        NOT NULL,
 	"engineer_id"  uuid,                                -- nullable = org-wide service key
 	"name"         text        NOT NULL,
