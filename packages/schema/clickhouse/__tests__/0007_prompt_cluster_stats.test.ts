@@ -40,7 +40,7 @@ test("prompt_cluster_stats exists with AggregatingMergeTree inner engine", async
      WHERE v.database = 'bematist' AND v.name = 'prompt_cluster_stats'`,
   );
   expect(rows).toHaveLength(1);
-  expect(rows[0].engine).toBe("AggregatingMergeTree");
+  expect(rows[0]?.engine).toBe("AggregatingMergeTree");
 });
 
 test("prompt_count_state increments per cluster-week; engineers uniq'd", async () => {
@@ -90,9 +90,9 @@ test("prompt_count_state increments per cluster-week; engineers uniq'd", async (
      GROUP BY cluster_id`,
   );
   expect(out).toHaveLength(1);
-  expect(out[0].cluster_id).toBe("c_42");
-  expect(Number(out[0].engineers)).toBe(2);
-  expect(Number(out[0].cnt)).toBe(2);
+  expect(out[0]?.cluster_id).toBe("c_42");
+  expect(Number(out[0]?.engineers)).toBe(2);
+  expect(Number(out[0]?.cnt)).toBe(2);
 });
 
 test("cost_usd_state reflects joined events", async () => {
@@ -120,5 +120,5 @@ test("cost_usd_state reflects joined events", async () => {
     client,
     `SELECT sumMerge(cost_usd_state) AS cost FROM prompt_cluster_stats WHERE org_id = 'org_a' AND cluster_id = 'c_cost'`,
   );
-  expect(Number(out[0].cost)).toBeCloseTo(1.5, 4);
+  expect(Number(out[0]?.cost)).toBeCloseTo(1.5, 4);
 });

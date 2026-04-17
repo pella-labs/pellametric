@@ -20,7 +20,7 @@ test("team_weekly_rollup exists with AggregatingMergeTree inner engine", async (
      WHERE v.database = 'bematist' AND v.name = 'team_weekly_rollup'`,
   );
   expect(rows).toHaveLength(1);
-  expect(rows[0].engine).toBe("AggregatingMergeTree");
+  expect(rows[0]?.engine).toBe("AggregatingMergeTree");
 });
 
 test("dev_team_dict dictionary is registered", async () => {

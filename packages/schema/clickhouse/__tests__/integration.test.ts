@@ -16,7 +16,7 @@ test("empty-cohort org returns 0 rows from dev_daily_rollup (not NULL row)", asy
     client,
     `SELECT count() AS c FROM dev_daily_rollup WHERE org_id = 'org_never_written'`,
   );
-  expect(Number(rows[0].c)).toBe(0);
+  expect(Number(rows[0]?.c)).toBe(0);
 });
 
 test("property: sumMerge(input_tokens_state) equals naive SUM over 200 random rows", async () => {
@@ -53,7 +53,7 @@ test("property: sumMerge(input_tokens_state) equals naive SUM over 200 random ro
     client,
     `SELECT toUInt64(sumMerge(input_tokens_state)) AS tokens FROM dev_daily_rollup WHERE org_id = 'org_prop'`,
   );
-  expect(Number(mv[0].tokens)).toBe(Number(raw[0].tokens));
+  expect(Number(mv[0]?.tokens)).toBe(Number(raw[0]?.tokens));
 });
 
 test("partition drop on dev_daily_rollup removes rows for that month", async () => {
@@ -82,7 +82,7 @@ test("partition drop on dev_daily_rollup removes rows for that month", async () 
     client,
     `SELECT count() AS c FROM dev_daily_rollup WHERE org_id = 'org_drop'`,
   );
-  expect(Number(before[0].c)).toBe(2);
+  expect(Number(before[0]?.c)).toBe(2);
 
   await client.command({ query: `ALTER TABLE dev_daily_rollup DROP PARTITION 202603` });
 
@@ -90,7 +90,7 @@ test("partition drop on dev_daily_rollup removes rows for that month", async () 
     client,
     `SELECT count() AS c FROM dev_daily_rollup WHERE org_id = 'org_drop'`,
   );
-  expect(Number(after[0].c)).toBe(1);
+  expect(Number(after[0]?.c)).toBe(1);
 });
 
 test("repo_weekly_rollup excludes events with NULL repo_id_hash while dev_daily_rollup counts all", async () => {
@@ -124,6 +124,6 @@ test("repo_weekly_rollup excludes events with NULL repo_id_hash while dev_daily_
     client,
     `SELECT toUInt32(sumMerge(input_tokens_state)) AS tokens FROM repo_weekly_rollup WHERE org_id = 'org_split'`,
   );
-  expect(Number(dev[0].tokens)).toBe(300);
-  expect(Number(repo[0].tokens)).toBe(200);
+  expect(Number(dev[0]?.tokens)).toBe(300);
+  expect(Number(repo[0]?.tokens)).toBe(200);
 });

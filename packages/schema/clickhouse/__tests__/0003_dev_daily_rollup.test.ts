@@ -22,7 +22,7 @@ test("dev_daily_rollup exists with AggregatingMergeTree inner engine", async () 
      WHERE v.database = 'bematist' AND v.name = 'dev_daily_rollup'`,
   );
   expect(rows).toHaveLength(1);
-  expect(rows[0].engine).toBe("AggregatingMergeTree");
+  expect(rows[0]?.engine).toBe("AggregatingMergeTree");
 });
 
 test("sumMerge(input_tokens_state) equals SUM(input_tokens) across 10 events", async () => {
@@ -43,7 +43,7 @@ test("sumMerge(input_tokens_state) equals SUM(input_tokens) across 10 events", a
     client,
     `SELECT sumMerge(input_tokens_state) AS tokens FROM dev_daily_rollup WHERE org_id = 'org_a'`,
   );
-  expect(Number(out[0].tokens)).toBe(5500);
+  expect(Number(out[0]?.tokens)).toBe(5500);
 });
 
 test("uniqMerge(sessions_state) counts distinct sessions per engineer per day", async () => {
@@ -147,7 +147,7 @@ test("accepted_edits_state counts only code_edit_decision accept events", async 
     client,
     `SELECT countIfMerge(accepted_edits_state) AS accepted FROM dev_daily_rollup WHERE org_id = 'org_a'`,
   );
-  expect(Number(out[0].accepted)).toBe(3);
+  expect(Number(out[0]?.accepted)).toBe(3);
 });
 
 test("accepted_retained_edits_state excludes revert_within_24h=1", async () => {
@@ -190,6 +190,6 @@ test("accepted_retained_edits_state excludes revert_within_24h=1", async () => {
     client,
     `SELECT countIfMerge(accepted_edits_state) AS accepted, countIfMerge(accepted_retained_edits_state) AS retained FROM dev_daily_rollup WHERE org_id = 'org_a'`,
   );
-  expect(Number(out[0].accepted)).toBe(3);
-  expect(Number(out[0].retained)).toBe(2);
+  expect(Number(out[0]?.accepted)).toBe(3);
+  expect(Number(out[0]?.retained)).toBe(2);
 });

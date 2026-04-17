@@ -20,7 +20,7 @@ test("repo_weekly_rollup exists with AggregatingMergeTree inner engine", async (
      WHERE v.database = 'bematist' AND v.name = 'repo_weekly_rollup'`,
   );
   expect(rows).toHaveLength(1);
-  expect(rows[0].engine).toBe("AggregatingMergeTree");
+  expect(rows[0]?.engine).toBe("AggregatingMergeTree");
 });
 
 test("events without repo_id_hash are excluded", async () => {
@@ -50,7 +50,7 @@ test("events without repo_id_hash are excluded", async () => {
     client,
     `SELECT toUInt32(sumMerge(input_tokens_state)) AS tokens FROM repo_weekly_rollup WHERE org_id = 'org_a'`,
   );
-  expect(Number(out[0].tokens)).toBe(100);
+  expect(Number(out[0]?.tokens)).toBe(100);
 });
 
 test("prs_state counts only non-null distinct pr_number", async () => {
@@ -100,7 +100,7 @@ test("prs_state counts only non-null distinct pr_number", async () => {
     client,
     `SELECT toUInt32(uniqMerge(prs_state)) AS prs FROM repo_weekly_rollup WHERE org_id = 'org_a'`,
   );
-  expect(Number(out[0].prs)).toBe(2);
+  expect(Number(out[0]?.prs)).toBe(2);
 });
 
 test("commits_state counts distinct commit_sha per repo-week", async () => {
@@ -140,5 +140,5 @@ test("commits_state counts distinct commit_sha per repo-week", async () => {
     client,
     `SELECT toUInt32(uniqMerge(commits_state)) AS commits FROM repo_weekly_rollup WHERE org_id = 'org_a'`,
   );
-  expect(Number(out[0].commits)).toBe(2);
+  expect(Number(out[0]?.commits)).toBe(2);
 });

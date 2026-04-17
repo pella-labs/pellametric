@@ -37,8 +37,8 @@ test("cluster_assignment_mv exists with ReplacingMergeTree engine", async () => 
     `SELECT engine, engine_full FROM system.tables WHERE database = 'bematist' AND name = 'cluster_assignment_mv'`,
   );
   expect(rows).toHaveLength(1);
-  expect(rows[0].engine).toBe("ReplacingMergeTree");
-  expect(rows[0].engine_full).toContain("ReplacingMergeTree(ts)");
+  expect(rows[0]?.engine).toBe("ReplacingMergeTree");
+  expect(rows[0]?.engine_full).toContain("ReplacingMergeTree(ts)");
 });
 
 test("insert round-trips (org, session, prompt_index, cluster_id, ts)", async () => {
@@ -56,7 +56,7 @@ test("insert round-trips (org, session, prompt_index, cluster_id, ts)", async ()
     `SELECT cluster_id FROM cluster_assignment_mv WHERE org_id = 'org_a' AND session_id = 's1'`,
   );
   expect(out).toHaveLength(1);
-  expect(out[0].cluster_id).toBe("c_1");
+  expect(out[0]?.cluster_id).toBe("c_1");
 });
 
 test("latest ts wins after FINAL when re-clustering happens", async () => {
@@ -81,5 +81,5 @@ test("latest ts wins after FINAL when re-clustering happens", async () => {
     `SELECT cluster_id FROM cluster_assignment_mv FINAL WHERE org_id = 'org_a' AND session_id = 's1' AND prompt_index = 0`,
   );
   expect(out).toHaveLength(1);
-  expect(out[0].cluster_id).toBe("c_new");
+  expect(out[0]?.cluster_id).toBe("c_new");
 });
