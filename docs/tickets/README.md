@@ -18,7 +18,7 @@
 | `D1-02` | ClickHouse materialized views (5 MVs) | ✅ committed (push blocked) | `D1-02-materialized-views-jorge` |
 | `D1-03` | Projections on `events` + EXPLAIN gates | ✅ committed | `D1-03-projections-jorge` |
 | `D1-04` | GDPR partition-drop worker (7-d SLA) | ✅ committed | `D1-04-partition-drop-worker-jorge` |
-| `D1-05` | Remaining Postgres control-plane tables (Drizzle) | pending | — |
+| `D1-05` | Remaining Postgres control-plane tables (Drizzle) | ✅ committed | `D1-05-pg-control-plane-jorge` |
 | `D1-06` | RLS on every org-scoped table + INT9 cross-tenant probe | pending | — |
 | `D1-07` | Plan-B Go sidecar skeleton (F15 / INT0 fallback) | pending | — |
 

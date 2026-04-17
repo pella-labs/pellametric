@@ -16,6 +16,16 @@ Chronological log of tickets worked on. Append-only; one entry per completed tic
 - **Branch / PR:** `D1-01-contract-05-drift-jorge` — docs-only; no contract change.
 - **Follow-ups:** Mention in final Sprint 1 PR description that issue #3's "Known contract drift" bullets are resolved-on-inspection.
 
+## 2026-04-17 — D1-05: 13 Postgres control-plane tables landed
+
+- **What shipped:** Added 13 tables to `packages/schema/postgres/schema.ts`: `teams`, `repos`, `policies`, `git_events`, `ingest_keys`, `prompt_clusters`, `playbooks`, `audit_events`, `alerts`, `insights`, `outcomes`, `embedding_cache`. Plus `developers.team_id` FK to `teams` (closes the dependency D1-02 flagged). `orgs.tier_c_managed_cloud_optin` added. Drizzle migration `0002_nasty_molten_man.sql` generated + applied.
+- **`audit_log` immutability trigger:** added via `packages/schema/postgres/custom/0001_audit_log_immutable.sql`. Extended `migrate.ts` with a custom-SQL pass that runs after drizzle's migrator — applies any `.sql` files in `postgres/custom/` idempotently (using CREATE OR REPLACE / DROP IF EXISTS patterns). Contract 09 invariant 6 enforced at the DB level.
+- **Branch / PR:** `D1-05-pg-control-plane-jorge` → PR pending.
+- **Tests:** 5 in `packages/schema/postgres/__tests__/control_plane.test.ts`: core orgs/users/teams/developers FK chain, repos+policies+git_events+ingest_keys, playbooks+clusters+audit_events+alerts+insights+outcomes, embedding_cache (512-dim vector round-trip), audit_log INSERT-works/UPDATE-throws/DELETE-throws.
+- **Follow-ups:**
+  - D1-06 enforces RLS on every org-scoped table landed here.
+  - Update `dev_team_dict` dictionary query (created in D1-02 migration 0004) to select `team_id::text` from `developers` now that the column exists. This is a minor dictionary refresh; the column addition alone doesn't invalidate the dict until its LIFETIME expires (~15 min).
+
 ## 2026-04-17 — D1-04: GDPR partition-drop worker landed
 
 - **What shipped:** `apps/worker/src/jobs/partition_drop.ts` — handler that loads pending `erasure_requests`, enumerates `system.parts` partitions for the target org, issues `ALTER TABLE events DROP PARTITION ID` per partition, writes `audit_log` row, flips request to `completed`. `pg-boss@^9` installed + wired in `apps/worker/src/index.ts` (hourly cron). PG `erasure_requests` + `audit_log` tables added to `packages/schema/postgres/schema.ts`; drizzle migration `0001_dusty_karen_page.sql` generated + applied. 3 handler tests (happy path, idempotency on completed requests, empty-partition graceful path).
