@@ -17,7 +17,7 @@ const META_LINKS = [
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <aside
         aria-label="Primary navigation"
         className="flex w-56 shrink-0 flex-col border-r border-border bg-card px-4 py-6"
@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           ))}
         </div>
       </aside>
-      <main className="flex-1 px-8 py-6">{children}</main>
+      <main className="flex-1 overflow-y-auto px-8 py-6">{children}</main>
     </div>
   );
 }

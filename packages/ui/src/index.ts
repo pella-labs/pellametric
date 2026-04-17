@@ -26,6 +26,7 @@ export {
   DialogTrigger,
 } from "./components/Dialog";
 export { Input, Textarea } from "./components/Input";
+export { ScrollArea, ScrollBar } from "./components/scroll-area";
 export { Skeleton } from "./components/Skeleton";
 export {
   Tooltip,
@@ -48,6 +49,13 @@ export {
   type ScatterChartProps,
   type ScatterDatum,
 } from "./charts/ScatterChart";
+
+// Tables
+export {
+  VirtualTable,
+  type ColumnDef,
+  type VirtualTableProps,
+} from "./tables/VirtualTable";
 
 // Motion
 export { fadeIn, slideUp, stagger } from "./motion/presets";
