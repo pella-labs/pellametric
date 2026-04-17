@@ -42,6 +42,8 @@ bun-debug.log*
 coverage/
 .nyc_output/
 *.lcov
+playwright-report/
+test-results/
 
 # Local data (Bematist-specific)
 .bematist/
