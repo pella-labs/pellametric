@@ -14,19 +14,19 @@ PRD §10 already groups the work as B–I. We keep those names so the PRD line n
 
 Names assigned. Re-slice on Sprint 0 kickoff if the load isn't right; this is a starting point, not a contract.
 
-- **Sebastian — Foundation (F).** Sprint 0 lead: repo, CI, Docker, Biome, branch protection. After Sprint 0 owns the release pipeline (SLSA L3 reusable workflow, Sigstore + cosign signing, distro packaging for Homebrew/apt/AUR/Chocolatey), k6 perf gates, and observability defaults. Floats to unblock other devs between sprints.
+- **Sebastian — Foundation + Web + Privacy UX (F + E + G-frontend).** Sprint 0 lead: repo, CI, Docker, Biome, branch protection. After Sprint 0 owns `apps/web` (Next.js 16 standalone), `packages/ui`, `packages/api` (manager half) — tRPC v11 routers, SSE channels, manager 2×2, `/me`, sessions, clusters, outcomes, insights digest, CSV export, brand tokens + shadcn/ui + Tremor + TanStack virtualized tables + Motion. Privacy UX: Bill of Rights page, Reveal modal + audit confirmation UI, `<REDACTED:type:hash>` chip renderer, IC daily digest UI, `cost_estimated`/`data_fidelity` chips. Also owns the Sprint-3 release pipeline (SLSA L3 reusable workflow, Sigstore + cosign signing, distro packaging for Homebrew/apt/AUR/Chocolatey), k6 perf gates, and observability defaults.
 - **David — Collector & Adapters (B).** `apps/collector` (Bun-compile single binary) + Adapter SDK + the v1 adapter set (Claude Code full, Codex, Cursor, OpenCode, Continue.dev, +1 VS Code generic). On-device Clio pipeline plumbing. CLI commands. Egress journal.
 - **Walid — Ingest & Server-Side Privacy (C + G-backend).** `apps/ingest` Bun server (OTLP, custom JSON, webhooks, Redis SETNX dedup, tier enforcement, rate limiting). GitHub App. Server-side `packages/redact` execution in the ingest hot path + forbidden-field fuzzer + Tier-A allowlist enforcement.
 - **Jorge — Storage & AI Pipeline (D + H-AI).** `packages/schema` (ClickHouse + Postgres + Drizzle), partition-drop GDPR worker, Plan B Go side-car. Then `packages/embed` provider chain, Twin Finder, nightly cluster job, Insight Engine 6-call pipeline, anomaly detector.
-- **Sandesh — Web, Privacy UX, Scoring & Compliance (E + G-frontend + H-scoring + I).** `apps/web` (Next.js 16 standalone), tRPC routers, SSE channels, manager 2×2, `/me`, sessions, clusters, outcomes, insights digest, CSV export. Brand tokens + shadcn/ui + Tremor + TanStack virtualized tables + Motion. Bill of Rights page, Reveal modal + audit confirmation UI, IC daily digest UI. `packages/scoring` (locked `ai_leverage_v1` math + 500-case eval, MAE ≤ 3 merge blocker). Compliance templates (works-council DE/FR/IT, DPIA, SCCs, vendor docs).
+- **Sandesh — Scoring & Compliance (H-scoring + I).** `packages/scoring` — `ai_leverage_v1` locked math, useful_output_v1, subscores, cohort percentile-rank, confidence, metric versioning. 500-case synthetic dev-month eval (MAE ≤ 3 merge blocker) + held-out 100-case validation split. Compliance templates (works-council DE/FR/IT, DPIA, SCCs 2021/914 Module 2, Bill of Rights wording, CAIQ v4.0.3 + SIG Lite 2024 vendor docs, CycloneDX SBOM, audit-events row schema).
 
 ### Why this split
 
-- **Sebastian holds bootstrap + release infra** because Foundation is front-loaded (heavy Sprint 0) and the release/SLSA/distro work is its natural Sprint-3 continuation. Acts as floater / coordinator between sprints.
+- **Sebastian gets foundation + web + privacy UX.** Foundation is front-loaded (heavy Sprint 0); release/SLSA/distro is the natural Sprint-3 continuation. Between those, Sebastian owns the full dashboard surface (`apps/web`) + privacy UX (Reveal flow, audit digest, Bill of Rights) — the dashboard and privacy UX pair naturally (same components, same Reveal gesture, same chip renderer). Re-sliced from the initial draft (2026-04-16) where this was Sandesh's scope — too much combined load.
 - **David gets all of B** because the collector is the biggest single deliverable and per-adapter work parallelizes cleanly inside one owner.
 - **Walid gets ingest + the server-side half of privacy** because the redaction execution lives in the ingest hot path — same code, same ops surface, same perf budget. Cleaner than splitting across two devs.
 - **Jorge gets storage + the AI pipeline** because both are server-side, infra-flavored work (DB schema + ML ops). The embed/Insight Engine reads the storage schema heavily; one owner removes a coordination seam.
-- **Sandesh gets the dashboard + privacy UX + scoring + compliance.** ⚠️ Heaviest combined load on the team — flag and re-slice if Sprint 1 is slipping. The dashboard pairs naturally with privacy UX (Reveal flow, audit digest, Bill of Rights). Scoring is small-but-eval-gated math on the consume side of the same data the dashboard reads. Compliance docs cite the privacy contracts the dashboard surfaces. If load is too much, the cleanest hand-off is: scoring → Sebastian as a floater task, or compliance → Sebastian (also doc-flavored, fits with release/SLSA work).
+- **Sandesh gets scoring + compliance.** Scoring is small-but-eval-gated math (MAE ≤ 3 merge blocker) where quality matters more than volume; compliance is doc-heavy (works-council templates, DPIA, SCCs, vendor questionnaires). Both land well away from the frontend surface so Sandesh owns a clean vertical. If scoring evals slip, Sebastian is the documented floater.
 
 ## Workstream table
 
@@ -35,17 +35,17 @@ Names assigned. Re-slice on Sprint 0 kickoff if the load isn't right; this is a 
 | **B** | Collector & Adapters | David | `bun build --compile` per-machine binary; v1 adapters (Claude Code full, Cursor token-only, Codex, OpenCode post-migration, Continue.dev full, +1 VS Code generic); Phase-2 adapters; on-device Clio pipeline plumbing; egress journal; CLI commands. | `apps/collector`, `packages/sdk`, `packages/clio` (on-device half), `packages/redact` (collector-side defense-in-depth), `packages/fixtures` | `03-adapter-sdk`, co-owns `01-event-wire`, `06-clio-pipeline` | `02-ingest-api`, `08-redaction` |
 | **C** | Ingest & Webhooks | Walid | Bun ingest server (OTLP HTTP/Protobuf + custom JSON + webhooks); Redis SETNX dedup; tier enforcement; rate limiting; GitHub App. | `apps/ingest`, `packages/api` (ingest half) | `02-ingest-api`, co-owns `01-event-wire` | `03-adapter-sdk`, `08-redaction`, `09-storage-schema` |
 | **D** | Storage & Schema | Jorge | ClickHouse `events` table + projections + materialized views; Postgres control plane + RLS + Drizzle migrations; partition-drop GDPR worker (7-d SLA); Plan B Go side-car (if F15 soak fails). | `packages/schema`, `apps/worker` | `09-storage-schema` | `01-event-wire` |
-| **E** | Web & Manager API | Sandesh | Next.js 16 dashboard; tRPC v11 routers; SSE realtime; manager 2×2; IC `/me` views; Reveal gesture + audit confirm; CSV export rules; brand tokens + UI kit. | `apps/web`, `packages/ui`, `packages/api` (manager half) | `07-manager-api` | `04-scoring-io`, `09-storage-schema`, `08-redaction` |
+| **E** | Web & Manager API | Sebastian | Next.js 16 dashboard; tRPC v11 routers; SSE realtime; manager 2×2; IC `/me` views; Reveal gesture + audit confirm; CSV export rules; brand tokens + UI kit. | `apps/web`, `packages/ui`, `packages/api` (manager half) | `07-manager-api` | `04-scoring-io`, `09-storage-schema`, `08-redaction` |
 | **F** | Foundation & Infra | Sebastian | Repo bootstrap, Bun workspaces, Biome, CI/CD (GH Actions), SLSA L3 reusable workflow, Sigstore signing, distro packaging, Docker Compose, k6 perf gates, observability defaults. | repo root, `.github/workflows/`, `Dockerfile`, `docker-compose*.yml` | (no inter-workstream contracts; sets up the platform everyone else uses) | all |
 | **G-backend** | Privacy execution | Walid | Server-side TruffleHog + Gitleaks + Presidio in ingest hot path; forbidden-field fuzzer; Tier-A allowlist enforcement; Ed25519 signed-config validator. | `packages/redact` (server side), `redaction_audit` table writes | `08-redaction`, co-owns `06-clio-pipeline` (server verifier) | `01-event-wire`, `09-storage-schema` |
-| **G-frontend** | Privacy UX | Sandesh | Bill of Rights page (`/privacy`); Reveal modal + audit confirm UX; `<REDACTED:type:hash>` chip renderer; IC daily digest UI; `cost_estimated` and `data_fidelity` indicator chips. | `apps/web/privacy`, `apps/web/me/digest`, UI components | (consumes `08-redaction` marker format) | `08-redaction`, `07-manager-api` |
+| **G-frontend** | Privacy UX | Sebastian | Bill of Rights page (`/privacy`); Reveal modal + audit confirm UX; `<REDACTED:type:hash>` chip renderer; IC daily digest UI; `cost_estimated` and `data_fidelity` indicator chips. | `apps/web/privacy`, `apps/web/me/digest`, UI components | (consumes `08-redaction` marker format) | `08-redaction`, `07-manager-api` |
 | **H-scoring** | Scoring math | Sandesh | `ai_leverage_v1` math; useful_output_v1; subscores; cohort percentile-rank; confidence; 500-case eval; metric versioning. | `packages/scoring` | `04-scoring-io` | `09-storage-schema` (reads MVs) |
 | **H-AI** | AI pipeline | Jorge | Embed provider abstraction (OpenAI/Voyage/Ollama/Xenova); embedding cache; Twin Finder live API; nightly cluster recompute (Batch API); Insight Engine 6-call pipeline (H4a–H4f); cluster labeler; anomaly detector (hourly, 3σ). | `packages/embed`, `packages/clio` (server verifier + embed stage) | `05-embed-provider` | `09-storage-schema`, `06-clio-pipeline` |
 | **I** | Compliance & Legal | Sandesh | Works-council templates (DE/FR/IT); DPIA; SCCs 2021/914 Module 2; Bill of Rights wording; vendor-assessment artifacts (CAIQ v4.0.3, SIG Lite 2024); SOC 2 prep; SBOM (CycloneDX); audit-events row schema. | `legal/templates/`, `dev-docs/compliance/` | (mostly docs; reviews privacy contracts) | `08-redaction`, `07-manager-api` |
 
 ## Critical path — what must land first
 
-Sprint 0 is the only week where the team can't fully fan out. The list below is the **Sprint-0 unblock set** — small, mostly Sebastian-led, but pulls in seeds from David / Walid / Jorge so per-workstream work can start in parallel by end of week 1. Sandesh uses Sprint 0 to read PRD + contracts and draft I (compliance) templates as non-blocking parallel work, then starts E + H-scoring on Day 5+.
+Sprint 0 is the only week where the team can't fully fan out. The list below is the **Sprint-0 unblock set** — small, mostly Sebastian-led, but pulls in seeds from David / Walid / Jorge so per-workstream work can start in parallel by end of week 1. Sandesh uses Sprint 0 to read PRD + contracts and draft I (compliance) templates as non-blocking parallel work, then starts H-scoring on Day 5+.
 
 ### Day 1–2 — Sebastian solo (others read PRD + contracts in parallel)
 
@@ -85,9 +85,9 @@ Four checkpoints, one per sprint. Each checkpoint is a **short integration windo
 - ✅ David's Claude Code adapter emits a real event
 - ✅ Walid's ingest validates, dedups (Redis SETNX), writes to CH
 - ✅ Jorge's CH `events` table receives it; first MV (`dev_daily_rollup`) populates
-- ✅ Sandesh's dashboard renders one tile from real data (cost over 7d)
+- ✅ Sebastian's dashboard renders one tile from real data (cost over 7d)
 - ✅ Sandesh's scoring v0 stub returns a number for that one engineer
-- ✅ Bill of Rights page renders (Sandesh)
+- ✅ Bill of Rights page renders (Sebastian)
 - ✅ Privacy fuzzer skeleton runs in CI (Walid)
 - ✅ Sandesh's I-template drafts (DE/FR/IT works-council, DPIA outline) merged as drafts
 
@@ -98,13 +98,13 @@ Four checkpoints, one per sprint. Each checkpoint is a **short integration windo
 - ✅ All 6 v1 adapters working with golden fixtures (David)
 - ✅ OTLP receiver + webhooks + GitHub App live (Walid)
 - ✅ All MVs + projections + RLS + partition-drop worker (Jorge)
-- ✅ Manager 2×2 + `/me` + Reveal flow + cluster pages + outcomes (Sandesh)
+- ✅ Manager 2×2 + `/me` + Reveal flow + cluster pages + outcomes (Sebastian)
 - ✅ Scoring math passes 500-case eval (MAE ≤ 3, no outlier > 10) — **MERGE BLOCKER** (Sandesh)
 - ✅ Insight Engine H4a–H4f pipeline returns High-confidence insights (Jorge)
 - ✅ Embed provider chain + nightly cluster job (Jorge)
-- ✅ Anomaly SSE channel emits hourly (Jorge → Sandesh)
-- ✅ Privacy adversarial gate green: ≥98% secret recall, 100% forbidden-field rejection, ≥95% Clio verifier recall — **MERGE BLOCKER** (Walid + Sandesh)
-- ✅ Perf gate: p95 dashboard <2s with 1M seeded events, p99 ingest <100ms — **MERGE BLOCKER** (Sebastian sets up k6, Jorge tunes CH, Walid tunes ingest, Sandesh tunes web)
+- ✅ Anomaly SSE channel emits hourly (Jorge → Sebastian)
+- ✅ Privacy adversarial gate green: ≥98% secret recall, 100% forbidden-field rejection, ≥95% Clio verifier recall — **MERGE BLOCKER** (Walid + Sebastian consuming markers)
+- ✅ Perf gate: p95 dashboard <2s with 1M seeded events, p99 ingest <100ms — **MERGE BLOCKER** (Sebastian sets up k6 + tunes web, Jorge tunes CH, Walid tunes ingest)
 
 **Gate:** all three MERGE BLOCKERs pass. The 24h Bun↔ClickHouse soak (F15 / INT0) starts at the M2 tag — Plan B Go side-car ready in `apps/ingest-sidecar/` if soak fails (Jorge).
 
@@ -146,12 +146,12 @@ Four checkpoints, one per sprint. Each checkpoint is a **short integration windo
                                        │
         ┌─────────────┬─────────────┬──┴──────────┬─────────────────────┬──────────────┐
         ▼             ▼             ▼             ▼                     ▼              │
-    David (B)     Walid (C)     Jorge (D)   Sandesh (E+H-sc+I)   Sebastian (F-cont)   │
-    Claude        /v1/events    events tbl    Next.js shell        observability       │
-    Code adptr    + zod redact  + 1st MV      + 1st tile           + perf scaffold     │
-                                              + scoring v0 stub                         │
-                                              + I template drafts                       │
-                                              + Bill of Rights                          │
+    David (B)     Walid (C)     Jorge (D)   Sandesh (H-sc+I)  Sebastian (F+E+G-front) │
+    Claude        /v1/events    events tbl    scoring v0         Next.js shell          │
+    Code adptr    + zod redact  + 1st MV      stub               + 1st tile             │
+                                              + I template       + Bill of Rights       │
+                                              drafts             + observability        │
+                                                                 + perf scaffold        │
         │             │             │             │                     │              │
         └─────────────┴──────┬──────┴─────────────┴─────────────────────┘              │
                              │                                                          │
@@ -160,14 +160,14 @@ Four checkpoints, one per sprint. Each checkpoint is a **short integration windo
                              │                                                          │
         ┌─────────────┬──────┴──────┬─────────────┬─────────────────────┬──────────────┐
         ▼             ▼             ▼             ▼                     ▼              │
-    David         Walid         Jorge        Sandesh                Sebastian          │
-    adapters 2-6  OTLP+webhk    MVs+RLS+      2×2 + /me +            F-cont:           │
-    + Clio        + GH App      partn drop   reveal + clusters       k6 perf gates     │
-    plumbing      G-back: fuzz  +H-AI:        G-front: BoR           + soak harness    │
-                  + allowlist   embed/Twin    + reveal UX            + observability   │
-                                /cluster      + scoring math                            │
-                                /Insight      + 500-case eval                           │
-                                /anomaly      + I templates                             │
+    David         Walid         Jorge        Sandesh               Sebastian           │
+    adapters 2-6  OTLP+webhk    MVs+RLS+      scoring math          E: 2×2 + /me       │
+    + Clio        + GH App      partn drop   (H-sc) + 500-case      + reveal + clusters│
+    plumbing      G-back: fuzz  +H-AI:        eval + I templates    G-front: BoR +     │
+                  + allowlist   embed/Twin                          reveal UX + chips  │
+                                /cluster                            F-cont: k6 +       │
+                                /Insight                            soak + observab.   │
+                                /anomaly                                               │
         └─────────────┴─────────────┴──────┬──┴─────────────────────┘                  │
                                             │                                      │
                                             ▼                                      │
@@ -193,12 +193,13 @@ Four checkpoints, one per sprint. Each checkpoint is a **short integration windo
 |---|---|---|
 | David (B) needs to know what to emit | Jorge (D-seed) | `01-event-wire.md` |
 | Walid (C) needs to know what to validate | Jorge (D-seed) | `01-event-wire.md` |
-| Sandesh (E) needs to know what to query | Jorge (D — MVs) | `09-storage-schema.md`, `04-scoring-io.md` |
+| Sebastian (E) needs to know what to query | Jorge (D — MVs) | `09-storage-schema.md`, `04-scoring-io.md` |
 | Sandesh (H-sc) needs aggregated inputs | Jorge (D — MVs) | `09-storage-schema.md` (`dev_daily_rollup`, `team_weekly_rollup`) |
 | Jorge (H-AI) needs prompt embeddings to land | David (B — Clio pipeline) | `06-clio-pipeline.md` |
-| Walid (G-back) needs the redact contract | Sandesh (G-front consumes same markers) | `08-redaction.md` |
-| Sandesh (E) reveal flow | Walid (C) writes audit_log | `07-manager-api.md` + `09-storage-schema.md` |
+| Walid (G-back) needs the redact contract | Sebastian (G-front consumes same markers) | `08-redaction.md` |
+| Sebastian (E) reveal flow | Walid (C) writes audit_log | `07-manager-api.md` + `09-storage-schema.md` |
 | Sandesh (I) compliance docs reference | Walid (G-back), Jorge (D — retention) | all of `06`, `07`, `08`, `09` |
+| Sebastian (E) needs scoring outputs | Sandesh (H-sc) | `04-scoring-io.md` |
 
 If you're blocked and the table doesn't list it: ping the contract owner in chat AND open a draft PR against the relevant `contracts/NN-*.md` file. Don't wait silently.
 
