@@ -34,9 +34,9 @@ describe("pino redact config", () => {
 
   test("Authorization header value is redacted in emitted log line", () => {
     const line = captureLogLine((log) => {
-      log.info({ req: { headers: { authorization: "Bearer dm_test_abc" } } }, "auth header scan");
+      log.info({ req: { headers: { authorization: "Bearer bm_test_abc" } } }, "auth header scan");
     });
-    expect(line).not.toContain("dm_test_abc");
+    expect(line).not.toContain("bm_test_abc");
     expect(line).toContain("[Redacted]");
   });
 

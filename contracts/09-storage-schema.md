@@ -167,7 +167,7 @@ The ingest server sets `app.current_org_id` from the JWT before any query.
 | `repos` | C (via webhook) | `repo_id_hash` mirror to ClickHouse |
 | `policies` | admin write | per-org redaction overrides, tier defaults |
 | `git_events` | C (denormalized to CH on write) | Phase-1 GitHub App lands here first |
-| `ingest_keys` | admin write | `dm_<orgId>_<rand>` records |
+| `ingest_keys` | admin write | `bm_<orgId>_<rand>` records |
 | `prompt_clusters` | H (nightly cluster job writes centroids) | E reads for cluster pages |
 | `playbooks` | E (write via Promote-to-Playbook flow) | D31 source of Team Impact signal |
 | `audit_log` | C, E, G, I write; auditor read | Immutable; reveal gestures + admin actions |
