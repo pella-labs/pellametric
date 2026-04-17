@@ -17,6 +17,53 @@ jobs:
     name: lint · typecheck · test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bematist
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bematist"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8-alpine
+        env:
+          CLICKHOUSE_DB: bematist
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: ""
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+        ports:
+          - 8123:8123
+          - 9000:9000
+        options: >-
+          --health-cmd "clickhouse-client --query 'SELECT 1'"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6381:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5435/bematist
+      CLICKHOUSE_URL: http://localhost:8123
+      REDIS_URL: redis://localhost:6381
+      # CH container needs to reach PG for the dev_team_dict dictionary.
+      # In GitHub Actions service containers share a network and reach each
+      # other by the job-service name ("postgres" below).
+      CH_PG_DICT_HOST: postgres
+      CH_PG_DICT_PORT: "5432"
     steps:
       - uses: actions/checkout@v4
 
@@ -51,6 +98,12 @@ jobs:
         # regenerating packages/otel/src/gen/**. buf CLI ships prebuilt via
         # @bufbuild/buf (no protoc install needed).
         run: bun run check:otel-generated
+
+      - name: Run Postgres migrations
+        run: bun run db:migrate:pg
+
+      - name: Run ClickHouse migrations
+        run: bun run db:migrate:ch
 
       - name: Lint
         run: bun run lint

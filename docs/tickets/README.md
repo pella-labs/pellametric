@@ -15,7 +15,7 @@
 |---|---|---|---|
 | `D1-00` | Dev env autoload + compose override | ✅ committed (push blocked) | `dev-env-autoload-compose-override-jorge` |
 | `D1-01` | Contract 05 naming drift fix (`@devmetrics/*` → `@bematist/*`) | ✅ verified no-op 2026-04-17 (both drifts pre-resolved) | `D1-01-contract-05-drift-jorge` |
-| `D1-02` | ClickHouse materialized views (5 MVs) | pending | — |
+| `D1-02` | ClickHouse materialized views (5 MVs) | ✅ committed (push blocked) | `D1-02-materialized-views-jorge` |
 | `D1-03` | Projections on `events` + EXPLAIN gates | pending | — |
 | `D1-04` | GDPR partition-drop worker (7-d SLA) | pending | — |
 | `D1-05` | Remaining Postgres control-plane tables (Drizzle) | pending | — |

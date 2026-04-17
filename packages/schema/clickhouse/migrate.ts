@@ -1,15 +1,27 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createClient } from "@clickhouse/client";
+import { CH_DATABASE, ch, chRoot } from "./client";
 
-const url = process.env.CLICKHOUSE_URL ?? "http://localhost:8123";
-const database = process.env.CLICKHOUSE_DATABASE ?? "bematist";
-
-const rootClient = createClient({ url });
-await rootClient.command({ query: `CREATE DATABASE IF NOT EXISTS ${database}` });
+const rootClient = chRoot();
+await rootClient.command({ query: `CREATE DATABASE IF NOT EXISTS ${CH_DATABASE}` });
 await rootClient.close();
 
-const client = createClient({ url, database });
+const client = ch();
+
+// Substitutions for CH migration DDL. Dictionary sources need a PG hostname
+// that resolves from inside the CH container — `bematist-postgres` in docker
+// compose, `localhost` in GitHub Actions service-containers, etc.
+const substitutions: Record<string, string> = {
+  PG_DICT_HOST: process.env.CH_PG_DICT_HOST ?? "bematist-postgres",
+  PG_DICT_PORT: process.env.CH_PG_DICT_PORT ?? "5432",
+  PG_DICT_DB: process.env.CH_PG_DICT_DB ?? "bematist",
+  PG_DICT_USER: process.env.CH_PG_DICT_USER ?? "postgres",
+  PG_DICT_PASSWORD: process.env.CH_PG_DICT_PASSWORD ?? "postgres",
+};
+
+function substitute(sql: string): string {
+  return sql.replace(/\$\{(\w+)\}/g, (_, key) => substitutions[key] ?? `\${${key}}`);
+}
 
 const migrationsDir = join(import.meta.dir, "migrations");
 const files = readdirSync(migrationsDir)
@@ -17,7 +29,7 @@ const files = readdirSync(migrationsDir)
   .sort();
 
 for (const file of files) {
-  const sql = readFileSync(join(migrationsDir, file), "utf8");
+  const sql = substitute(readFileSync(join(migrationsDir, file), "utf8"));
   // ClickHouse @clickhouse/client executes one statement per command call.
   // Strip leading --line comments so a leading file header doesn't mask the statement.
   const statements = sql
@@ -37,4 +49,4 @@ for (const file of files) {
 }
 
 await client.close();
-console.log(`[ch-migrate] done — ${files.length} file(s) applied to ${database}`);
+console.log(`[ch-migrate] done — ${files.length} file(s) applied to ${CH_DATABASE}`);
