@@ -66,7 +66,22 @@ services:
     depends_on:
       - clickhouse
 
+  # Plan-B ingest sidecar (F15 / INT0 fallback per contract 09 §Plan B).
+  # Only starts with `docker compose --profile sidecar up`.
+  ingest-sidecar:
+    build: ./apps/ingest-sidecar
+    container_name: bematist-ingest-sidecar
+    profiles: ["sidecar"]
+    environment:
+      DEVMETRICS_SIDECAR_SOCKET: /run/devmetrics/sidecar.sock
+      CLICKHOUSE_URL: http://clickhouse:8123
+    volumes:
+      - sidecar-socket:/run/devmetrics
+    depends_on:
+      - clickhouse
+
 volumes:
   postgres-data:
   clickhouse-data:
   redis-data:
+  sidecar-socket:

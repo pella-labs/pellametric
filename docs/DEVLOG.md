@@ -16,6 +16,13 @@ Chronological log of tickets worked on. Append-only; one entry per completed tic
 - **Branch / PR:** `D1-01-contract-05-drift-jorge` — docs-only; no contract change.
 - **Follow-ups:** Mention in final Sprint 1 PR description that issue #3's "Known contract drift" bullets are resolved-on-inspection.
 
+## 2026-04-17 — D1-07: Plan-B Go sidecar skeleton landed — Sprint 1 COMPLETE
+
+- **What shipped:** `apps/ingest-sidecar/` — Go module, UNIX-socket server, size+time-based batcher, Dockerfile (distroless nonroot), `sidecar` docker-compose profile (not default-up), README with activation sequence. 3 Go tests (size trigger, cancel drain, drain idempotency) all pass.
+- **Branch / PR:** `D1-07-plan-b-sidecar-jorge` → PR pending.
+- **Scope:** skeleton only. CH writer is a logging stub; real `internal/ch/writer.go` implementation lives behind a YAGNI marker, to be filled in ONLY if F15/INT0 soak fails in Sprint 2. Per CLAUDE.md Architecture Rule #7 — "Plan B must be documented and ready before Sprint 1 starts" — the skeleton satisfies readiness.
+- **Bun ingest switch path:** `apps/ingest/src/clickhouse.ts` doesn't exist yet (Workstream C hasn't wired ingest's CH client). The activation instructions in `apps/ingest-sidecar/README.md` tell C what import to swap when the time comes.
+
 ## 2026-04-17 — D1-06: RLS + INT9 cross-tenant probe landed (merge blocker)
 
 - **What shipped:** RLS enabled + FORCED on 15 org-scoped PG tables via `packages/schema/postgres/custom/0002_rls_org_isolation.sql`. New `app_bematist` role (NOBYPASSRLS, NOSUPERUSER) for application connections. `app_current_org()` helper + `org_isolation` policy per table using `current_setting('app.current_org_id', true)::uuid`. `withOrg()` TypeScript helper in `packages/schema/postgres/rls_set_org.ts`. `org_id` column added to `audit_log` and `audit_events` (via drizzle migration `0003_remarkable_omega_flight.sql`) so they can participate in RLS.

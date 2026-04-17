@@ -57,7 +57,12 @@ postgres-data/
 clickhouse-data/
 redis-data/
 
+# Go build artifacts
+apps/ingest-sidecar/sidecar
+apps/ingest-sidecar/go.sum
+
 # Claude Code local
 .claude/settings.local.json
 .claude/skills/
 .agents/skills/
+.gitnexus
