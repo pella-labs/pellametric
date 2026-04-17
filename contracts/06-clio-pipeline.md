@@ -111,7 +111,7 @@ The on-device pipeline is **owned by the collector** and called by every adapter
 
 ```ts
 // packages/clio/index.ts (draft)
-import type { Event } from "@devmetrics/schema";
+import type { Event } from "@bematist/schema";
 
 /** Run the 5-stage pipeline. Mutates `event` to attach prompt_record OR sets event.tier='A'.
  *  Returns null if Stage 3 dropped the record. */
@@ -160,3 +160,4 @@ bun run test:privacy     # MERGE BLOCKER
 ## Changelog
 
 - 2026-04-16 — initial draft
+- 2026-04-16 — M1 adaptation: rename `@devmetrics/*` package references to `@bematist/*` (additive; real package paths under `packages/` are `@bematist/*`). No behavioral change.
