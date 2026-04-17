@@ -1,0 +1,6 @@
+{"type":"session_start","sessionId":"sess_real_01","timestamp":"2026-04-16T14:00:00.000Z"}
+{"requestId":"req_1","type":"message","sessionId":"sess_real_01","timestamp":"2026-04-16T14:00:00.250Z","message":{"role":"user","content":"help me refactor this"}}
+{"requestId":"req_1","type":"message","sessionId":"sess_real_01","timestamp":"2026-04-16T14:00:03.100Z","message":{"role":"assistant","model":"claude-sonnet-4-5","usage":{"input_tokens":1840,"output_tokens":312,"cache_read_input_tokens":1200,"cache_creation_input_tokens":640},"stop_reason":"tool_use"}}
+{"type":"tool_use","sessionId":"sess_real_01","timestamp":"2026-04-16T14:00:03.400Z","toolUse":{"name":"Read","id":"tu_1","input":{"path":"/abs/foo.ts"}}}
+{"type":"tool_result","sessionId":"sess_real_01","timestamp":"2026-04-16T14:00:03.520Z","toolResult":{"toolUseId":"tu_1","isError":false,"durationMs":120}}
+{"type":"session_end","sessionId":"sess_real_01","timestamp":"2026-04-16T14:00:12.000Z"}
