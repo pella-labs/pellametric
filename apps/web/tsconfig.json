@@ -10,7 +10,19 @@
     "incremental": true,
     "noEmit": true,
     "allowJs": true,
-    "plugins": [{ "name": "next" }]
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@bematist/schema": ["../../packages/schema/src/index.ts"],
+      "@bematist/schema/*": ["../../packages/schema/src/*"],
+      "@bematist/api": ["../../packages/api/src/index.ts"],
+      "@bematist/api/*": ["../../packages/api/src/*"],
+      "@bematist/ui": ["../../packages/ui/src/index.ts"],
+      "@bematist/ui/*": ["../../packages/ui/src/*"],
+      "@bematist/fixtures": ["../../packages/fixtures/src/index.ts"],
+      "@bematist/fixtures/*": ["../../packages/fixtures/*"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules", ".next"]

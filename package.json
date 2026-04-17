@@ -18,6 +18,9 @@
     "typecheck": "bun --filter='./apps/*' --filter='./packages/*' typecheck",
     "test": "bun test",
     "test:e2e": "bun --filter='./apps/web' test:e2e",
+    "test:privacy": "echo 'test:privacy — not yet implemented; tracked in Workstream G (server + collector). Merge-blocker gate once available.' && exit 0",
+    "test:scoring": "echo 'test:scoring — not yet implemented; tracked in Workstream H-scoring. 500-case eval, merge-blocker once available.' && exit 0",
+    "test:perf": "echo 'test:perf — k6 scaffold at tests/perf/dashboard.k6.js. Run with: k6 run tests/perf/dashboard.k6.js. Non-gating until M2.' && exit 0",
     "db:migrate:pg": "bun --filter='@bematist/schema' migrate:pg",
     "db:migrate:ch": "bun --filter='@bematist/schema' migrate:ch",
     "db:seed": "bun --filter='@bematist/schema' seed"

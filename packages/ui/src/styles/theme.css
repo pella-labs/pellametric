@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/*
+ * Bematist theme.
+ *
+ * Tokens mirror `packages/ui/brand.config.ts`. When changing either, change both.
+ * Dark mode is the default — applied via `.dark` on <html>. Light tokens are
+ * provided for users who force `color-scheme: light`.
+ */
+
+@theme {
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+
+  --color-background: #0a0b0f;
+  --color-surface: #12141a;
+  --color-surface-muted: #1a1d25;
+  --color-border: #252933;
+  --color-foreground: #e6e8ec;
+  --color-foreground-muted: #9197a3;
+  --color-accent: #6d8eff;
+  --color-accent-foreground: #0a0b0f;
+  --color-positive: #3ed598;
+  --color-negative: #ff6b7a;
+  --color-warning: #ffb547;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+/* Base layer — applies to the whole document. */
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-border);
+  }
+
+  /* Visible focus ring — WCAG AA (Design Rules). */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Respect user motion preference — pair with motion/presets.ts. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

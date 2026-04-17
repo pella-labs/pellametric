@@ -157,7 +157,7 @@ devmetrics serve --embedded
       schema/               # zod + Drizzle + ClickHouse DDL
       otel/                 # OTel GenAI conventions mapping
       sdk/                  # adapter interface, auth, common types
-      api/                  # tRPC routers + OpenAPI spec
+      api/                  # zod schemas + server-side data-access functions (consumed by RSC + Server Actions + Route Handlers)
       ui/                   # shadcn components + Tremor blocks + brand tokens
       redact/               # TruffleHog + gitleaks + Presidio ruleset
       embed/                # OpenAI / Voyage / Ollama / Xenova provider abstraction
@@ -199,7 +199,7 @@ devmetrics serve --embedded
 
 - Three ingest endpoints: OTLP HTTP/Protobuf (`POST /v1/{traces,metrics,logs}`), custom JSON (`POST /v1/events`), webhooks (`POST /v1/webhooks/{github,gitlab,bitbucket}`).
 - Auth: `Authorization: Bearer dm_<orgId>_<rand>` per ingest key. Rate-limited via Redis token bucket.
-- Manager API: tRPC v11 over HTTP/SSE. Schemas in `packages/api`.
+- Manager API: **Next.js Server Actions + Route Handlers** (no tRPC). RSC pages import server-side data-access functions from `packages/api` directly. Client components use Server Actions for mutations (reveal, policy writes) and `fetch()` Route Handlers for client-driven reads (SSE, polled widgets, CSV export). Types flow via TypeScript inference on exported action signatures. Zod schemas in `packages/api/src/schemas/` are the source of truth for inputs/outputs — shared by Server Actions, Route Handlers, and the CLI.
 - **Managed-cloud Tier-C 403 guard:** ingest REJECTS `tier='C'` events with HTTP 403 unless `org.tier_c_managed_cloud_optin=true`. Client policy file is NOT the security boundary.
 - Dashboard `prompt_text` views require explicit "Reveal" gesture + `audit_log` entry. CSV exports redact prompt columns by default; "Export with prompts" requires 2FA + audit log.
 - Server rejects (HTTP 400) any payload containing `rawPrompt`, `prompt_text`, `messages`, `toolArgs`, `toolOutputs`, `fileContents`, `diffs`, `filePaths`, `ticketIds`, `emails`, `realNames` from Tier A/B sources (adversarial fuzzer in CI must hit 100%).
@@ -301,6 +301,7 @@ Three layers, most-reliable-first:
 - Motion via `motion` package; reduced-motion respected.
 - WCAG AA targets.
 - `data_fidelity` indicator next to every IDE in dashboard pickers (full / estimated / aggregate-only / post-migration).
+- **Any clickable HTML element has `cursor: pointer`.** Applies to `<button>`, `<a>`, any element with an `onClick`, any `role="button"` or `role="link"` element, and any Radix/shadcn primitive that acts as a trigger (DropdownTrigger, TabsTrigger, DialogTrigger, etc.). Disabled state uses `cursor-not-allowed`. Native `<button>` does NOT get a pointer cursor from the browser — we set it explicitly in our primitives so every affordance in the UI consistently signals clickability.
 
 ## Adapter Matrix — Honest Coverage (§9)
 

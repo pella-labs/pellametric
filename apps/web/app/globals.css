@@ -1,0 +1,10 @@
+/*
+ * Bematist — app-wide styles.
+ *
+ * The Tailwind v4 theme tokens + base layer live in `@bematist/ui/styles/theme.css`.
+ * Keeping them there means alternate apps (e.g. an embedded-mode single binary
+ * shipping its own viewer) share the same tokens without duplication.
+ */
+@import "@bematist/ui/styles/theme.css";
+
+/* App-specific overrides go here. Keep this file short. */
