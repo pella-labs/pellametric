@@ -65,3 +65,6 @@ redis-data/
 # Personal scope / review docs (untracked)
 DAVID_SCOPE.md
 STUDY_GUIDE.md
+
+# Git worktrees (isolated feature branches)
+.worktrees/
