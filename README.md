@@ -38,10 +38,16 @@ Environment is driven by a `.env` file — use `.env.example` as the template.
 
 ```bash
 bun install
+cp .env.example .env                              # fill in secrets (gitignored)
 docker compose -f docker-compose.dev.yml up -d    # postgres + clickhouse + redis only; apps run on the host
-cp .env.example .env
+
+bun run db:migrate:pg                             # drizzle migrations
+bun run db:migrate:ch                             # clickhouse migrations
+
 bun run dev                                       # start all apps via Bun workspaces
 ```
+
+All root scripts that touch env vars load `.env` automatically via Bun's `--env-file` flag (see root `package.json`); filtered subprocesses inherit from the parent.
 
 Common scripts:
 
@@ -54,6 +60,26 @@ bun run test:privacy        # privacy adversarial suite — merge-blocking
 bun run test:scoring        # 500-case AI Leverage Score eval (MAE ≤ 3) — merge-blocking on scoring changes
 bun run test:perf           # k6 perf (gates Sprint 2)
 ```
+
+### Per-dev port overrides
+
+If the default ports (5433 pg, 6379 redis, 8000 ingest, 3000 web) still collide with other projects on your machine, create `docker-compose.dev.local.yml` and remap host ports there (gitignored via `docker-compose.*.local.yml`). Example:
+
+```yaml
+services:
+  postgres:
+    ports: ["5435:5432"]
+  redis:
+    ports: ["6381:6379"]
+```
+
+Then bring the stack up with both files merged:
+
+```bash
+docker compose -f docker-compose.dev.yml -f docker-compose.dev.local.yml up -d
+```
+
+Update the matching URLs (e.g. `DATABASE_URL`, `REDIS_URL`) in your `.env` to use the remapped ports. The tracked `docker-compose.dev.yml` stays at upstream defaults.
 
 ## Status
 
