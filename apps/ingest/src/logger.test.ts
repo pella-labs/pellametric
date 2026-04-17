@@ -65,4 +65,15 @@ describe("pino redact config", () => {
     expect(line).not.toContain("topsecret99");
     expect(line).toContain("[Redacted]");
   });
+
+  test("M8: prompt_text at depth 5 is still redacted", () => {
+    // Previously only depth 1-2 was covered by `*.` / `*.*.` paths. Our fix
+    // generates rungs up to MAX_REDACT_DEPTH=5. A sentinel buried 5 keys
+    // deep must still come back censored.
+    const sentinel = "LEAK_AT_DEPTH_5";
+    const line = captureLogLine((log) => {
+      log.info({ a: { b: { c: { d: { e: { prompt_text: sentinel } } } } } }, "deep redact scan");
+    });
+    expect(line).not.toContain(sentinel);
+  });
 });

@@ -189,4 +189,25 @@ describe("verifyBearer", () => {
     expect(res).not.toBeNull();
     expect(res?.tenantId).toBe("test");
   });
+
+  test("L4: cache key is sha256 hash of raw bearer, not the raw bearer itself", async () => {
+    // Previously the cache stored entries keyed on the raw Bearer secret —
+    // any future "dump cache for debug" endpoint would leak every active
+    // secret. Keys now hash first.
+    const secret = "exposed_secret_value_42";
+    const header = `Bearer dm_orgabc_keyabc_${secret}`;
+    const row = makeRow({ org_id: "orgabc", id: "keyabc", key_sha256: hashSecret(secret) });
+    const store = makeStore({ "orgabc/keyabc": row });
+    const cache = new LRUCache({ max: 10, ttlMs: 60_000 });
+    await verifyBearer(header, store, cache);
+    // The cache should have exactly one entry — the entry's key must NOT
+    // contain the raw secret. Iterate via the (internal) keys iterator by
+    // poking at cache.get with a computed hash.
+    const { createHash } = await import("node:crypto");
+    const raw = header.slice("Bearer ".length);
+    const expectedKey = createHash("sha256").update(raw).digest("hex");
+    expect(cache.get(expectedKey)).not.toBeNull();
+    // Looking up by the raw secret must now MISS.
+    expect(cache.get(raw)).toBeNull();
+  });
 });

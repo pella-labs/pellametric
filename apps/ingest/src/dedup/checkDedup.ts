@@ -34,7 +34,14 @@ export type DedupKeyInput = {
   eventSeq: number | string;
 };
 
-const SAFE_ID = /^[A-Za-z0-9_-]+$/;
+// Tenant IDs are server-derived; keep them conservative (alnum + _-).
+const SAFE_TENANT = /^[A-Za-z0-9_-]+$/;
+// Session IDs come from collectors and routinely contain `.` / `:` / `/`
+// (ISO timestamps, hierarchical paths). H3 fix: reject ONLY the characters
+// that would break Redis Cluster hash-tag routing (`{`, `}`), whitespace,
+// and ASCII control chars. Anything else is a valid sessionId.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional — rejecting control chars in session IDs
+const UNSAFE_SESSION = /[\x00-\x1f\s{}]/;
 
 /**
  * Build the dedup key. Format:
@@ -43,15 +50,26 @@ const SAFE_ID = /^[A-Za-z0-9_-]+$/;
  * The braces are a Redis Cluster hash tag — they pin all keys for a tenant
  * to one slot so SETNX and future pipeline ops stay on the same shard.
  *
- * Inputs are strictly validated: tenantId/sessionId must match
- * `[A-Za-z0-9_-]+`, eventSeq must be a non-negative integer. Throws
- * `Error("dedup:bad-input")` on violation.
+ * Inputs validated as follows:
+ *   - tenantId: `[A-Za-z0-9_-]+` (server-derived).
+ *   - sessionId: any non-empty string without control chars, whitespace, or
+ *     `{`/`}` (the hash-tag delimiters). Real-world session IDs contain
+ *     dots and colons; those are fine.
+ *   - eventSeq: non-negative integer (number or numeric string).
+ *
+ * Throws `Error("dedup:bad-input")` on violation. The server distinguishes
+ * this error from Redis-unreachable and returns HTTP 400 BAD_SESSION_ID
+ * instead of 503 (contract 02 semantics — this is a client-visible input
+ * defect, not a backend outage).
  */
 export function dedupKey(i: DedupKeyInput): string {
-  if (typeof i.tenantId !== "string" || !SAFE_ID.test(i.tenantId)) {
+  if (typeof i.tenantId !== "string" || i.tenantId.length === 0 || !SAFE_TENANT.test(i.tenantId)) {
     throw new Error("dedup:bad-input");
   }
-  if (typeof i.sessionId !== "string" || !SAFE_ID.test(i.sessionId)) {
+  if (typeof i.sessionId !== "string" || i.sessionId.length === 0) {
+    throw new Error("dedup:bad-input");
+  }
+  if (UNSAFE_SESSION.test(i.sessionId)) {
     throw new Error("dedup:bad-input");
   }
   const seqNum = typeof i.eventSeq === "string" ? Number(i.eventSeq) : i.eventSeq;

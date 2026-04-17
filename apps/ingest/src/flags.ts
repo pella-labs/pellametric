@@ -55,4 +55,10 @@ export function assertFlagCoherence(flags: Flags): void {
     // Appending without a consumer draining → WAL grows unboundedly.
     throw new FlagIncoherentError("WAL_APPEND_ENABLED=1 requires WAL_CONSUMER_ENABLED=1");
   }
+  if (!flags.WAL_APPEND_ENABLED && flags.WAL_CONSUMER_ENABLED) {
+    // L1 fix: consumer with no appender means the consumer drains an empty
+    // stream forever — a waste of a redis connection and actively misleading
+    // because /readyz.wal_consumer_lag will stay at 0 regardless of traffic.
+    throw new FlagIncoherentError("WAL_CONSUMER_ENABLED=1 requires WAL_APPEND_ENABLED=1");
+  }
 }

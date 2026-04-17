@@ -289,17 +289,24 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
 
   // All zod-valid (or partial with some valid). Apply Tier-A allowlist
   // POST-zod if feature flag is on. Sprint-1 default: flag off → no-op path.
-  const enforceTierA = process.env.ENFORCE_TIER_A_ALLOWLIST === "1";
+  //
+  // H1 fix: apply on the parsed event (parsedByIndex entry), NOT on the raw
+  // wire body. Downstream canonicalize reads parsedByIndex — mutating the raw
+  // body previously had no effect on the WAL row, silently bypassing the
+  // allowlist once the flag flipped.
+  const enforceTierA = getDeps().flags.ENFORCE_TIER_A_ALLOWLIST;
   if (enforceTierA) {
     let totalDropped = 0;
-    for (const [i] of parsedByIndex) {
-      const ev = events[i] as {
+    for (const [i, parsed] of parsedByIndex) {
+      const ev = parsed as unknown as {
         tier: "A" | "B" | "C";
         raw_attrs?: Record<string, unknown>;
         [k: string]: unknown;
       };
       const r = applyTierAAllowlist(ev, policy, true);
-      events[i] = r.event;
+      // Replace the cached parsed entry so canonicalize() sees the filtered
+      // raw_attrs.
+      parsedByIndex.set(i, r.event as unknown as ReturnType<typeof EventSchema.parse>);
       totalDropped += r.dropped_count;
     }
     if (totalDropped > 0) {
@@ -340,12 +347,31 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
         deduped++;
       }
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // H3 fix: distinguish client-visible input defects (bad session_id /
+      // tenant_id / event_seq) from Redis outage. `dedupKey()` throws
+      // `dedup:bad-input`; everything else is infrastructure.
+      if (msg === "dedup:bad-input") {
+        logger.warn(
+          {
+            tenant_id: auth.tenantId,
+            request_id: requestId,
+            session_id: parsed.session_id,
+            event_seq: parsed.event_seq,
+          },
+          "bad dedup input",
+        );
+        return json(
+          {
+            error: "invalid session_id or event_seq for dedup key",
+            code: "BAD_SESSION_ID",
+            request_id: requestId,
+          },
+          { status: 400 },
+        );
+      }
       logger.error(
-        {
-          tenant_id: auth.tenantId,
-          request_id: requestId,
-          err: err instanceof Error ? err.message : String(err),
-        },
+        { tenant_id: auth.tenantId, request_id: requestId, err: msg },
         "dedup store unavailable",
       );
       return json(
@@ -363,7 +389,11 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
   // durability seam — the WAL consumer drains the stream and writes to CH.
   // If WAL is unavailable, fail the batch with 503 WAL_UNAVAILABLE (clients
   // retry with the same client_event_id, dedup handles the replay).
-  const walEnabled = flags.WAL_APPEND_ENABLED || flags.WAL_CONSUMER_ENABLED;
+  // L1 fix: honor WAL_APPEND_ENABLED exactly. Previously the OR with
+  // WAL_CONSUMER_ENABLED silently forced append on. The consumer flag
+  // governs draining, not appending; an incoherent combination
+  // (APPEND=0 + CONSUMER=1) is now rejected at boot by assertFlagCoherence.
+  const walEnabled = flags.WAL_APPEND_ENABLED;
   if (walEnabled && firstSightEvents.length > 0) {
     try {
       const canonical = firstSightEvents.map((ev) =>

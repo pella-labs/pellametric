@@ -228,4 +228,45 @@ describe("webhooks router — /v1/webhooks/github", () => {
     );
     expect(res.status).toBe(401);
   });
+
+  test("M1: XFF chain — leftmost entry becomes sourceIp", async () => {
+    // Seed an IP allowlist that matches the leftmost IP in a chain. The raw
+    // header "1.2.3.4, 10.0.0.1" must parse to "1.2.3.4" (client), not fail
+    // to match as a strict-equal string.
+    seedDeps({ ipAllowlist: ["1.2.3.4"] });
+    const body = JSON.stringify({ project: { id: 7 }, object_kind: "push" });
+    const res = await handle(
+      new Request("http://localhost/v1/webhooks/gitlab?org=dev", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-gitlab-event": "Push Hook",
+          "x-gitlab-event-uuid": "d-xff",
+          "x-gitlab-token": SECRET,
+          "x-forwarded-for": "1.2.3.4, 10.0.0.1",
+        },
+        body,
+      }),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  test("M1: XFF with a non-allowlisted leftmost entry → 401", async () => {
+    seedDeps({ ipAllowlist: ["1.2.3.4"] });
+    const body = JSON.stringify({ project: { id: 7 }, object_kind: "push" });
+    const res = await handle(
+      new Request("http://localhost/v1/webhooks/gitlab?org=dev", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-gitlab-event": "Push Hook",
+          "x-gitlab-event-uuid": "d-xff2",
+          "x-gitlab-token": SECRET,
+          "x-forwarded-for": "9.9.9.9, 1.2.3.4",
+        },
+        body,
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
 });

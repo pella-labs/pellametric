@@ -350,4 +350,44 @@ describe("handleOtlp /v1/traces (Phase 5 PRD tests 1–13)", () => {
     const body = (await res.json()) as { code?: string };
     expect(body.code).toBe("OTLP_DECODE");
   });
+
+  test("M3: metrics partial_success uses rejectedDataPoints (OTLP spec)", async () => {
+    // Empty metrics payload → 0 rejected; the shape must still have the
+    // metrics-specific key name.
+    const emptyJson = JSON.stringify({ resourceMetrics: [] });
+    const res = await handleOtlp(
+      makeRequest({
+        body: new TextEncoder().encode(emptyJson),
+        contentType: "application/json",
+      }),
+      "metrics",
+      { auth, deps: makeDeps(), skipRateLimit: true },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      partialSuccess?: { rejectedDataPoints?: number; rejectedSpans?: number };
+    };
+    expect(body.partialSuccess).toBeDefined();
+    expect(body.partialSuccess?.rejectedDataPoints).toBe(0);
+    expect(body.partialSuccess?.rejectedSpans).toBeUndefined();
+  });
+
+  test("M3: logs partial_success uses rejectedLogRecords (OTLP spec)", async () => {
+    const emptyJson = JSON.stringify({ resourceLogs: [] });
+    const res = await handleOtlp(
+      makeRequest({
+        body: new TextEncoder().encode(emptyJson),
+        contentType: "application/json",
+      }),
+      "logs",
+      { auth, deps: makeDeps(), skipRateLimit: true },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      partialSuccess?: { rejectedLogRecords?: number; rejectedSpans?: number };
+    };
+    expect(body.partialSuccess).toBeDefined();
+    expect(body.partialSuccess?.rejectedLogRecords).toBe(0);
+    expect(body.partialSuccess?.rejectedSpans).toBeUndefined();
+  });
 });

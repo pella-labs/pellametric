@@ -63,6 +63,8 @@ export interface ReconcilePrsInput {
   logger: Logger;
   /** Override GitHub GraphQL endpoint for tests. */
   graphqlUrl?: string;
+  /** ISO date (YYYY-MM-DD) for "today" — test override for the day-partition fallback. */
+  todayIso?: string;
 }
 
 const QUERY = `
@@ -149,6 +151,22 @@ async function paginate(
   return { upserted, rateLimitRemaining, capped };
 }
 
+function dayRange(sinceDate: string, todayIso: string): string[] {
+  // Inclusive [sinceDate..todayIso] → array of YYYY-MM-DD strings.
+  const out: string[] = [];
+  const start = new Date(`${sinceDate}T00:00:00Z`);
+  const end = new Date(`${todayIso}T00:00:00Z`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [sinceDate];
+  for (let t = start.getTime(); t <= end.getTime(); t += 86_400_000) {
+    const d = new Date(t);
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    out.push(`${yyyy}-${mm}-${dd}`);
+  }
+  return out.length > 0 ? out : [sinceDate];
+}
+
 export async function reconcilePrs(
   input: ReconcilePrsInput,
 ): Promise<{ upserted: number; rateLimitRemaining: number }> {
@@ -159,19 +177,28 @@ export async function reconcilePrs(
   let total = first.upserted;
   let rateLimitRemaining = first.rateLimitRemaining;
   if (first.capped) {
-    // Day-partition fallback: split sinceDate..today into per-day queries.
-    input.logger.warn({ org: input.org }, "github-app: day-partitioning fallback");
-    const dayQ = `org:${input.org} is:pr merged:${input.sinceDate}`;
-    const next = await paginate(
-      fetchFn,
-      graphqlUrl,
-      input.token,
-      dayQ,
-      input.upsertRow,
-      input.logger,
+    // M2 fix: day-partition across the FULL [sinceDate..today] window.
+    // Previously we only re-ran for `merged:${sinceDate}` (a single day),
+    // which on a high-volume org silently dropped 6 of 7 days of PR data.
+    const today = input.todayIso ?? new Date().toISOString().slice(0, 10);
+    const days = dayRange(input.sinceDate, today);
+    input.logger.warn(
+      { org: input.org, days: days.length },
+      "github-app: day-partitioning fallback",
     );
-    total += next.upserted;
-    rateLimitRemaining = next.rateLimitRemaining;
+    for (const day of days) {
+      const dayQ = `org:${input.org} is:pr merged:${day}`;
+      const next = await paginate(
+        fetchFn,
+        graphqlUrl,
+        input.token,
+        dayQ,
+        input.upsertRow,
+        input.logger,
+      );
+      total += next.upserted;
+      rateLimitRemaining = next.rateLimitRemaining;
+    }
   }
   return { upserted: total, rateLimitRemaining };
 }

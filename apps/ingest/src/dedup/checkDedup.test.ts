@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { checkDedup, dedupKey, InMemoryDedupStore } from "./checkDedup";
 
 describe("dedupKey", () => {
-  test("2. hash-tag regex match: /^dedup:\\{[^}]+\\}:[^:]+:\\d+$/", () => {
+  test("2. hash-tag regex match: tenant in braces, session can contain `:`", () => {
     const key = dedupKey({ tenantId: "org_abc", sessionId: "sess_1", eventSeq: 5 });
-    expect(key).toMatch(/^dedup:\{[^}]+\}:[^:]+:\d+$/);
+    // H3 fix: loosened sessionId to allow `:`/`.`/`/`. The essential
+    // invariant is just the hash-tag braces around tenant + a trailing
+    // numeric event_seq after the final `:`.
+    expect(key).toMatch(/^dedup:\{[^}]+\}:.+:\d+$/);
   });
 
   test("hash-tag exact format: dedup:{org_abc}:sess_1:5", () => {
@@ -51,6 +54,42 @@ describe("dedupKey", () => {
 
   test("string eventSeq parses as integer when valid", () => {
     expect(dedupKey({ tenantId: "t", sessionId: "s", eventSeq: "42" })).toBe("dedup:{t}:s:42");
+  });
+
+  test("H3: sessionId with dots (ISO timestamp) accepted", () => {
+    const k = dedupKey({
+      tenantId: "org_abc",
+      sessionId: "chat:2026-04-16T12:00:00.000Z",
+      eventSeq: 0,
+    });
+    expect(k).toBe("dedup:{org_abc}:chat:2026-04-16T12:00:00.000Z:0");
+  });
+
+  test("H3: sessionId with slashes and colons accepted (hierarchical paths)", () => {
+    const k = dedupKey({
+      tenantId: "org_abc",
+      sessionId: "project/x:branch:feature.1",
+      eventSeq: 7,
+    });
+    expect(k).toBe("dedup:{org_abc}:project/x:branch:feature.1:7");
+  });
+
+  test("H3: sessionId with whitespace rejected", () => {
+    expect(() => dedupKey({ tenantId: "t", sessionId: "a b", eventSeq: 0 })).toThrow(
+      "dedup:bad-input",
+    );
+  });
+
+  test("H3: sessionId with control chars rejected", () => {
+    expect(() => dedupKey({ tenantId: "t", sessionId: "a\x01b", eventSeq: 0 })).toThrow(
+      "dedup:bad-input",
+    );
+  });
+
+  test("H3: empty sessionId rejected", () => {
+    expect(() => dedupKey({ tenantId: "t", sessionId: "", eventSeq: 0 })).toThrow(
+      "dedup:bad-input",
+    );
   });
 });
 

@@ -712,6 +712,74 @@ describe("ingest server", () => {
     expect(spy.setnxCallCount).toBe(1);
     beforeAllReseed();
   });
+
+  // ---- Follow-up review fixes -------------------------------------------
+
+  test("H3: session_id containing dots/colons accepted (not 503)", async () => {
+    const ev = makeEvent({
+      session_id: "chat:2026-04-16T12:00:00.000Z",
+      event_seq: 0,
+    });
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(202);
+    const body = (await res.json()) as { accepted: number; deduped: number };
+    expect(body.accepted).toBe(1);
+  });
+
+  test("H3: session_id containing { or } returns 400 BAD_SESSION_ID, not 503", async () => {
+    const ev = makeEvent({ session_id: "bad{session}", event_seq: 0 });
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("BAD_SESSION_ID");
+  });
+
+  test("H1: Tier-A allowlist filter reaches WAL when flag is on", async () => {
+    // Install a Tier-A org policy + flag-on deps.
+    const wal = createInMemoryWalAppender();
+    const row: IngestKeyRow = {
+      id: "legacy_test_key",
+      org_id: "test",
+      engineer_id: "eng_test",
+      key_sha256: hashSecret("abc"),
+      tier_default: "A",
+      revoked_at: null,
+    };
+    const flags = parseFlags({ ENFORCE_TIER_A_ALLOWLIST: "1" });
+    setDeps({
+      store: makeStore([row]),
+      cache: new LRUCache({ max: 1000, ttlMs: 60_000 }),
+      rateLimiter: permissiveRateLimiter(),
+      orgPolicyStore: makePolicyStore({
+        test: { tier_c_managed_cloud_optin: false, tier_default: "A" },
+      }),
+      dedupStore: new InMemoryDedupStore(),
+      wal,
+      flags,
+    });
+    const ev = makeEvent({
+      tier: "A",
+      session_id: "sess_tier_a",
+      event_seq: 0,
+      raw_attrs: { foo: "dropme", "device.id": "keep" },
+    });
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(202);
+    const rows = wal.drain();
+    expect(rows.length).toBe(1);
+    const rawAttrs = rows[0]?.row.raw_attrs as string;
+    const parsed = typeof rawAttrs === "string" ? JSON.parse(rawAttrs) : rawAttrs;
+    // foo dropped, device.id retained. The canonical row's raw_attrs is a
+    // JSON blob (per CH DDL), so parse before asserting.
+    expect(parsed.foo).toBeUndefined();
+    expect(parsed["device.id"]).toBe("keep");
+    beforeAllReseed();
+  });
+
+  test("L1: incoherent flags (APPEND=0 CONSUMER=1) throw FLAG_INCOHERENT", () => {
+    const flags = parseFlags({ WAL_APPEND_ENABLED: "0", WAL_CONSUMER_ENABLED: "1" });
+    expect(() => assertFlagCoherence(flags)).toThrow(FlagIncoherentError);
+  });
 });
 
 // -------- helpers ----------------------------------------------------------

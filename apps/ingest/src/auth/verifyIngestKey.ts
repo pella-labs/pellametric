@@ -162,8 +162,12 @@ export async function verifyBearer(
   // Safe default: no store configured = hard fail.
   if (!store) return null;
 
-  // Cache lookup — key by the full raw bearer (never logged).
-  const cached = (cache?.get(parsed.raw) as IngestKeyRow | null | undefined) ?? null;
+  // L4 fix: never key the cache on the raw bearer secret. If any future
+  // debug surface dumped the cache, the raw secrets would leak. Key on
+  // sha256(raw) hex — same lookup-cost O(1), zero secret exposure if the
+  // map is ever introspected. `parsed.raw` is ONLY used for hashing here.
+  const cacheKey = createHash("sha256").update(parsed.raw).digest("hex");
+  const cached = (cache?.get(cacheKey) as IngestKeyRow | null | undefined) ?? null;
   const row = cached ?? (await store.get(parsed.orgId, parsed.keyId));
   if (!row) return null;
   if (row.revoked_at) return null;
@@ -179,7 +183,7 @@ export async function verifyBearer(
   if (presentedHash.length !== stored.length) return null;
   if (!timingSafeEqual(presentedHash, stored)) return null;
 
-  if (!cached && cache) cache.set(parsed.raw, row);
+  if (!cached && cache) cache.set(cacheKey, row);
 
   return {
     tenantId: row.org_id,

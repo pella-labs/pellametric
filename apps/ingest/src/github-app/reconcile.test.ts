@@ -118,6 +118,11 @@ describe("reconcilePrs", () => {
       token: "t",
       org: "acme",
       sinceDate: "2026-04-09",
+      // M2 fix: pin today to sinceDate so the day-partition range is a single
+      // day (1 fallback call → 10 upserts). Previously the fallback ran ONLY
+      // a single-day query regardless; the fix iterates the full window, so
+      // tests must pin `todayIso` to keep the mock fetch deterministic.
+      todayIso: "2026-04-09",
       fetchFn,
       upsertRow,
       logger,
@@ -125,6 +130,40 @@ describe("reconcilePrs", () => {
     expect(out.upserted).toBe(110);
     expect(messages.some((m) => m.msg === "github-app graphql search hit 1000 cap")).toBe(true);
     expect(messages.some((m) => m.msg === "github-app: day-partitioning fallback")).toBe(true);
+  });
+
+  test("1000-cap page → day-partition iterates the FULL sinceDate..today window", async () => {
+    // M2 regression: fallback must issue one query per day in [since..today],
+    // not a single-day query for `sinceDate` only.
+    const upserts: GitEventRow[] = [];
+    const upsertRow = async (row: GitEventRow) => {
+      upserts.push(row);
+      return { inserted: true };
+    };
+    const capPage = page(
+      Array.from({ length: 100 }, (_, i) => mkNode(i + 1)),
+      true,
+      null,
+      5000,
+      1200,
+    );
+    // 3-day window: expect 3 per-day paginate calls after the capped primary.
+    const day1 = page([mkNode(501)], false, null);
+    const day2 = page([mkNode(502)], false, null);
+    const day3 = page([mkNode(503)], false, null);
+    const fetchFn = mockFetch([capPage, day1, day2, day3]);
+    const { logger } = makeLogger();
+    const out = await reconcilePrs({
+      token: "t",
+      org: "acme",
+      sinceDate: "2026-04-07",
+      todayIso: "2026-04-09", // 3-day inclusive window: 04-07, 04-08, 04-09
+      fetchFn,
+      upsertRow,
+      logger,
+    });
+    // 100 (primary) + 3 (one per day in fallback) = 103.
+    expect(out.upserted).toBe(103);
   });
 
   test("rateLimit.remaining < 500 → warning logged", async () => {

@@ -68,13 +68,31 @@ function jsonResp(body: unknown, status: number): Response {
   });
 }
 
-function partialSuccessResp(rejectedSpans: number, contentType: string): Response {
-  // Sprint-1 returns the JSON form for both content types — the
-  // OTel spec permits either as long as headers match. Real protobuf
-  // response encoding lands with @bufbuild/protobuf in Sprint-2. The body
-  // shape is correct OTLP partialSuccess regardless.
+/**
+ * M3 fix: the OTLP spec uses a different `partialSuccess` field name per
+ * signal kind:
+ *   - traces  → rejectedSpans
+ *   - metrics → rejectedDataPoints
+ *   - logs    → rejectedLogRecords
+ * Collectors that consume partialSuccess for retry decisions will misparse
+ * metrics/logs if we use the traces key everywhere.
+ */
+function partialSuccessResp(
+  rejected: number,
+  kind: "traces" | "metrics" | "logs",
+  contentType: string,
+): Response {
+  // Sprint-1 returns the JSON form for both content types — the OTel spec
+  // permits either as long as the payload is valid OTLP. Real protobuf
+  // response encoding lands with @bufbuild/protobuf.
   void contentType;
-  return jsonResp({ partialSuccess: { rejectedSpans } }, 200);
+  const body =
+    kind === "traces"
+      ? { partialSuccess: { rejectedSpans: rejected } }
+      : kind === "metrics"
+        ? { partialSuccess: { rejectedDataPoints: rejected } }
+        : { partialSuccess: { rejectedLogRecords: rejected } };
+  return jsonResp(body, 200);
 }
 
 async function readBody(req: Request, requestId: string): Promise<Uint8Array | Response> {
@@ -241,17 +259,19 @@ export async function handleOtlp(
     );
   }
 
-  let rejectedSpans = 0;
+  // Generic reject counter — the partial_success response field name depends
+  // on the signal kind (traces/metrics/logs) per OTLP spec; picked below.
+  let rejected = 0;
   const acceptedDrafts: ReturnType<typeof EventSchema.parse>[] = [];
   for (const draft of drafts) {
     const tierRes = await enforceTier(draft, args.auth, policy);
     if (tierRes.reject) {
-      rejectedSpans++;
+      rejected++;
       continue;
     }
     const parsed = EventSchema.safeParse(draft);
     if (!parsed.success) {
-      rejectedSpans++;
+      rejected++;
       continue;
     }
     acceptedDrafts.push(parsed.data);
@@ -283,7 +303,7 @@ export async function handleOtlp(
     }
   }
 
-  const walEnabled = flags.WAL_APPEND_ENABLED || flags.WAL_CONSUMER_ENABLED;
+  const walEnabled = flags.WAL_APPEND_ENABLED;
   if (walEnabled && firstSightEvents.length > 0) {
     try {
       const canonical = firstSightEvents.map((ev) =>
@@ -310,14 +330,14 @@ export async function handleOtlp(
     {
       kind,
       accepted: firstSightEvents.length,
-      rejected: rejectedSpans,
+      rejected,
       tenant_id: args.auth.tenantId,
       request_id: requestId,
     },
     "otlp accepted",
   );
 
-  return partialSuccessResp(rejectedSpans, ct);
+  return partialSuccessResp(rejected, kind, ct);
 }
 
 // --- Bun.serve entry point ------------------------------------------------

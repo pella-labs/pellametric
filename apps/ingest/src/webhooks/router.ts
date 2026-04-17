@@ -40,7 +40,14 @@ function extractDelivery(
   source: WebhookSource,
   rawBody: Uint8Array,
 ): WebhookDelivery {
-  const ip = req.headers.get("x-forwarded-for");
+  // M1 fix: XFF is a comma-separated chain appended by each proxy
+  // ("client, proxy1, proxy2"). The originating client's IP is the leftmost
+  // entry, whitespace-stripped. An attacker can only spoof the leftmost
+  // if our ingress fails to strip incoming XFF from untrusted sources
+  // (deployment concern). Prefer `x-real-ip` when our reverse proxy sets it.
+  const xRealIp = req.headers.get("x-real-ip")?.trim();
+  const xff = req.headers.get("x-forwarded-for");
+  const ip = xRealIp || (xff ? (xff.split(",")[0]?.trim() ?? undefined) : undefined);
   const ipField = ip ? { sourceIp: ip } : {};
   if (source === "github") {
     return {

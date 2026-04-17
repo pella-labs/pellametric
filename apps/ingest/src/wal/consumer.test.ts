@@ -57,9 +57,13 @@ function makeFakeRedis(): WalRedis & {
       const gmap = groups.get(stream);
       const g = gmap?.get(group);
       if (!g) return [];
-      if (fromId !== ">") {
-        // Minimal: not used by consumer in these tests.
-        return [];
+      // H2 fix: the consumer now calls xreadgroup with fromId="0" to
+      // re-read its own PEL before fromId=">" for new entries. Model that
+      // properly: on "0", yield pending entries; on ">", yield new entries.
+      if (fromId === "0") {
+        if (g.pending.size === 0) return [];
+        const pendingEntries = arr.filter((e) => g.pending.has(e.id)).slice(0, opts.count);
+        return pendingEntries.map((e) => ({ id: e.id, fields: e.fields }));
       }
       const start = g.lastDelivered;
       const end = Math.min(start + opts.count, arr.length);
@@ -202,36 +206,24 @@ describe("WalConsumer.drainOnce", () => {
     expect(r2.inserted).toBeGreaterThanOrEqual(1);
   });
 
-  test("6. 5 consecutive CH throws → dead-letter + ack original", async () => {
+  test("6. CH failure leaves entry in pending; drainOnce reports no ack", async () => {
+    // L2 fix: this test previously asserted `X === X` (identity). What it
+    // *should* prove is that a single CH failure does not ack. The real
+    // "5 failures → dead-letter" assertion is covered by 6b below.
     const redis = makeFakeRedis();
     const ch = createInMemoryClickHouseWriter();
     await redis.xgroupCreate("events_wal", "ingest-consumer", "$", { mkstream: true });
     await appendRow(redis, "events_wal", 0);
-    const consumer = createWalConsumer({
-      redis,
-      ch,
-      config: { maxRetries: 2 }, // quick-exhaust for the test
-    });
+    const consumer = createWalConsumer({ redis, ch, config: { maxRetries: 2 } });
     ch.setInsertBehavior("throw-500");
 
-    // drain #1 → attempts=1, still retrying
-    let r = await consumer.drainOnce();
+    const r = await consumer.drainOnce();
+    // On failure: no ack, no dead-letter yet (retries still <= max).
+    expect(r.acked).toEqual([]);
     expect(r.deadLettered).toEqual([]);
-    // Re-deliver: our fake doesn't auto-claim; append a fresh copy each loop
-    // so `>` yields something. This models the real behavior where XREADGROUP
-    // with `>` eventually sees the PEL-entry via auto-claim or manual XCLAIM.
-    await appendRow(redis, "events_wal", 1);
-    r = await consumer.drainOnce();
-    await appendRow(redis, "events_wal", 2);
-    r = await consumer.drainOnce();
-    // After >maxRetries attempts against the same id, we expect the entry to
-    // be dead-lettered. Our fake feeds different ids each time, so exercise
-    // the dead-letter path by driving retries on a single id: simpler — just
-    // verify that WHEN retries exceed the cap, we write to dead stream.
-    // (Functional DL check below.)
-    expect(redis.entries.get("events_wal_dead") ?? []).toEqual(
-      redis.entries.get("events_wal_dead") ?? [],
-    );
+    expect(r.inserted).toBe(0);
+    // Dead-letter stream is empty — we haven't exhausted retries yet.
+    expect((redis.entries.get("events_wal_dead") ?? []).length).toBe(0);
   });
 
   test("6b. Retry-cap exceeded → dead-letter stream gets entry, original acked", async () => {
@@ -251,6 +243,7 @@ describe("WalConsumer.drainOnce", () => {
     const ID = "1-0";
     let deliverCount = 0;
 
+    let deliveredOnce = false;
     const redis: WalRedis = {
       async xadd(stream, f) {
         calls.push({ stream, fields: f });
@@ -260,8 +253,19 @@ describe("WalConsumer.drainOnce", () => {
         }
         return "x-1";
       },
-      async xreadgroup() {
-        // Always re-deliver the same id (models auto-claim on pending).
+      async xreadgroup(_g, _c, _s, fromId) {
+        // H2 fix: simulate the real Streams PEL — fromId="0" re-delivers
+        // pending, fromId=">" delivers new-only (once).
+        if (fromId === "0") {
+          if (pending.has(ID)) {
+            deliverCount++;
+            return [{ id: ID, fields }];
+          }
+          return [];
+        }
+        // fromId === ">"
+        if (deliveredOnce) return [];
+        deliveredOnce = true;
         deliverCount++;
         pending.add(ID);
         return [{ id: ID, fields }];
@@ -377,13 +381,25 @@ describe("WalConsumer.drainOnce", () => {
     expect(r2.inserted).toBe(0);
   });
 
-  test("lag() returns xlen - pending", async () => {
+  test("lag() returns PEL size (pending-entry count), not xlen", async () => {
+    // M6 fix: the old formula `xlen - pending` grew with traffic on a
+    // healthy consumer and would trip /readyz. Correct lag proxy = PEL
+    // size — entries delivered but not yet acked.
     const redis = makeFakeRedis();
     const ch = createInMemoryClickHouseWriter();
     await redis.xgroupCreate("events_wal", "ingest-consumer", "$", { mkstream: true });
     for (let i = 0; i < 4; i++) await appendRow(redis, "events_wal", i);
     const consumer = createWalConsumer({ redis, ch });
-    // Nothing delivered yet → pending=0, xlen=4 → lag=4.
+    // Nothing delivered yet → PEL empty → lag=0.
+    expect(await consumer.lag()).toBe(0);
+    // Simulate a CH failure: drainOnce fails and leaves ids in PEL.
+    ch.setInsertBehavior("throw-500");
+    await consumer.drainOnce();
+    // 4 entries now pending (delivered but not acked).
     expect(await consumer.lag()).toBe(4);
+    // Restore CH and drain: pending-re-read path re-delivers and acks.
+    ch.setInsertBehavior("ok");
+    await consumer.drainOnce();
+    expect(await consumer.lag()).toBe(0);
   });
 });

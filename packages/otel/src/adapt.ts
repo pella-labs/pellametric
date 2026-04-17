@@ -62,7 +62,7 @@ import type {
 function bytesToHex(b: Uint8Array | undefined): string {
   if (!b || b.length === 0) return "";
   let out = "";
-  for (let i = 0; i < b.length; i++) out += b[i]!.toString(16).padStart(2, "0");
+  for (let i = 0; i < b.length; i++) out += b[i]?.toString(16).padStart(2, "0");
   return out;
 }
 

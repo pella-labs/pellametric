@@ -97,10 +97,22 @@ export function createWalConsumer(deps: WalConsumerDeps): WalConsumer {
     acked: string[];
     deadLettered: string[];
   }> {
-    const messages = await redis.xreadgroup(cfg.group, cfg.consumer, cfg.stream, ">", {
+    // H2 fix: `XREADGROUP ... >` only yields NEW entries. After a CH
+    // failure the message is in this consumer's PEL (pending-entry list)
+    // but `>` skips it forever — we used to just spin the retry counter
+    // without actually re-delivering. The standard Streams pattern is to
+    // drain our own PEL first via `XREADGROUP ... 0` and only then read
+    // new entries. This turns the per-id retry counter from decorative
+    // into functional.
+    const pendingMessages = await redis.xreadgroup(cfg.group, cfg.consumer, cfg.stream, "0", {
       count: cfg.batchMaxRows,
+      blockMs: 0, // non-blocking on pending re-read
+    });
+    const newMessages = await redis.xreadgroup(cfg.group, cfg.consumer, cfg.stream, ">", {
+      count: Math.max(0, cfg.batchMaxRows - pendingMessages.length),
       blockMs: cfg.batchMaxAgeMs,
     });
+    const messages = [...pendingMessages, ...newMessages];
     if (messages.length === 0) {
       return { inserted: 0, acked: [], deadLettered: [] };
     }
@@ -127,33 +139,68 @@ export function createWalConsumer(deps: WalConsumerDeps): WalConsumer {
       return { inserted: 0, acked: [], deadLettered: [] };
     }
 
+    // H2 fix (continued): before attempting the batch, evict any IDs that
+    // are already over the retry cap — they'd fail again; just DL them.
+    const toInsertRows: Record<string, unknown>[] = [];
+    const toInsertIds: string[] = [];
+    const preDeadLettered: string[] = [];
+    const preAcked: string[] = [];
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+      const msg = messages[i];
+      if (id === undefined || msg === undefined) continue;
+      const priorAttempts = retries.get(id) ?? 0;
+      if (priorAttempts >= cfg.maxRetries) {
+        await redis.xadd(cfg.deadLetterStream, msg.fields);
+        await redis.xack(cfg.stream, cfg.group, [id]);
+        retries.delete(id);
+        preAcked.push(id);
+        preDeadLettered.push(id);
+        continue;
+      }
+      toInsertRows.push(rows[i] as Record<string, unknown>);
+      toInsertIds.push(id);
+    }
+
+    if (toInsertRows.length === 0) {
+      return { inserted: 0, acked: preAcked, deadLettered: preDeadLettered };
+    }
+
     try {
-      await ch.insert(rows);
-      await redis.xack(cfg.stream, cfg.group, ids);
-      // Clear retry counters for successful ids.
-      for (const id of ids) retries.delete(id);
-      return { inserted: rows.length, acked: ids, deadLettered: [] };
+      await ch.insert(toInsertRows);
+      await redis.xack(cfg.stream, cfg.group, toInsertIds);
+      for (const id of toInsertIds) retries.delete(id);
+      return {
+        inserted: toInsertRows.length,
+        acked: [...preAcked, ...toInsertIds],
+        deadLettered: preDeadLettered,
+      };
     } catch (err) {
-      // Track retry count per-id; escalate to dead-letter when exhausted.
-      const acked: string[] = [];
-      const deadLettered: string[] = [];
-      for (let i = 0; i < ids.length; i++) {
-        const id = ids[i];
-        const msg = messages[i];
-        if (id === undefined || msg === undefined) continue;
+      // Track retry count per-id; on exhaustion DL immediately so the next
+      // drainOnce doesn't attempt a guaranteed-to-fail insert. Retries remain
+      // functional now because the pending-re-read (xreadgroup "0") above
+      // actually re-delivers the entries.
+      const acked: string[] = [...preAcked];
+      const deadLettered: string[] = [...preDeadLettered];
+      for (let i = 0; i < toInsertIds.length; i++) {
+        const id = toInsertIds[i];
+        if (id === undefined) continue;
         const attempts = (retries.get(id) ?? 0) + 1;
         retries.set(id, attempts);
         if (attempts > cfg.maxRetries) {
-          // Dead-letter: append to dead stream, ack original to drain the PEL.
-          await redis.xadd(cfg.deadLetterStream, msg.fields);
-          await redis.xack(cfg.stream, cfg.group, [id]);
+          const pos = ids.indexOf(id);
+          const msg = pos >= 0 ? messages[pos] : undefined;
+          if (msg) {
+            await redis.xadd(cfg.deadLetterStream, msg.fields);
+            await redis.xack(cfg.stream, cfg.group, [id]);
+          }
           retries.delete(id);
           acked.push(id);
           deadLettered.push(id);
         }
       }
       log.error(
-        { err: err instanceof Error ? err.message : String(err), batch: ids.length },
+        { err: err instanceof Error ? err.message : String(err), batch: toInsertIds.length },
         "wal: ch.insert failed",
       );
       return { inserted: 0, acked, deadLettered };
@@ -206,11 +253,18 @@ export function createWalConsumer(deps: WalConsumerDeps): WalConsumer {
       return running;
     },
     async lag(): Promise<number> {
-      const [len, pending] = await Promise.all([
-        redis.xlen(cfg.stream),
-        redis.xinfoGroupsPending(cfg.stream, cfg.group),
-      ]);
-      return Math.max(0, len - pending);
+      // M6 fix: the previous `xlen - pending` formula is the count of
+      // entries NOT pending for this group — i.e. entries successfully
+      // acked or not yet delivered. That grows with traffic on a healthy
+      // consumer and would trip the /readyz 10k threshold under normal
+      // load. Real lag = entries currently pending for this group
+      // (delivered but not acked). A growing pending set IS the signal
+      // of a consumer falling behind. Unacked + undelivered entries are
+      // both "work to do", but the pending count is the only one we can
+      // act on directly (CH outage, poisonous entry). Redis 7 exposes a
+      // dedicated `lag` field on XINFO GROUPS; we approximate with the
+      // PEL size, which is the tighter signal.
+      return redis.xinfoGroupsPending(cfg.stream, cfg.group);
     },
   };
 }
