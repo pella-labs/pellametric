@@ -59,6 +59,11 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5435/bematist
       CLICKHOUSE_URL: http://localhost:8123
       REDIS_URL: redis://localhost:6381
+      # CH container needs to reach PG for the dev_team_dict dictionary.
+      # In GitHub Actions service containers share a network and reach each
+      # other by the job-service name ("postgres" below).
+      CH_PG_DICT_HOST: postgres
+      CH_PG_DICT_PORT: "5432"
     steps:
       - uses: actions/checkout@v4
 
