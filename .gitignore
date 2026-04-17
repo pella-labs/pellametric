@@ -61,3 +61,4 @@ redis-data/
 .claude/settings.local.json
 .claude/skills/
 .agents/skills/
+docs/superpowers/
