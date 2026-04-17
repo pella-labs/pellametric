@@ -14,7 +14,7 @@
   "dependencies": {
     "@bematist/schema": "workspace:*",
     "@clickhouse/client": "^1.7.0",
-    "drizzle-orm": "^0.36.4",
+    "drizzle-orm": "0.36.4",
     "pg-boss": "^9.0.3",
     "postgres": "^3.4.5"
   },
