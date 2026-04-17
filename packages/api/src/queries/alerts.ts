@@ -1,4 +1,5 @@
 import { assertRole, type Ctx } from "../auth";
+import { useFixtures } from "../env";
 import type {
   Alert,
   AlertKind,
@@ -30,14 +31,18 @@ const KINDS: readonly AlertKind[] = [
  * RBAC: admin/manager/auditor. Engineers see their own alerts through the
  * `/me` digest, not this feed.
  *
- * Fixture-backed until Jorge's detector MV lands.
+ * Dual-mode:
+ *   - `USE_FIXTURES=0` reads Postgres `alerts` table (detector writes Tier-A
+ *     safe rows there).
+ *   - Otherwise (default) deterministic fixture list.
  */
-export async function listAlerts(
-  ctx: Ctx,
-  input: ListAlertsInput,
-): Promise<ListAlertsOutput> {
+export async function listAlerts(ctx: Ctx, input: ListAlertsInput): Promise<ListAlertsOutput> {
   assertRole(ctx, ["admin", "manager", "auditor"]);
+  if (useFixtures()) return listAlertsFixture(ctx, input);
+  return listAlertsReal(ctx, input);
+}
 
+async function listAlertsFixture(ctx: Ctx, input: ListAlertsInput): Promise<ListAlertsOutput> {
   const seed = hash(
     `${ctx.tenant_id}|alerts|${input.team_id ?? "_"}|${input.window}|${input.kind ?? "*"}`,
   );
@@ -53,9 +58,10 @@ export async function listAlerts(
     alerts.push(buildAlert(kind, severity, ctx.tenant_id, seed, i, r, input));
   }
 
-  alerts.sort((a, b) =>
-    SEVERITY_ORDER[b.severity] - SEVERITY_ORDER[a.severity] ||
-    b.triggered_at.localeCompare(a.triggered_at),
+  alerts.sort(
+    (a, b) =>
+      SEVERITY_ORDER[b.severity] - SEVERITY_ORDER[a.severity] ||
+      b.triggered_at.localeCompare(a.triggered_at),
   );
 
   const counts_by_severity = { info: 0, warn: 0, critical: 0 };
@@ -68,6 +74,87 @@ export async function listAlerts(
     counts_by_severity,
   };
 }
+
+/**
+ * Real-branch Postgres read. RLS on `alerts` constrains to `org_id`; the
+ * query still filters explicitly for defense-in-depth.
+ *
+ * EXPLAIN: composite index on (`org_id`, `triggered_at DESC`, `severity`).
+ */
+async function listAlertsReal(ctx: Ctx, input: ListAlertsInput): Promise<ListAlertsOutput> {
+  const days = WINDOW_DAYS[input.window];
+  const minSev = SEVERITY_ORDER[input.min_severity];
+
+  const clauses = ["org_id = $1", "triggered_at >= now() - ($2 || ' days')::interval"];
+  const params: unknown[] = [ctx.tenant_id, days];
+  if (input.team_id) {
+    clauses.push(`team_id = $${params.length + 1}`);
+    params.push(input.team_id);
+  }
+  if (input.kind) {
+    clauses.push(`kind = $${params.length + 1}`);
+    params.push(input.kind);
+  }
+  const limitParam = params.length + 1;
+  params.push(input.limit);
+
+  const rows = await ctx.db.pg.query<Alert & { severity_rank: number }>(
+    `SELECT
+       id,
+       kind,
+       severity,
+       engineer_id_hash,
+       team_id,
+       triggered_at,
+       value,
+       threshold,
+       baseline,
+       description,
+       scope_ref,
+       CASE severity
+         WHEN 'critical' THEN 2
+         WHEN 'warn' THEN 1
+         ELSE 0
+       END AS severity_rank
+     FROM alerts
+     WHERE ${clauses.join(" AND ")}
+     ORDER BY severity_rank DESC, triggered_at DESC
+     LIMIT $${limitParam}`,
+    params,
+  );
+
+  const filtered = rows.filter((row) => SEVERITY_ORDER[row.severity] >= minSev);
+
+  const alerts: Alert[] = filtered.map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    severity: r.severity,
+    engineer_id_hash: r.engineer_id_hash,
+    team_id: r.team_id,
+    triggered_at: new Date(r.triggered_at).toISOString(),
+    value: Number(r.value),
+    threshold: Number(r.threshold),
+    baseline: Number(r.baseline),
+    description: r.description,
+    scope_ref: r.scope_ref,
+  }));
+
+  const counts_by_severity = { info: 0, warn: 0, critical: 0 };
+  for (const a of alerts) counts_by_severity[a.severity] += 1;
+
+  return {
+    window: input.window,
+    team_id: input.team_id ?? null,
+    alerts,
+    counts_by_severity,
+  };
+}
+
+const WINDOW_DAYS: Record<"7d" | "30d" | "90d", number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
 
 function buildAlert(
   kind: AlertKind,
@@ -87,9 +174,7 @@ function buildAlert(
     id: `alert_${seed.toString(16).slice(-6)}_${index}`,
     kind,
     severity,
-    engineer_id_hash: orgScope
-      ? null
-      : hash8(`${tenantId}:${Math.floor(r(5) * 12)}`),
+    engineer_id_hash: orgScope ? null : hash8(`${tenantId}:${Math.floor(r(5) * 12)}`),
     team_id: input.team_id ?? null,
     triggered_at: new Date(baseMs).toISOString(),
     value,
@@ -102,9 +187,7 @@ function buildAlert(
 
 function describe(kind: AlertKind, severity: AlertSeverity): string {
   const sevPrefix =
-    severity === "critical" ? "Critical: "
-    : severity === "warn" ? "Warning: "
-    : "Info: ";
+    severity === "critical" ? "Critical: " : severity === "warn" ? "Warning: " : "Info: ";
   switch (kind) {
     case "cost_spike":
       return `${sevPrefix}rolling-hour cost exceeded 3σ baseline`;
