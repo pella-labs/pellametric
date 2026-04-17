@@ -55,5 +55,5 @@ test("row counts match between base table and repo-filtered read (projection tra
     client,
     `SELECT toUInt32(count()) AS c FROM events WHERE org_id = 'org_proj' AND repo_id_hash = 'repo_alpha'`,
   );
-  expect(Number(base[0].c)).toBe(25);
+  expect(Number(base[0]?.c)).toBe(25);
 });

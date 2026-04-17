@@ -25,6 +25,13 @@ const url = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:
 const client = postgres(url, { max: 3 });
 const db = drizzle(client);
 
+/** Narrows `T | undefined` to `T` for tsconfig with noUncheckedIndexedAccess.
+ *  Tests use this on `.returning()[0]` etc. where we just inserted exactly 1 row. */
+function must<T>(value: T | undefined, label = "expected non-empty value"): T {
+  if (value === undefined) throw new Error(label);
+  return value;
+}
+
 async function reset() {
   await db.execute(
     sql`TRUNCATE TABLE embedding_cache, outcomes, insights, alerts, erasure_requests, audit_events, audit_log, playbooks, prompt_clusters, ingest_keys, git_events, policies, repos, developers, teams, users, orgs RESTART IDENTITY CASCADE`,
@@ -40,29 +47,49 @@ afterAll(async () => {
 });
 
 test("core round-trip: orgs/users/teams/developers with team_id FK", async () => {
-  const [org] = await db.insert(orgs).values({ slug: "rt", name: "Round Trip" }).returning();
-  const [user] = await db
-    .insert(users)
-    .values({ org_id: org.id, sso_subject: "sub_rt", email: "rt@rt.test" })
-    .returning();
-  const [team] = await db.insert(teams).values({ org_id: org.id, name: "Platform" }).returning();
-  const [dev] = await db
-    .insert(developers)
-    .values({ org_id: org.id, user_id: user.id, team_id: team.id, stable_hash: "eng_rt" })
-    .returning();
+  const org = must(
+    (await db.insert(orgs).values({ slug: "rt", name: "Round Trip" }).returning())[0],
+  );
+  const user = must(
+    (
+      await db
+        .insert(users)
+        .values({ org_id: org.id, sso_subject: "sub_rt", email: "rt@rt.test" })
+        .returning()
+    )[0],
+  );
+  const team = must(
+    (await db.insert(teams).values({ org_id: org.id, name: "Platform" }).returning())[0],
+  );
+  const dev = must(
+    (
+      await db
+        .insert(developers)
+        .values({ org_id: org.id, user_id: user.id, team_id: team.id, stable_hash: "eng_rt" })
+        .returning()
+    )[0],
+  );
   expect(dev.team_id).toBe(team.id);
 });
 
 test("repos + policies + git_events + ingest_keys round-trip", async () => {
-  const [org] = await db.insert(orgs).values({ slug: "rt2", name: "RT2" }).returning();
-  const [user] = await db
-    .insert(users)
-    .values({ org_id: org.id, sso_subject: "sub_2", email: "rt2@rt.test" })
-    .returning();
-  const [repo] = await db
-    .insert(repos)
-    .values({ org_id: org.id, repo_id_hash: "rhash_1", provider: "github" })
-    .returning();
+  const org = must((await db.insert(orgs).values({ slug: "rt2", name: "RT2" }).returning())[0]);
+  const user = must(
+    (
+      await db
+        .insert(users)
+        .values({ org_id: org.id, sso_subject: "sub_2", email: "rt2@rt.test" })
+        .returning()
+    )[0],
+  );
+  const repo = must(
+    (
+      await db
+        .insert(repos)
+        .values({ org_id: org.id, repo_id_hash: "rhash_1", provider: "github" })
+        .returning()
+    )[0],
+  );
   await db.insert(policies).values({ org_id: org.id });
   await db.insert(git_events).values({
     org_id: org.id,
@@ -78,19 +105,27 @@ test("repos + policies + git_events + ingest_keys round-trip", async () => {
     created_by: user.id,
   });
   const p = await db.select().from(policies).where(eq(policies.org_id, org.id));
-  expect(p[0].tier_default).toBe("B");
+  expect(p[0]?.tier_default).toBe("B");
 });
 
 test("playbooks + prompt_clusters + audit_events + alerts + insights + outcomes round-trip", async () => {
-  const [org] = await db.insert(orgs).values({ slug: "rt3", name: "RT3" }).returning();
-  const [user] = await db
-    .insert(users)
-    .values({ org_id: org.id, sso_subject: "sub_3", email: "rt3@rt.test" })
-    .returning();
-  const [cluster] = await db
-    .insert(prompt_clusters)
-    .values({ org_id: org.id, centroid: [0.1, 0.2, 0.3], dim: 3, model: "test" })
-    .returning();
+  const org = must((await db.insert(orgs).values({ slug: "rt3", name: "RT3" }).returning())[0]);
+  const user = must(
+    (
+      await db
+        .insert(users)
+        .values({ org_id: org.id, sso_subject: "sub_3", email: "rt3@rt.test" })
+        .returning()
+    )[0],
+  );
+  const cluster = must(
+    (
+      await db
+        .insert(prompt_clusters)
+        .values({ org_id: org.id, centroid: [0.1, 0.2, 0.3], dim: 3, model: "test" })
+        .returning()
+    )[0],
+  );
   await db.insert(playbooks).values({
     org_id: org.id,
     cluster_id: cluster.id,
@@ -131,7 +166,7 @@ test("playbooks + prompt_clusters + audit_events + alerts + insights + outcomes 
            (SELECT count(*) FROM insights) AS i,
            (SELECT count(*) FROM outcomes) AS o
   `);
-  expect(Number((counts as unknown as { p: string }[])[0].p)).toBe(1);
+  expect(Number((counts as unknown as { p: string }[])[0]?.p)).toBe(1);
 });
 
 test("embedding_cache upsert pattern", async () => {
@@ -144,26 +179,34 @@ test("embedding_cache upsert pattern", async () => {
   });
   const rows = await db.select().from(embedding_cache);
   expect(rows).toHaveLength(1);
-  expect(rows[0].dim).toBe(512);
-  expect(rows[0].vector).toHaveLength(512);
+  expect(rows[0]?.dim).toBe(512);
+  expect(rows[0]?.vector).toHaveLength(512);
 });
 
 test("audit_log: INSERT works, UPDATE throws, DELETE throws (contract 09 invariant 6)", async () => {
-  const [org] = await db.insert(orgs).values({ slug: "al", name: "AL" }).returning();
-  const [user] = await db
-    .insert(users)
-    .values({ org_id: org.id, sso_subject: "sub_al", email: "al@al.test" })
-    .returning();
-  const [row] = await db
-    .insert(audit_log)
-    .values({
-      org_id: org.id,
-      actor_user_id: user.id,
-      action: "test_action",
-      target_type: "session",
-      target_id: "s_test",
-    })
-    .returning();
+  const org = must((await db.insert(orgs).values({ slug: "al", name: "AL" }).returning())[0]);
+  const user = must(
+    (
+      await db
+        .insert(users)
+        .values({ org_id: org.id, sso_subject: "sub_al", email: "al@al.test" })
+        .returning()
+    )[0],
+  );
+  const row = must(
+    (
+      await db
+        .insert(audit_log)
+        .values({
+          org_id: org.id,
+          actor_user_id: user.id,
+          action: "test_action",
+          target_type: "session",
+          target_id: "s_test",
+        })
+        .returning()
+    )[0],
+  );
   expect(row.action).toBe("test_action");
 
   await expect(async () => {
@@ -176,5 +219,5 @@ test("audit_log: INSERT works, UPDATE throws, DELETE throws (contract 09 invaria
 
   // After failed mutations, row is intact
   const still = await db.select().from(audit_log).where(eq(audit_log.id, row.id));
-  expect(still[0].action).toBe("test_action");
+  expect(still[0]?.action).toBe("test_action");
 });
