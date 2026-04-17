@@ -1,16 +1,13 @@
-// Sprint 0 stub. Real JWT + ingest_keys table lookup arrives in Sprint 1+ (Walid).
-// Contract: Authorization: Bearer bm_<orgId>_<rand> (contracts/02-ingest-api.md §Auth).
-// Identity is server-derived per event-wire invariant #3 — never trust collector-claimed
-// tenant_id / engineer_id on the wire.
+// Sprint 1: re-export the real verifier from ./auth/verifyIngestKey.
+// Contract: `Authorization: Bearer dm_<orgId>_<keyId>_<secret>` (three segments)
+// is an ingest-key verified via timingSafeEqual against sha256(secret) stored in
+// Postgres `ingest_keys` with a 60s LRU cache. Legacy 2-segment form is accepted
+// for dev-mode store lookups. See contracts/02-ingest-api.md §Changelog and D-S1-1.
 
-export interface AuthContext {
-  tenantId: string;
-  engineerId: string;
-}
-
-export function verifyBearer(header: string | null): AuthContext | null {
-  if (!header) return null;
-  const match = header.match(/^Bearer\s+(bm_[A-Za-z0-9_-]+)$/);
-  if (!match) return null;
-  return { tenantId: "org_dev", engineerId: "eng_dev" };
-}
+export type {
+  AuthContext,
+  IngestKeyRow,
+  IngestKeyStore,
+  Tier,
+} from "./auth/verifyIngestKey";
+export { LRUCache, parseBearer, verifyBearer } from "./auth/verifyIngestKey";

@@ -6,13 +6,19 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "bun --hot src/index.ts",
+    "dev:live": "REDIS_URL=redis://localhost:6379 CLICKHOUSE_URL=http://localhost:8123 bun --hot src/index.ts",
     "start": "bun src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "smoke": "bun run src/smoke.ts"
   },
   "dependencies": {
+    "@bematist/otel": "workspace:*",
+    "@bematist/redact": "workspace:*",
     "@bematist/schema": "workspace:*",
+    "@clickhouse/client": "^1.18.2",
+    "redis": "^4.7.0",
     "pino": "^9.5.0",
     "zod": "^3.23.8"
   },

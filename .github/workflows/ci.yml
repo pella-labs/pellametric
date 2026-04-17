@@ -23,7 +23,12 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.0"
+          # Pinned to match root package.json engines.bun (>=1.3.4).
+          # Sprint-1 bumped the floor because @clickhouse/client keep-alive
+          # silently degrades on Bun <1.3.4 (three http.Agent bugs fixed in
+          # 1.3.4 per D-S1-9). The runtime assertion in
+          # apps/ingest/src/engines.test.ts fails the build on <1.3.4.
+          bun-version: "1.3.12"
 
       - name: Cache Bun install
         uses: actions/cache@v4
@@ -39,6 +44,13 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Check OTLP generated bindings are in sync with vendored proto
+        # `buf generate` + `git diff --exit-code src/gen` — fails if someone
+        # edited packages/otel/vendor/opentelemetry-proto/** without
+        # regenerating packages/otel/src/gen/**. buf CLI ships prebuilt via
+        # @bufbuild/buf (no protoc install needed).
+        run: bun run check:otel-generated
 
       - name: Lint
         run: bun run lint

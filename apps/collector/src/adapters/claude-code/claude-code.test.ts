@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { loadFixture } from "@bematist/fixtures";
 import type { Adapter, AdapterContext } from "@bematist/sdk";
-import { ClaudeCodeAdapter, claudeCodeAdapter } from "./index";
+import { ClaudeCodeAdapter } from "./index";
 
 function mkCtx(): AdapterContext {
   const noop = () => {};
@@ -27,21 +27,36 @@ function mkCtx(): AdapterContext {
 }
 
 test("ClaudeCodeAdapter type-checks against the Adapter interface", () => {
-  const a: Adapter = claudeCodeAdapter;
+  const a: Adapter = new ClaudeCodeAdapter({
+    tenantId: "o",
+    engineerId: "e",
+    deviceId: "d",
+  });
   expect(a.id).toBe("claude-code");
   expect(a.label).toBe("Claude Code");
 });
 
-test("poll() returns [] in the seed scaffold (real parser lands in Sprint 1)", async () => {
-  const a = new ClaudeCodeAdapter();
-  const ctx = mkCtx();
-  await a.init(ctx);
-  const events = await a.poll(ctx, new AbortController().signal);
-  expect(events).toEqual([]);
+test("poll() returns [] when no JSONL dir exists", async () => {
+  const originalDir = process.env.CLAUDE_CONFIG_DIR;
+  try {
+    // Point to a non-existent path to avoid reading real session files
+    process.env.CLAUDE_CONFIG_DIR = "/nonexistent/path/for/test";
+    const a = new ClaudeCodeAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
+    const ctx = mkCtx();
+    await a.init(ctx);
+    const events = await a.poll(ctx, new AbortController().signal);
+    expect(events).toEqual([]);
+  } finally {
+    if (originalDir !== undefined) {
+      process.env.CLAUDE_CONFIG_DIR = originalDir;
+    } else {
+      delete process.env.CLAUDE_CONFIG_DIR;
+    }
+  }
 });
 
 test("health() reports fidelity='full' per CLAUDE.md §Adapter Matrix", async () => {
-  const a = new ClaudeCodeAdapter();
+  const a = new ClaudeCodeAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
   const ctx = mkCtx();
   await a.init(ctx);
   const h = await a.health(ctx);
@@ -76,4 +91,34 @@ test("golden claude-code fixture loads and every line is a valid Event", () => {
   expect(accepts.length).toBeGreaterThanOrEqual(1);
   // Tier B invariant for seed fixture.
   expect(events.every((e) => e.tier === "B")).toBe(true);
+});
+
+test("poll() reads real-session fixture and emits canonical Events", async () => {
+  const dir = require("node:fs").mkdtempSync(
+    require("node:path").join(require("node:os").tmpdir(), "bematist-cc-poll-"),
+  );
+  // Mirror the fixture shape under dir/projects/<proj>/sessions/<file>.jsonl.
+  const sub = require("node:path").join(dir, "projects", "proj-a", "sessions");
+  require("node:fs").mkdirSync(sub, { recursive: true });
+  const srcFix = require("node:path").join(__dirname, "fixtures", "real-session.jsonl");
+  require("node:fs").copyFileSync(srcFix, require("node:path").join(sub, "s1.jsonl"));
+
+  const prev = process.env.CLAUDE_CONFIG_DIR;
+  try {
+    process.env.CLAUDE_CONFIG_DIR = dir;
+    const a = new ClaudeCodeAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
+    const ctx = mkCtx();
+    await a.init(ctx);
+    const events = await a.poll(ctx, new AbortController().signal);
+
+    expect(events.length).toBeGreaterThan(0);
+    const kinds = new Set(events.map((e) => e.dev_metrics.event_kind));
+    expect(kinds.has("session_start")).toBe(true);
+    expect(kinds.has("llm_response")).toBe(true);
+    expect(kinds.has("session_end")).toBe(true);
+  } finally {
+    if (prev === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+    else process.env.CLAUDE_CONFIG_DIR = prev;
+    require("node:fs").rmSync(dir, { recursive: true, force: true });
+  }
 });

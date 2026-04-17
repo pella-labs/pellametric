@@ -1,0 +1,16 @@
+# Buf module config for the vendored opentelemetry-proto copy.
+#
+# Pinned to opentelemetry-proto v1.5.0 (see vendor/opentelemetry-proto/VERSION).
+# `buf generate` uses this module as the input and emits @bufbuild/protobuf TS
+# bindings into src/gen/. The generated files ARE committed so CI doesn't need
+# protoc at all — the `check:otel-generated` script re-runs generate in CI and
+# fails if the committed output drifted.
+version: v2
+modules:
+  - path: vendor/opentelemetry-proto
+# Lint / breaking rules intentionally omitted — we vendor upstream
+# opentelemetry-proto verbatim (pinned by tag, see vendor/opentelemetry-proto/
+# VERSION) and cannot rename fields/messages/packages to satisfy buf's
+# STANDARD rule set. `bun run check:otel-generated` verifies the generated
+# bindings stay in sync with the vendored protos; we don't lint the protos
+# themselves.

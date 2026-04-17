@@ -151,7 +151,7 @@ Same `Event` schema. Validated with the same zod parser the OTLP receiver uses p
 1. **`client_event_id` is a UUID and globally unique per event.** Collectors generate, never reuse. Server dedups via Redis `SETNX` keyed on `(tenant_id, session_id, event_seq)` with 7-day TTL.
 2. **`schema_version` is mandatory.** Bumped on any breaking change to this contract. Ingest accepts only versions it knows; older collectors keep working until end-of-support.
 3. **Server-derived identity wins.** `tenant_id`, `engineer_id` from JWT override anything the collector sent. `device_id` is collector-claimed but cross-checked against the device registry.
-4. **Forbidden fields from Tier A/B sources** — server rejects with HTTP 400 if any of these appear when `tier ∈ {A, B}`: `rawPrompt`, `prompt_text`, `messages`, `toolArgs`, `toolOutputs`, `fileContents`, `diffs`, `filePaths`, `ticketIds`, `emails`, `realNames`. The adversarial fuzzer in CI enforces 100%.
+4. **Forbidden fields from Tier A/B sources** — server rejects with HTTP 400 if any of these appear when `tier ∈ {A, B}`: `rawPrompt`, `prompt`, `prompt_text`, `messages`, `toolArgs`, `toolOutputs`, `fileContents`, `diffs`, `filePaths`, `ticketIds`, `emails`, `realNames`. The adversarial fuzzer in CI enforces 100%. Single source of truth: `packages/schema/src/invariants.ts FORBIDDEN_FIELDS` (12 entries).
 5. **Tier-A `raw_attrs` is allowlist-enforced** at ingest write time (CLAUDE.md C10). Anything not on the allowlist is dropped silently with a counter increment.
 6. **`pricing_version` accompanies any `cost_usd`.** Pricing-version shifts surface as a dashboard banner; never silently recomputed (D21).
 7. **Unknown attributes go to `raw_attrs`.** Promotion to a typed column requires 2 consecutive releases of observed stability and a Git-ops PR (D16). Never promote in a hotfix.
@@ -166,3 +166,6 @@ Same `Event` schema. Validated with the same zod parser the OTLP receiver uses p
 ## Changelog
 
 - 2026-04-16 — initial draft
+- 2026-04-16 — Sprint-1 Phase 2: §Invariant #4 forbidden-field list aligned with contracts/08 — added `prompt` as the 12th entry. Source of truth for the list is now packages/schema/src/invariants.ts FORBIDDEN_FIELDS. See D-S1-25, D-S1-30.
+- 2026-04-16 — Sprint-1 Phase 5: OTLP HTTP receiver on :4318 lands natively inside ingest (NOT docker-compose sidecar by default — D-S1-14). Decoder is a minimal hand-rolled proto3 + proto3-JSON parser scoped to ExportTraceServiceRequest shapes; @bufbuild/protobuf + vendored opentelemetry-proto is the Sprint-2 swap path when Bun ≥ 1.3.4 CI lands (D-S1-12, coord Jorge/Sebastian).
+- 2026-04-16 — Sprint-1 Phase 5 follow-up: OTLP decoder swapped from hand-rolled proto3/JSON to @bufbuild/protobuf + vendored opentelemetry-proto v1.5.0 + buf generate (committed src/gen/). Per D-S1-12. Public decode signatures unchanged; mapping layer untouched.

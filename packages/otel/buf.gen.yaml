@@ -1,0 +1,13 @@
+# Buf codegen plugin config. The generated bindings land in src/gen/ and are
+# committed (see buf.yaml). Adding a new OTLP message/type = re-run
+# `bun run generate` from this package (or `bun run generate:otel` from repo
+# root) and commit the resulting src/gen/ delta.
+version: v2
+inputs:
+  - directory: vendor/opentelemetry-proto
+plugins:
+  - local: protoc-gen-es
+    out: src/gen
+    opt:
+      - target=ts
+      - import_extension=js

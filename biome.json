@@ -20,7 +20,9 @@
       "!bun.lock",
       "!**/next-env.d.ts",
       "!packages/ui/src/styles/theme.css",
-      "!**/*.md"
+      "!**/*.md",
+      "!packages/otel/src/gen",
+      "!packages/otel/vendor"
     ]
   },
   "formatter": {

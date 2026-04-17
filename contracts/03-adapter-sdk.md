@@ -126,4 +126,5 @@ The collector reuses _patterns_ from `~/dev/gauntlet/knowledge-graph` (= `@pella
 
 - 2026-04-16 — initial draft.
 - 2026-04-16 — Sprint-0 M0: workspace packages use `@bematist/*` namespace.
-- 2026-04-16 — Naming retrofit: product and CLI are `Bematist` / `bematist` everywhere (see PRD §D32 as superseded; single name across all surfaces).
+- 2026-04-16 — M1 follow-up: confirmed `@bematist/*` package references across code snippets in this contract (additive; no behavioral change).
+- 2026-04-16 — Naming retrofit: product and CLI are `Bematist` / `bematist` everywhere (single name across all surfaces; supersedes PRD §D32 "DevMetrics stays the product name").

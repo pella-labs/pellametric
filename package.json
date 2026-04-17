@@ -4,7 +4,7 @@
   "private": true,
   "description": "Bematist — open-source AI-engineering analytics platform.",
   "license": "Apache-2.0",
-  "packageManager": "bun@1.2.0",
+  "packageManager": "bun@1.3.4",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -19,11 +19,14 @@
     "test": "bun test",
     "test:e2e": "bun --filter='./apps/web' test:e2e",
     "test:privacy": "echo 'test:privacy — not yet implemented; tracked in Workstream G (server + collector). Merge-blocker gate once available.' && exit 0",
-    "test:scoring": "echo 'test:scoring — not yet implemented; tracked in Workstream H-scoring. 500-case eval, merge-blocker once available.' && exit 0",
+    "test:scoring": "bun run packages/scoring/src/v1/eval/runner.ts",
     "test:perf": "bash tests/perf/run.sh",
+    "fixtures:write": "bun run packages/scoring/src/v1/eval/write-fixtures.ts",
     "db:migrate:pg": "bun --filter='@bematist/schema' migrate:pg",
     "db:migrate:ch": "bun --filter='@bematist/schema' migrate:ch",
-    "db:seed": "bun --filter='@bematist/schema' seed"
+    "db:seed": "bun --filter='@bematist/schema' seed",
+    "generate:otel": "bun --filter='@bematist/otel' generate",
+    "check:otel-generated": "bun --filter='@bematist/otel' check:generated"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
@@ -34,6 +37,6 @@
     "zod": "^3.23.8"
   },
   "engines": {
-    "bun": ">=1.2.0"
+    "bun": ">=1.3.4"
   }
 }
