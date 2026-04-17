@@ -57,7 +57,11 @@ postgres-data/
 clickhouse-data/
 redis-data/
 
+# Per-dev docker compose overrides
+docker-compose.*.local.yml
+
 # Claude Code local
 .claude/settings.local.json
 .claude/skills/
 .agents/skills/
+.gitnexus
