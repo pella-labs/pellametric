@@ -33,7 +33,7 @@
 - Amplitude winsorization docs — https://amplitude.com/docs/feature-experiment/advanced-techniques/winsorization-in-experiment
 - Statsig winsorization methodology — https://docs.statsig.com/experiments/statistical-methods/methodologies/winsorization
 
-**Archetype distributions for DevMetrics** (calibrated to h-scoring-prd §7.1):
+**Archetype distributions for Bematist** (calibrated to h-scoring-prd §7.1):
 
 | Archetype | Share | `outcomeEvents` | `activeDays` | Subscore profile | Expected `final_ALS` |
 |---|---|---|---|---|---|
@@ -93,7 +93,7 @@
 
 ---
 
-## Synthesis — three recommendations for DevMetrics
+## Synthesis — three recommendations for Bematist
 
 1. **Fixture shape: JSONL, per-dev-month records, 6 explicit archetype tags.** 50 hand-curated cases across {low, average, high-leverage, new-hire, regression-case, Goodhart-gaming}; 450 auto-generated via log-normal sampling on count signals + beta on rates, target ALS computed analytically from locked math. Frozen 100-case held-out split. Record schema mirrors wire schema + `archetype_tag` + `expected_final_als` + `expected_confidence`. Deliberately include cases with `outcomeEvents < 10` / `activeDays < 10` so the confidence discount is genuinely exercised.
 

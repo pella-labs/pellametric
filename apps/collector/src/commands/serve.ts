@@ -51,7 +51,7 @@ export async function runServe(): Promise<void> {
 
   let running = true;
   const shutdown = () => {
-    log.info("devmetrics serve: graceful shutdown");
+    log.info("bematist serve: graceful shutdown");
     running = false;
   };
   process.on("SIGINT", shutdown);
@@ -60,7 +60,7 @@ export async function runServe(): Promise<void> {
   const endpoint = process.env.DEVMETRICS_INGEST_HOST ?? "http://localhost:8000";
   const token = process.env.DEVMETRICS_TOKEN ?? "dm_solo_dev";
 
-  log.info({ endpoint, adapters: registry.map((a) => a.id) }, "devmetrics serve: starting");
+  log.info({ endpoint, adapters: registry.map((a) => a.id) }, "bematist serve: starting");
 
   while (running) {
     try {

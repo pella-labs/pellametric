@@ -15,7 +15,7 @@ export async function runAudit(args: string[]): Promise<void> {
     }
   }
   if (!tail) {
-    console.error("usage: devmetrics audit --tail [-n N]");
+    console.error("usage: bematist audit --tail [-n N]");
     process.exit(2);
   }
   const dbPath = egressSqlite();

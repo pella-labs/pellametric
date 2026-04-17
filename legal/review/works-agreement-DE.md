@@ -14,14 +14,14 @@ PRD §10.1, action E-1).**
 
 **Who uses this file.** The customer's `{{ARBEITGEBER}}` (employer) and
 `{{BETRIEBSRAT_VORSITZ}}` (works-council chair) execute this Betriebsvereinbarung
-covering a DevMetrics deployment. DevMetrics (the vendor) does NOT sign this
+covering a Bematist deployment. Bematist (the vendor) does NOT sign this
 agreement — the signatories are employer and Betriebsrat. Vendor-side
 commitments are covered by a separate DPA (Phase 2).
 
 **Statutory trigger.** **BetrVG §87(1) Nr. 6** — mandatory works-council
 co-determination on any technical system objectively suitable to monitor
 employee performance or behavior. Per EDPB Opinion 2/2017, intent is
-irrelevant. DevMetrics is suitable by construction; co-determination applies in
+irrelevant. Bematist is suitable by construction; co-determination applies in
 German operations with a works council. Collateral: BDSG §26; DSGVO Art. 5 / 6
 / 13 / 15 / 17 / 20 / 25 / 30 / 35.
 
@@ -29,7 +29,7 @@ German operations with a works council. Collateral: BDSG §26; DSGVO Art. 5 / 6
 - `{{ARBEITGEBER}}` — employer legal name.
 - `{{BETRIEBSRAT_VORSITZ}}` — works-council chair name.
 - `{{EFFECTIVE_DATE}}` — ISO date (YYYY-MM-DD).
-- `{{PRODUCTION_VERSION}}` — DevMetrics release tag.
+- `{{PRODUCTION_VERSION}}` — Bematist release tag.
 - `{{TENANT_ID}}` — tenant identifier.
 - `{{DPO_EMAIL}}` — customer DPO mailbox.
 - `{{ESCALATION_CONTACT}}` — vendor escalation contact.
@@ -41,7 +41,7 @@ statutory citations and product controls: `legal/review/bill-of-rights-rider.md`
 `legal/review/SCCs-module-2.md`.
 
 **Lane boundary.** Owned solely by Workstream I. Product-side controls
-(`devmetrics audit --tail`, `audit_events`, `devmetrics erase`, Tier B default,
+(`bematist audit --tail`, `audit_events`, `bematist erase`, Tier B default,
 Ed25519 tier flip) are cited as descriptive of the shipped product per
 CLAUDE.md and PRD §5–§8 — not redesigned here.
 
@@ -54,7 +54,7 @@ controls.
 ================================================================================
 -->
 
-# Betriebsvereinbarung über den Einsatz von DevMetrics
+# Betriebsvereinbarung über den Einsatz von Bematist
 
 **zwischen**
 
@@ -75,7 +75,7 @@ gemeinsam die "Parteien".
 ## §1 Präambel
 
 (1) Die Parteien schließen diese Betriebsvereinbarung im Hinblick auf die
-Einführung und Nutzung des technischen Systems "DevMetrics" (im Folgenden das
+Einführung und Nutzung des technischen Systems "Bematist" (im Folgenden das
 "System") im Betrieb des Arbeitgebers. Das System dient der Erfassung, Auswertung
 und Darstellung von Nutzungsdaten KI-gestützter Entwicklungswerkzeuge
 (insbesondere Claude Code, Codex, Cursor, Continue.dev, GitHub Copilot und
@@ -193,7 +193,7 @@ technische Grundlage für die Transparenzpflicht nach §6 Abs. 6.
 
 (9) **Egress-Journal:** das lokal auf dem Endgerät geführte Protokoll aller
 ausgehenden Übertragungen des Systems. Es ist für die Beschäftigte oder den
-Beschäftigten durch den Befehl `devmetrics audit --tail` jederzeit einsehbar.
+Beschäftigten durch den Befehl `bematist audit --tail` jederzeit einsehbar.
 
 (10) **Signierte Konfigurationsänderung:** eine Änderung der wirksamen
 Erfassungsstufe oder sicherheitsrelevanter Systemparameter, die ausschließlich
@@ -321,7 +321,7 @@ der Entwicklungsumgebung der oder des Beschäftigten eingeblendet wurde. In der
 Standardkonfiguration (Erfassungsstufe B) verlässt **kein** Rohtext das
 Endgerät; es werden ausschließlich redigierte Hüllen und Zähler übertragen.
 Jeder ausgehende Datenverkehr ist im lokalen Egress-Journal einsehbar und über
-den Befehl `devmetrics audit --tail` durch die oder den Beschäftigten
+den Befehl `bematist audit --tail` durch die oder den Beschäftigten
 abrufbar. Das System unterstützt auf dem Endgerät die Beschränkung des
 zulässigen Empfängers durch Zertifikatsbindung (`--ingest-only-to`).
 
@@ -339,7 +339,7 @@ löschen zu lassen (Art. 17 DSGVO). Der Arbeitgeber verpflichtet sich zu einer
 **Löschungsfrist von sieben Tagen** ab Eingang eines vollständigen Antrags
 (kürzer als die gesetzliche Monatsfrist des Art. 12 Abs. 3 DSGVO). Die Löschung
 erfolgt durch atomares Löschen der zugehörigen Datenbankpartition (`DROP
-PARTITION`) sowie durch Ausführung des Befehls `devmetrics erase`. Die
+PARTITION`) sowie durch Ausführung des Befehls `bematist erase`. Die
 erfolgreiche Durchführung wird der oder dem Beschäftigten per E-Mail
 bestätigt und im Audit-Protokoll erfasst.
 
@@ -353,7 +353,7 @@ lesende Zugriff einer Führungskraft oder einer administrativ berechtigten
 Person auf datenbezogene Darstellungsflächen wird zum Zeitpunkt des Zugriffs
 im Audit-Protokoll erfasst. Die oder der Beschäftigte kann eine Kopie der sie
 oder ihn betreffenden Einträge jederzeit anfordern, insbesondere über den
-Befehl `devmetrics audit --my-accesses`.
+Befehl `bematist audit --my-accesses`.
 
 (6) **Recht auf Benachrichtigung bei Einsichtnahme durch eine Führungskraft.**
 Bei jedem Aufruf einer individuellen Drill-Down-Seite einer oder eines
@@ -567,7 +567,7 @@ a) Funktionsweise und Zweck des Systems;
 b) Erfassungsstufen und deren Unterschiede (§3 Abs. 1 bis 3);
 
 c) Rechte der oder des Beschäftigten (§6), einschließlich der Bedienung der
-   Befehle `devmetrics audit --tail`, `devmetrics erase`, `devmetrics export`;
+   Befehle `bematist audit --tail`, `bematist erase`, `bematist export`;
 
 d) Voreinstellungen und deren Änderungsmöglichkeiten durch die oder den
    Beschäftigten.

@@ -6,7 +6,7 @@
 
 > **Promotion flow.** Files in `legal/review/` are AI-drafted templates awaiting qualified-counsel review. Once a file passes jurisdictional counsel review (DE / FR / IT / EU) **and** a real works-council review (where applicable), it is promoted to `legal/templates/` in a follow-up PR that removes it from this directory. **Do not ship a file from this directory to a customer.** See `legal/templates/README.md` for the promotion criteria per file.
 
-This directory holds drafts of the customer-facing compliance artifacts DevMetrics needs to sell into
+This directory holds drafts of the customer-facing compliance artifacts Bematist needs to sell into
 EU mid-market and pass works-council review. Every file here has a corresponding regulatory
 citation and a load-bearing place in the sales cycle. Scope, ship order, and per-file draft
 sources are pinned in `dev-docs/workstreams/i-compliance-prd.md` §5.

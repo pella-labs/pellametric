@@ -71,7 +71,7 @@ containing these fields with HTTP 400; this rejection is verified in continuous
 integration by an adversarial fuzzer that must achieve one-hundred-percent rejection
 before any release is cut. Third, the collector endpoint maintains a local append-only
 SQLite egress journal recording every byte transmitted to the ingest surface,
-inspectable at any time by the data subject via the command `devmetrics audit --tail`.
+inspectable at any time by the data subject via the command `bematist audit --tail`.
 Fourth, the collector supports an egress allowlist via the `--ingest-only-to` flag with
 TLS certificate pinning, such that a compromised or substituted collector binary cannot
 exfiltrate payloads to an attacker-controlled destination. Tier-C processing (full
@@ -82,7 +82,7 @@ subject or a tenant-wide administrator change governed by Right 4 below.
 exercise this control by (a) inspecting the Apache-2.0-licensed source code of
 `packages/redact` to confirm the deny-list enforcement and the configuration of
 TruffleHog, Gitleaks, and Presidio rulesets as described in PRD §8.7; (b) running
-`devmetrics audit --tail --verbose` on any endpoint of the data subject's choice and
+`bematist audit --tail --verbose` on any endpoint of the data subject's choice and
 inspecting the local SQLite egress journal to confirm that only enumerated, redacted,
 envelope-class payloads have been transmitted; (c) reviewing the continuous-integration
 test artifact `bun run test:privacy` which executes the forbidden-field adversarial
@@ -179,7 +179,7 @@ Privacy Rights Act (Cal. Civ. Code §1798.100 et seq.; employee data in-scope fr
 1 January 2023) provides parallel access and deletion rights.
 
 **Product control.** Enforced through two command-line interfaces on the collector
-(`devmetrics export` and `devmetrics erase`) which trigger server-side workflows writing
+(`bematist export` and `bematist erase`) which trigger server-side workflows writing
 to the `erasure_requests` Postgres table with a seven-day SLA watchdog. Erasure is
 executed by `DROP PARTITION` on the ClickHouse `events` table, which is partitioned by
 `(tenant_id, engineer_id, day)` per PRD Decision D15, making erasure atomic and
@@ -244,7 +244,7 @@ worker that refuses to activate a tier change whose `signed_at` timestamp is les
 seven calendar days prior to the current server time. The in-IDE banner is delivered by
 the collector's policy-synchronization poll; the banner display is a blocking
 precondition to any subsequent Tier-C event capture from that endpoint, recorded in the
-collector's local state and surfaced in `devmetrics policy show`. Complementary
+collector's local state and surfaced in `bematist policy show`. Complementary
 enforcement: the Tier-A `raw_attrs` allowlist is applied at write time (challenger
 review control C10) to prevent the symmetric failure mode where a tenant on Tier A
 accidentally accepts broader attributes through schema drift. Managed-cloud ingest
@@ -256,7 +256,7 @@ rejects Tier-C payloads with HTTP 403 unless `org.tier_c_managed_cloud_optin=tru
 is signed by the registered Ed25519 key and not by any other key; (b) requesting the
 policy-change audit trail from `audit_log` for the tenant and confirming that every
 `policy_change` row carries a `signed_at` timestamp preceding its `activated_at`
-timestamp by at least seven calendar days; (c) running `devmetrics policy show` on an
+timestamp by at least seven calendar days; (c) running `bematist policy show` on an
 endpoint and confirming that the displayed effective tier matches the signed policy, and
 that the banner-acknowledged timestamp is recorded locally; (d) inspecting the collector
 source under `apps/collector/` to confirm that the banner-delivery gate is an enforced
@@ -297,7 +297,7 @@ The append-only invariant is verified at deploy time by a pre-flight database as
 and at continuous-integration time by a migration-linter. Per PRD Decision D30, a
 companion `audit_events` table records per-view drill-downs into individual data
 subjects (distinct from the general `audit_log` which records all actions). The data
-subject may retrieve their personal audit trail at any time via `devmetrics audit
+subject may retrieve their personal audit trail at any time via `bematist audit
 --my-accesses`, which returns all rows of `audit_log` and `audit_events` whose
 `target_engineer_id_hash` matches the invoking data subject. Row-level-security policies
 on both tables restrict read access to (i) the acting principal within their own
@@ -310,7 +310,7 @@ confirming the presence of the `REVOKE UPDATE, DELETE ON audit_log` statement in
 authoritative migration for that table; (b) connecting to the Postgres instance as a
 user with only application-role privileges and attempting an `UPDATE audit_log SET …`
 or `DELETE FROM audit_log WHERE …` statement, confirming that both fail with a
-permissions error rather than succeeding silently; (c) running `devmetrics audit
+permissions error rather than succeeding silently; (c) running `bematist audit
 --my-accesses` against a seeded test data subject and verifying that the returned rows
 match, row-for-row, the rows present in the `audit_log` and `audit_events` tables for
 that subject; (d) inspecting the RLS policies on both tables and confirming the three-
