@@ -14,23 +14,34 @@ async function reset() {
   await chClient.command({ query: "TRUNCATE TABLE events" });
 }
 
+function must<T>(value: T | undefined, label = "expected non-empty value"): T {
+  if (value === undefined) throw new Error(label);
+  return value;
+}
+
 async function seedTwoOrgsWithEvents() {
-  const [orgTarget] = await db
-    .insert(orgs)
-    .values({ slug: "target_org", name: "Target" })
-    .returning();
-  const [orgBystander] = await db
-    .insert(orgs)
-    .values({ slug: "bystander_org", name: "Bystander" })
-    .returning();
-  const [userTarget] = await db
-    .insert(users)
-    .values({ org_id: orgTarget.id, sso_subject: "sub_t", email: "t@t.test" })
-    .returning();
-  const [userBy] = await db
-    .insert(users)
-    .values({ org_id: orgBystander.id, sso_subject: "sub_b", email: "b@b.test" })
-    .returning();
+  const orgTarget = must(
+    (await db.insert(orgs).values({ slug: "target_org", name: "Target" }).returning())[0],
+  );
+  const orgBystander = must(
+    (await db.insert(orgs).values({ slug: "bystander_org", name: "Bystander" }).returning())[0],
+  );
+  const userTarget = must(
+    (
+      await db
+        .insert(users)
+        .values({ org_id: orgTarget.id, sso_subject: "sub_t", email: "t@t.test" })
+        .returning()
+    )[0],
+  );
+  const userBy = must(
+    (
+      await db
+        .insert(users)
+        .values({ org_id: orgBystander.id, sso_subject: "sub_b", email: "b@b.test" })
+        .returning()
+    )[0],
+  );
   await db
     .insert(developers)
     .values({ org_id: orgTarget.id, user_id: userTarget.id, stable_hash: "eng_target" });
@@ -130,17 +141,17 @@ test("worker drops partitions for target org; marks completed; writes audit_log"
     query_params: { org: orgTarget.id },
     format: "JSONEachRow",
   });
-  const targetCount = ((await targetRows.json()) as Array<{ c: number }>)[0].c;
+  const targetCount = ((await targetRows.json()) as Array<{ c: number }>)[0]?.c;
   expect(Number(targetCount)).toBe(0);
 
   const reqs = await db.select().from(erasure_requests);
   expect(reqs).toHaveLength(1);
-  expect(reqs[0].status).toBe("completed");
-  expect(reqs[0].partition_dropped).toBe("true");
+  expect(reqs[0]?.status).toBe("completed");
+  expect(reqs[0]?.partition_dropped).toBe("true");
 
   const audits = await db.select().from(audit_log).where(eq(audit_log.action, "partition_drop"));
   expect(audits).toHaveLength(1);
-  expect(audits[0].target_id).toBe("eng_target");
+  expect(audits[0]?.target_id).toBe("eng_target");
 });
 
 test("worker is idempotent — no-op on already-completed requests", async () => {
@@ -161,14 +172,17 @@ test("worker fails a request cleanly if CH partition drop errors", async () => {
   // Insert a request for a non-existent org — listPartitionsForOrg returns [], so the
   // loop is a no-op and the request completes successfully. This test verifies
   // completion without events (gracefully handles empty partition list).
-  const [orgTarget] = await db
-    .insert(orgs)
-    .values({ slug: "empty_org", name: "Empty" })
-    .returning();
-  const [userTarget] = await db
-    .insert(users)
-    .values({ org_id: orgTarget.id, sso_subject: "sub_e", email: "e@e.test" })
-    .returning();
+  const orgTarget = must(
+    (await db.insert(orgs).values({ slug: "empty_org", name: "Empty" }).returning())[0],
+  );
+  const userTarget = must(
+    (
+      await db
+        .insert(users)
+        .values({ org_id: orgTarget.id, sso_subject: "sub_e", email: "e@e.test" })
+        .returning()
+    )[0],
+  );
 
   await db.insert(erasure_requests).values({
     requester_user_id: userTarget.id,
@@ -180,10 +194,10 @@ test("worker fails a request cleanly if CH partition drop errors", async () => {
   expect(processed).toBe(1);
 
   const reqs = await db.select().from(erasure_requests);
-  expect(reqs[0].status).toBe("completed");
+  expect(reqs[0]?.status).toBe("completed");
 
   const audits = await db.select().from(audit_log);
   expect(audits).toHaveLength(1);
   // No partitions were dropped, but audit row still created (metadata.partitions=[])
-  expect(audits[0].metadata_json).toEqual({ partitions: [], target_org_id: orgTarget.id });
+  expect(audits[0]?.metadata_json).toEqual({ partitions: [], target_org_id: orgTarget.id });
 });

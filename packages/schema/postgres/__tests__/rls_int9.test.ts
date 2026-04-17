@@ -61,30 +61,47 @@ const TABLES: Array<{ table: string; org_col: string }> = [
   { table: "outcomes", org_col: "org_id" },
 ];
 
+function must<T>(value: T | undefined, label = "expected non-empty value"): T {
+  if (value === undefined) throw new Error(label);
+  return value;
+}
+
 beforeAll(async () => {
   await superDb.execute(
     sql`TRUNCATE TABLE embedding_cache, outcomes, insights, alerts, erasure_requests, audit_events, audit_log, playbooks, prompt_clusters, ingest_keys, git_events, policies, repos, developers, teams, users, orgs RESTART IDENTITY CASCADE`,
   );
 
-  [orgA] = await superDb.insert(orgs).values({ slug: "orgA", name: "A" }).returning();
-  [orgB] = await superDb.insert(orgs).values({ slug: "orgB", name: "B" }).returning();
+  orgA = must((await superDb.insert(orgs).values({ slug: "orgA", name: "A" }).returning())[0]);
+  orgB = must((await superDb.insert(orgs).values({ slug: "orgB", name: "B" }).returning())[0]);
 
   async function seedOrg(org: { id: string }, tag: string) {
-    const [u] = await superDb
-      .insert(users)
-      .values({ org_id: org.id, sso_subject: `sub_${tag}`, email: `${tag}@x.test` })
-      .returning();
-    const [team] = await superDb
-      .insert(teams)
-      .values({ org_id: org.id, name: `team_${tag}` })
-      .returning();
+    const u = must(
+      (
+        await superDb
+          .insert(users)
+          .values({ org_id: org.id, sso_subject: `sub_${tag}`, email: `${tag}@x.test` })
+          .returning()
+      )[0],
+    );
+    const team = must(
+      (
+        await superDb
+          .insert(teams)
+          .values({ org_id: org.id, name: `team_${tag}` })
+          .returning()
+      )[0],
+    );
     await superDb
       .insert(developers)
       .values({ org_id: org.id, user_id: u.id, team_id: team.id, stable_hash: `eng_${tag}` });
-    const [repo] = await superDb
-      .insert(repos)
-      .values({ org_id: org.id, repo_id_hash: `rh_${tag}`, provider: "github" })
-      .returning();
+    const repo = must(
+      (
+        await superDb
+          .insert(repos)
+          .values({ org_id: org.id, repo_id_hash: `rh_${tag}`, provider: "github" })
+          .returning()
+      )[0],
+    );
     await superDb.insert(policies).values({ org_id: org.id });
     await superDb
       .insert(git_events)
@@ -95,10 +112,14 @@ beforeAll(async () => {
       hashed_secret: "x",
       created_by: u.id,
     });
-    const [cluster] = await superDb
-      .insert(prompt_clusters)
-      .values({ org_id: org.id, centroid: [0.1], dim: 1, model: "m" })
-      .returning();
+    const cluster = must(
+      (
+        await superDb
+          .insert(prompt_clusters)
+          .values({ org_id: org.id, centroid: [0.1], dim: 1, model: "m" })
+          .returning()
+      )[0],
+    );
     await superDb.insert(playbooks).values({
       org_id: org.id,
       cluster_id: cluster.id,
@@ -147,8 +168,8 @@ test("app_bematist role exists and is NOBYPASSRLS + NOSUPERUSER", async () => {
     `SELECT rolname, rolbypassrls, rolsuper FROM pg_roles WHERE rolname = 'app_bematist'`,
   )) as unknown as Array<{ rolbypassrls: boolean; rolsuper: boolean }>;
   expect(rows).toHaveLength(1);
-  expect(rows[0].rolbypassrls).toBe(false);
-  expect(rows[0].rolsuper).toBe(false);
+  expect(rows[0]?.rolbypassrls).toBe(false);
+  expect(rows[0]?.rolsuper).toBe(false);
 });
 
 test("INT9: without app.current_org_id set, every RLS-protected table returns 0 rows", async () => {
@@ -158,7 +179,7 @@ test("INT9: without app.current_org_id set, every RLS-protected table returns 0 
     )) as unknown as Array<{
       c: number;
     }>;
-    expect(rows[0].c).toBe(0);
+    expect(rows[0]?.c).toBe(0);
   }
 });
 
@@ -173,6 +194,7 @@ test("INT9: with org A set, tables return ONLY org A rows (zero leak from org B)
          FROM ${table}`,
       )) as unknown as Array<{ total: number; a_rows: number; b_rows: number }>;
       const r = rows[0];
+      if (!r) throw new Error(`empty row from ${table}`);
       expect(r.total).toBeGreaterThan(0);
       expect(r.b_rows).toBe(0);
       expect(r.a_rows).toBe(r.total);
@@ -187,7 +209,7 @@ test("INT9: with org B set, tables return ONLY org B rows (zero leak from org A)
       const rows = (await tx.unsafe(
         `SELECT count(*) FILTER (WHERE ${org_col} = '${orgA.id}')::int AS a_leak FROM ${table}`,
       )) as unknown as Array<{ a_leak: number }>;
-      expect(rows[0].a_leak).toBe(0);
+      expect(rows[0]?.a_leak).toBe(0);
     }
   });
 });
@@ -199,7 +221,7 @@ test("INT9: transaction-scoped setting releases on commit (next query returns 0)
     const rows = (await tx.unsafe(`SELECT count(*)::int AS c FROM users`)) as unknown as Array<{
       c: number;
     }>;
-    expect(rows[0].c).toBeGreaterThan(0);
+    expect(rows[0]?.c).toBeGreaterThan(0);
   });
   // After txn commits, a fresh connection state — setting is gone
   const rows = (await appClient.unsafe(
@@ -207,5 +229,5 @@ test("INT9: transaction-scoped setting releases on commit (next query returns 0)
   )) as unknown as Array<{
     c: number;
   }>;
-  expect(rows[0].c).toBe(0);
+  expect(rows[0]?.c).toBe(0);
 });

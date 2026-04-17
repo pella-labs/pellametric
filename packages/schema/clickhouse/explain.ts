@@ -33,6 +33,7 @@ export function projectionUsed(explainText: string): string | null {
   const match = explainText.match(/ReadFromMergeTree \(([^)]+)\)/);
   if (!match) return null;
   const name = match[1];
+  if (!name) return null;
   // Base reads include a dot (database.table); projection reads are bare names.
   return name.includes(".") ? null : name;
 }
