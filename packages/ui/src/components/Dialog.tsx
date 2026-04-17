@@ -34,7 +34,7 @@ export const DialogContent = forwardRef<
       ref={ref}
       className={cn(
         "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
-        "rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-xl",
+        "rounded-lg border border-border bg-popover text-popover-foreground p-6 shadow-xl",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         className,
       )}
@@ -42,7 +42,7 @@ export const DialogContent = forwardRef<
     >
       {children}
       <DialogPrimitive.Close
-        className="absolute right-4 top-4 rounded-sm text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+        className="absolute right-4 top-4 cursor-pointer rounded-sm text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Close"
       >
         <X className="h-4 w-4" />
@@ -71,7 +71,7 @@ export const DialogTitle = forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-semibold text-[var(--color-foreground)]",
+      "text-lg font-semibold text-foreground",
       className,
     )}
     {...props}
@@ -86,7 +86,7 @@ export const DialogDescription = forwardRef<
   <DialogPrimitive.Description
     ref={ref}
     className={cn(
-      "text-sm text-[var(--color-foreground-muted)]",
+      "text-sm text-muted-foreground",
       className,
     )}
     {...props}

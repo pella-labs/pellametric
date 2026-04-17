@@ -20,10 +20,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen">
       <aside
         aria-label="Primary navigation"
-        className="flex w-56 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-6"
+        className="flex w-56 shrink-0 flex-col border-r border-border bg-card px-4 py-6"
       >
         <Link href="/" className="mb-6 flex items-center gap-2 px-2">
-          <span className="inline-block h-6 w-6 rounded-md bg-[var(--color-accent)]" aria-hidden />
+          <span className="inline-block h-6 w-6 rounded-md bg-primary" aria-hidden />
           <span className="text-sm font-semibold tracking-tight">Bematist</span>
         </Link>
         <nav className="flex flex-1 flex-col gap-0.5">
@@ -31,18 +31,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-md px-2 py-1.5 text-sm text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-foreground)]"
+              className="rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               {item.label}
             </Link>
           ))}
         </nav>
-        <div className="mt-4 flex flex-col gap-0.5 border-t border-[var(--color-border)] pt-4">
+        <div className="mt-4 flex flex-col gap-0.5 border-t border-border pt-4">
           {META_LINKS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-md px-2 py-1.5 text-xs text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground)]"
+              className="rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground"
             >
               {item.label}
             </Link>

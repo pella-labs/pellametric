@@ -36,13 +36,13 @@ export function RedactedChip({ type, hash, className }: RedactedChipProps) {
     <Tooltip
       content={
         <span>
-          {label} redacted <span className="text-[var(--color-foreground-muted)]">(server-side)</span>
+          {label} redacted <span className="text-muted-foreground">(server-side)</span>
         </span>
       }
     >
       <span
         className={cn(
-          "inline-flex items-center gap-1 rounded-sm border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-1.5 py-0 font-mono text-[0.7rem] leading-5 text-[var(--color-foreground-muted)]",
+          "inline-flex items-center gap-1 rounded-sm border border-dashed border-border bg-muted px-1.5 py-0 font-mono text-[0.7rem] leading-5 text-muted-foreground",
           className,
         )}
         data-redaction-type={type}

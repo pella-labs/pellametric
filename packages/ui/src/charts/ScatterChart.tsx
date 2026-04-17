@@ -32,7 +32,7 @@ export interface ScatterChartProps {
   ariaLabel: string;
 }
 
-const DEFAULT_COLOR = "var(--color-accent)";
+const DEFAULT_COLOR = "var(--primary)";
 
 export function ScatterChart({
   data,
@@ -52,14 +52,14 @@ export function ScatterChart({
         <RechartsScatterChart margin={{ top: 8, right: 12, bottom: 24, left: 12 }}>
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="var(--color-border)"
+            stroke="var(--border)"
           />
           <XAxis
             type="number"
             dataKey="x"
             name={xLabel}
             domain={[0, 100]}
-            stroke="var(--color-foreground-muted)"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -67,7 +67,7 @@ export function ScatterChart({
               value: xLabel,
               position: "insideBottom",
               offset: -12,
-              style: { fill: "var(--color-foreground-muted)", fontSize: 11 },
+              style: { fill: "var(--muted-foreground)", fontSize: 11 },
             }}
           />
           <YAxis
@@ -75,7 +75,7 @@ export function ScatterChart({
             dataKey="y"
             name={yLabel}
             domain={[0, 100]}
-            stroke="var(--color-foreground-muted)"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -83,29 +83,29 @@ export function ScatterChart({
               value: yLabel,
               angle: -90,
               position: "insideLeft",
-              style: { fill: "var(--color-foreground-muted)", fontSize: 11 },
+              style: { fill: "var(--muted-foreground)", fontSize: 11 },
             }}
           />
           <ZAxis type="number" dataKey="z" range={[40, 160]} />
           <ReferenceLine
             x={xThreshold}
-            stroke="var(--color-border)"
+            stroke="var(--border)"
             strokeDasharray="4 4"
           />
           <ReferenceLine
             y={yThreshold}
-            stroke="var(--color-border)"
+            stroke="var(--border)"
             strokeDasharray="4 4"
           />
           <RechartsTooltip
-            cursor={{ strokeDasharray: "3 3", stroke: "var(--color-border)" }}
+            cursor={{ strokeDasharray: "3 3", stroke: "var(--border)" }}
             contentStyle={{
-              background: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
+              background: "var(--popover)",
+              border: "1px solid var(--border)",
               borderRadius: "0.5rem",
               fontSize: "0.75rem",
             }}
-            labelStyle={{ color: "var(--color-foreground-muted)" }}
+            labelStyle={{ color: "var(--muted-foreground)" }}
             formatter={(value: number, name: string) => [value.toFixed(0), name]}
           />
           <Scatter

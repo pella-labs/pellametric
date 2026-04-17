@@ -55,7 +55,7 @@ export function InsufficientData({
     <Tooltip content={EXPLAIN[reason]}>
       <div
         className={cn(
-          "inline-flex items-center gap-2 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] px-2.5 py-1.5 text-xs text-[var(--color-foreground-muted)]",
+          "inline-flex items-center gap-2 rounded-md border border-dashed border-border bg-muted px-2.5 py-1.5 text-xs text-muted-foreground",
           className,
         )}
         role="status"

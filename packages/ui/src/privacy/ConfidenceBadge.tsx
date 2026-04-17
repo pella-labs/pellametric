@@ -16,9 +16,9 @@ const LABELS: Record<Confidence, string> = {
 };
 
 const TONES: Record<Confidence, string> = {
-  high: "bg-[var(--color-positive)]/15 text-[var(--color-positive)]",
-  medium: "bg-[var(--color-warning)]/15 text-[var(--color-warning)]",
-  low: "bg-[var(--color-negative)]/15 text-[var(--color-negative)]",
+  high: "bg-positive/15 text-positive",
+  medium: "bg-warning/15 text-warning",
+  low: "bg-destructive/15 text-destructive",
 };
 
 const EXPLAIN: Record<Confidence, string> = {
@@ -39,7 +39,7 @@ export function ConfidenceBadge({
     <Tooltip content={EXPLAIN[confidence]}>
       <span
         className={cn(
-          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+          "inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-xs font-medium",
           TONES[confidence],
           className,
         )}

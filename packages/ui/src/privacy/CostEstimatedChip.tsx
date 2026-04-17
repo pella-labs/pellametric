@@ -11,7 +11,7 @@ export function CostEstimatedChip({ className }: { className?: string }) {
     <Tooltip content="Cost is an adapter-supplied estimate — the underlying tool did not report exact usage.">
       <span
         className={cn(
-          "inline-flex items-center rounded-sm border border-[var(--color-warning)]/40 px-1 py-0 font-mono text-[0.6rem] uppercase tracking-wide text-[var(--color-warning)]",
+          "inline-flex items-center rounded-sm border border-warning/40 px-1 py-0 font-mono text-[0.6rem] uppercase tracking-wide text-warning",
           className,
         )}
         aria-label="Cost estimated"

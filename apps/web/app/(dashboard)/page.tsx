@@ -30,7 +30,7 @@ export default async function DashboardHome() {
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Summary</h1>
-        <p className="text-sm text-[var(--color-foreground-muted)]">
+        <p className="text-sm text-muted-foreground">
           Last 7 days · fixture-backed until Sprint 1 MVs land.
         </p>
       </header>
@@ -101,15 +101,15 @@ function CostSeriesTable({
 }) {
   return (
     <table className="w-full text-sm">
-      <thead className="text-left text-[var(--color-foreground-muted)]">
-        <tr className="border-b border-[var(--color-border)]">
+      <thead className="text-left text-muted-foreground">
+        <tr className="border-b border-border">
           <th className="py-2 font-medium">Date</th>
           <th className="py-2 text-right font-medium">Cost</th>
         </tr>
       </thead>
       <tbody>
         {series.map((p) => (
-          <tr key={p.x} className="border-b border-[var(--color-border)]/50">
+          <tr key={p.x} className="border-b border-border/50">
             <td className="py-2 font-mono text-xs">{p.x}</td>
             <td className="py-2 text-right">{USD.format(p.y)}</td>
           </tr>

@@ -27,7 +27,7 @@ export default async function ClustersPage() {
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Clusters</h1>
-        <p className="text-sm text-[var(--color-foreground-muted)]">
+        <p className="text-sm text-muted-foreground">
           Prompt-pattern clusters from the on-device Clio pipeline. Labels are
           3–5 words, regex-validated — no URLs, no proper nouns, no PII. The
           k≥3 contributor floor is enforced server-side: clusters below the
@@ -35,7 +35,7 @@ export default async function ClustersPage() {
         </p>
       </header>
 
-      <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-foreground-muted)]">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <Badge tone="neutral">30-day window</Badge>
         <Badge tone="accent">{data.clusters.length} clusters</Badge>
         {data.suppressed_below_floor > 0 ? (
@@ -57,29 +57,29 @@ export default async function ClustersPage() {
                   <CardTitle className="text-base">{c.label}</CardTitle>
                   <FidelityChip fidelity={c.fidelity} />
                 </div>
-                <p className="text-xs text-[var(--color-foreground-muted)]">
+                <p className="text-xs text-muted-foreground">
                   {c.contributor_count} contributors · {c.session_count} sessions
                 </p>
               </CardHeader>
               <dl className="grid grid-cols-4 gap-3 text-xs">
                 <div>
-                  <dt className="text-[var(--color-foreground-muted)]">Avg cost</dt>
+                  <dt className="text-muted-foreground">Avg cost</dt>
                   <dd className="mt-0.5 font-medium text-sm">{USD.format(c.avg_cost_usd)}</dd>
                 </div>
                 <div>
-                  <dt className="text-[var(--color-foreground-muted)]">Merged PRs</dt>
+                  <dt className="text-muted-foreground">Merged PRs</dt>
                   <dd className="mt-0.5 font-medium text-sm">{merged}</dd>
                 </div>
                 <div>
-                  <dt className="text-[var(--color-foreground-muted)]">Green tests</dt>
+                  <dt className="text-muted-foreground">Green tests</dt>
                   <dd className="mt-0.5 font-medium text-sm">{green}</dd>
                 </div>
                 <div>
-                  <dt className="text-[var(--color-foreground-muted)]">Reverts</dt>
+                  <dt className="text-muted-foreground">Reverts</dt>
                   <dd
                     className={
                       reverts > 0
-                        ? "mt-0.5 font-medium text-sm text-[var(--color-warning)]"
+                        ? "mt-0.5 font-medium text-sm text-warning"
                         : "mt-0.5 font-medium text-sm"
                     }
                   >
@@ -94,7 +94,7 @@ export default async function ClustersPage() {
 
       {data.clusters.length === 0 ? (
         <Card>
-          <p className="text-sm text-[var(--color-foreground-muted)]">
+          <p className="text-sm text-muted-foreground">
             No clusters pass the k≥3 floor for this window. This is the
             privacy-preserving default — clusters emerge as more engineers
             contribute prompts in the same pattern.

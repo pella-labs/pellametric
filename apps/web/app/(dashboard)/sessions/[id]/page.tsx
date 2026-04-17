@@ -37,7 +37,7 @@ export default async function SessionDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <p className="font-mono text-xs text-[var(--color-foreground-muted)]">
+        <p className="font-mono text-xs text-muted-foreground">
           Session · {session.session_id}
         </p>
         <div className="flex items-baseline gap-3">
@@ -50,7 +50,7 @@ export default async function SessionDetailPage({
           </Badge>
         </div>
         <time
-          className="text-xs text-[var(--color-foreground-muted)]"
+          className="text-xs text-muted-foreground"
           dateTime={session.started_at}
         >
           Started {new Date(session.started_at).toLocaleString()}
@@ -109,7 +109,7 @@ export default async function SessionDetailPage({
             />
           </div>
         ) : (
-          <div className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-[var(--color-foreground)]">
+          <div className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground">
             {renderWithRedactions(session.prompt_text)}
           </div>
         )}

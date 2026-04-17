@@ -25,13 +25,13 @@ export default async function MyDigestPage() {
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">My digest</h1>
-        <p className="text-sm text-[var(--color-foreground-muted)]">
+        <p className="text-sm text-muted-foreground">
           Every time a manager, admin, or auditor opens a surface that names
           you, a row lands here. Default delivery is a daily digest; you can
           switch to immediate notifications or opt out — transparency is the
           default, never a paid feature.
         </p>
-        <div className="text-xs text-[var(--color-foreground-muted)]">
+        <div className="text-xs text-muted-foreground">
           Window: <Badge tone="neutral">{history.window}</Badge> · Preference:{" "}
           <Badge tone={history.notification_pref === "opted_out" ? "warning" : "accent"}>
             {history.notification_pref.replace("_", " ")}
@@ -44,29 +44,29 @@ export default async function MyDigestPage() {
           <CardTitle>Recent views</CardTitle>
         </CardHeader>
         {history.events.length === 0 ? (
-          <p className="text-sm text-[var(--color-foreground-muted)]">
+          <p className="text-sm text-muted-foreground">
             Nothing in the last 24 hours. You'll see an entry here the first
             time someone with access opens a surface that names you.
           </p>
         ) : (
-          <ul className="flex flex-col divide-y divide-[var(--color-border)]">
+          <ul className="flex flex-col divide-y divide-border">
             {history.events.map((e) => (
               <li key={e.id} className="flex flex-col gap-0.5 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-medium">
                     {e.actor_display_name}{" "}
-                    <span className="font-normal text-[var(--color-foreground-muted)]">
+                    <span className="font-normal text-muted-foreground">
                       ({e.actor_role})
                     </span>
                   </span>
                   <time
-                    className="font-mono text-xs text-[var(--color-foreground-muted)]"
+                    className="font-mono text-xs text-muted-foreground"
                     dateTime={e.ts}
                   >
                     {new Date(e.ts).toLocaleString()}
                   </time>
                 </div>
-                <div className="text-xs text-[var(--color-foreground-muted)]">
+                <div className="text-xs text-muted-foreground">
                   {SURFACE_LABEL[e.surface] ?? e.surface}
                   {e.reason ? <span> — "{e.reason}"</span> : null}
                 </div>

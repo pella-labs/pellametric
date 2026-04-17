@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { TooltipProvider } from "@bematist/ui";
+import { Geist, Geist_Mono, IBM_Plex_Sans } from "next/font/google";
+import { TooltipProvider, cn } from "@bematist/ui";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,9 +14,34 @@ export const metadata: Metadata = {
   applicationName: "Bematist",
 };
 
+const fontSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const fontMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
+
+const fontHeading = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-heading",
+});
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={cn(
+        "dark antialiased",
+        fontSans.variable,
+        fontMono.variable,
+        fontHeading.variable,
+      )}
+      suppressHydrationWarning
+    >
       <body>
         <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
       </body>

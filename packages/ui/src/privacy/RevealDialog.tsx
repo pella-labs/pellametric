@@ -88,14 +88,14 @@ export function RevealDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-3">
-          <div className="rounded-md border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/10 p-3 text-xs text-[var(--color-warning)]">
+          <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
             Reveal requires one of: IC opt-in at project scope · tenant-wide
             signed Tier-C config · active legal hold. Without one, the server
             will refuse.
           </div>
 
           <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-[var(--color-foreground)]">
+            <span className="font-medium text-foreground">
               Reason (min {MIN_REASON} characters)
             </span>
             <Textarea
@@ -106,7 +106,7 @@ export function RevealDialog({
               placeholder="Investigating a cost spike for the infra task family; need to confirm the agent wasn't looping…"
               aria-invalid={reason.length > 0 && !reasonOk}
             />
-            <span className="text-xs text-[var(--color-foreground-muted)]">
+            <span className="text-xs text-muted-foreground">
               {reason.trim().length} / {MIN_REASON}
             </span>
           </label>
@@ -114,7 +114,7 @@ export function RevealDialog({
           {error ? (
             <div
               role="alert"
-              className="rounded-md border border-[var(--color-negative)]/40 bg-[var(--color-negative)]/10 p-3 text-xs text-[var(--color-negative)]"
+              className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
             >
               {error}
             </div>
@@ -125,7 +125,6 @@ export function RevealDialog({
               <Button variant="ghost">Cancel</Button>
             </DialogClose>
             <Button
-              variant="primary"
               onClick={submit}
               disabled={!reasonOk || isPending}
             >

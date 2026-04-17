@@ -51,14 +51,14 @@ export default async function TeamsPage({
     <div className="flex flex-col gap-8">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Teams</h1>
-        <p className="text-sm text-[var(--color-foreground-muted)]">
+        <p className="text-sm text-muted-foreground">
           Cohort-stratified view. IC names are always hidden — each dot is a
           stable hash. Names only unlock via explicit IC opt-in.
         </p>
       </header>
 
       <section aria-labelledby="teams-list" className="flex flex-col gap-3">
-        <h2 id="teams-list" className="text-sm font-medium uppercase tracking-wide text-[var(--color-foreground-muted)]">
+        <h2 id="teams-list" className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           {teamsList.teams.length} team{teamsList.teams.length === 1 ? "" : "s"} · 30-day window
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -71,14 +71,14 @@ export default async function TeamsPage({
                 aria-current={isSelected ? "true" : undefined}
                 className={
                   isSelected
-                    ? "block cursor-pointer rounded-lg border border-[var(--color-accent)] bg-[var(--color-surface)] p-5 outline outline-1 -outline-offset-1 outline-[var(--color-accent)]/40"
-                    : "block cursor-pointer rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-colors hover:border-[var(--color-foreground-muted)]"
+                    ? "block cursor-pointer rounded-lg border border-primary bg-card p-5 outline outline-1 -outline-offset-1 outline-primary/40"
+                    : "block cursor-pointer rounded-lg border border-border bg-card p-5 transition-colors hover:border-muted-foreground"
                 }
               >
                 <div className="mb-3 flex items-start justify-between">
                   <div>
                     <p className="text-base font-semibold">{t.label}</p>
-                    <p className="text-xs text-[var(--color-foreground-muted)]">
+                    <p className="text-xs text-muted-foreground">
                       {t.engineers} engineer{t.engineers === 1 ? "" : "s"}
                     </p>
                   </div>
@@ -86,11 +86,11 @@ export default async function TeamsPage({
                 </div>
                 <dl className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <dt className="text-[var(--color-foreground-muted)]">Cost · 30d</dt>
+                    <dt className="text-muted-foreground">Cost · 30d</dt>
                     <dd className="mt-0.5 text-sm font-medium">{USD.format(t.cost_usd)}</dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--color-foreground-muted)]">AI Leverage</dt>
+                    <dt className="text-muted-foreground">AI Leverage</dt>
                     <dd className="mt-0.5 text-sm font-medium">
                       {t.ai_leverage_score.show ? (
                         t.ai_leverage_score.value.toFixed(0)
@@ -110,7 +110,7 @@ export default async function TeamsPage({
 
       <section aria-labelledby="two-by-two" className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
-          <h2 id="two-by-two" className="text-sm font-medium uppercase tracking-wide text-[var(--color-foreground-muted)]">
+          <h2 id="two-by-two" className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
             2×2 · {selected?.label ?? "Team"} · Outcome Quality × Efficiency
           </h2>
           <TaskCategoryFilter
@@ -123,7 +123,7 @@ export default async function TeamsPage({
         <Card>
           <CardHeader>
             <CardTitle>Cohort-stratified scatter</CardTitle>
-            <p className="text-xs text-[var(--color-foreground-muted)]">
+            <p className="text-xs text-muted-foreground">
               X = Outcome Quality percentile · Y = Efficiency percentile · dot size = sessions · cohort k = {twoByTwo.cohort_size}
             </p>
           </CardHeader>
@@ -216,8 +216,8 @@ function ScatterTable({
 }) {
   return (
     <table className="w-full text-sm">
-      <thead className="text-left text-[var(--color-foreground-muted)]">
-        <tr className="border-b border-[var(--color-border)]">
+      <thead className="text-left text-muted-foreground">
+        <tr className="border-b border-border">
           <th className="py-2 font-medium">Engineer</th>
           <th className="py-2 text-right font-medium">Outcome</th>
           <th className="py-2 text-right font-medium">Efficiency</th>
@@ -229,7 +229,7 @@ function ScatterTable({
         {points.map((p) => (
           <tr
             key={p.engineer_id_hash}
-            className="border-b border-[var(--color-border)]/50"
+            className="border-b border-border/50"
           >
             <td className="py-2 font-mono text-xs">{p.engineer_id_hash}</td>
             <td className="py-2 text-right">{p.outcome_quality.toFixed(0)}</td>

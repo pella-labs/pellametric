@@ -35,7 +35,7 @@ export interface AreaChartProps {
   ariaLabel: string;
 }
 
-const DEFAULT_COLOR = "var(--color-accent)";
+const DEFAULT_COLOR = "var(--primary)";
 
 function makeFormatter(format: AreaChartFormat, currency: string) {
   switch (format) {
@@ -87,18 +87,18 @@ export function AreaChart({
           </defs>
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="var(--color-border)"
+            stroke="var(--border)"
             vertical={false}
           />
           <XAxis
             dataKey="x"
-            stroke="var(--color-foreground-muted)"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            stroke="var(--color-foreground-muted)"
+            stroke="var(--muted-foreground)"
             fontSize={11}
             tickLine={false}
             axisLine={false}
@@ -107,12 +107,12 @@ export function AreaChart({
           />
           <RechartsTooltip
             contentStyle={{
-              background: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
+              background: "var(--popover)",
+              border: "1px solid var(--border)",
               borderRadius: "0.5rem",
               fontSize: "0.75rem",
             }}
-            labelStyle={{ color: "var(--color-foreground-muted)" }}
+            labelStyle={{ color: "var(--muted-foreground)" }}
             formatter={(v: number) => fmt(v)}
           />
           <Area

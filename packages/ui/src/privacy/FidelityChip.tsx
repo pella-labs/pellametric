@@ -29,12 +29,10 @@ const DESCRIPTIONS: Record<Fidelity, string> = {
 };
 
 const TONE_CLASSES: Record<Fidelity, string> = {
-  full: "border-[var(--color-positive)]/40 text-[var(--color-positive)]",
-  estimated: "border-[var(--color-warning)]/40 text-[var(--color-warning)]",
-  "aggregate-only":
-    "border-[var(--color-foreground-muted)]/30 text-[var(--color-foreground-muted)]",
-  "post-migration":
-    "border-[var(--color-accent)]/40 text-[var(--color-accent)]",
+  full: "border-positive/40 text-positive",
+  estimated: "border-warning/40 text-warning",
+  "aggregate-only": "border-muted-foreground/30 text-muted-foreground",
+  "post-migration": "border-primary/40 text-primary",
 };
 
 export interface FidelityChipProps {
