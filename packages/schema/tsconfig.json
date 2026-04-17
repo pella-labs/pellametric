@@ -4,5 +4,6 @@
     "rootDir": ".",
     "outDir": "dist"
   },
-  "include": ["src/**/*", "postgres/**/*", "clickhouse/**/*"]
+  "include": ["src/**/*", "postgres/**/*", "clickhouse/**/*"],
+  "exclude": ["node_modules", "dist", "build", "src/invariants.fuzz.test.ts"]
 }

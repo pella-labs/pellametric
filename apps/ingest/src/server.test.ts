@@ -6,6 +6,7 @@ import type { IngestKeyRow, IngestKeyStore } from "./auth/verifyIngestKey";
 import { LRUCache } from "./auth/verifyIngestKey";
 import { resetDeps, setDeps } from "./deps";
 import { handle } from "./server";
+import { InMemoryOrgPolicyStore } from "./tier/enforceTier";
 
 function hashSecret(secret: string): string {
   return createHash("sha256").update(secret).digest("hex");
@@ -28,6 +29,16 @@ function makeStore(rows: IngestKeyRow[]): IngestKeyStore {
   };
 }
 
+function makePolicyStore(
+  seed: Record<string, { tier_c_managed_cloud_optin: boolean; tier_default: "A" | "B" | "C" }>,
+): InMemoryOrgPolicyStore {
+  const store = new InMemoryOrgPolicyStore();
+  for (const [orgId, policy] of Object.entries(seed)) {
+    store.seed(orgId, policy);
+  }
+  return store;
+}
+
 beforeAll(() => {
   // Seed a legacy 2-seg key: dm_test_abc (orgId=test, secret=abc).
   const row: IngestKeyRow = {
@@ -42,6 +53,9 @@ beforeAll(() => {
     store: makeStore([row]),
     cache: new LRUCache({ max: 1000, ttlMs: 60_000 }),
     rateLimiter: permissiveRateLimiter(),
+    orgPolicyStore: makePolicyStore({
+      test: { tier_c_managed_cloud_optin: false, tier_default: "B" },
+    }),
   });
 });
 
@@ -226,6 +240,9 @@ describe("ingest server", () => {
     setDeps({
       store,
       cache: new LRUCache({ max: 1000, ttlMs: 60_000 }),
+      orgPolicyStore: makePolicyStore({
+        cacheorg: { tier_c_managed_cloud_optin: false, tier_default: "B" },
+      }),
     });
     await postEvents({ events: [makeEvent()] }, "Bearer dm_cacheorg_abc");
     await postEvents({ events: [makeEvent()] }, "Bearer dm_cacheorg_abc");
@@ -263,6 +280,126 @@ describe("ingest server", () => {
     resetDeps();
     beforeAllReseed();
   });
+
+  // --- Phase 2 additions (tier enforcement + forbidden fields) -------------
+
+  test("Phase 2 (a) POST event with top-level prompt_text (Tier B) → 400 FORBIDDEN_FIELD", async () => {
+    const bad = { ...makeEvent(), prompt_text: "secret" };
+    const res = await postEvents({ events: [bad] });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code: string; field: string };
+    expect(body.code).toBe("FORBIDDEN_FIELD");
+    expect(body.field).toBe("prompt_text");
+  });
+
+  test("Phase 2 (b) POST event tier=C with opt-in=true → 202", async () => {
+    // Seed key + policy for a fresh org with opt-in on.
+    const row: IngestKeyRow = {
+      id: "cinkey",
+      org_id: "cintenant",
+      engineer_id: "eng",
+      key_sha256: hashSecret("abc"),
+      tier_default: "C",
+      revoked_at: null,
+    };
+    setDeps({
+      store: makeStore([row]),
+      cache: new LRUCache({ max: 1000, ttlMs: 60_000 }),
+      orgPolicyStore: makePolicyStore({
+        cintenant: { tier_c_managed_cloud_optin: true, tier_default: "C" },
+      }),
+    });
+    const ev: Event = { ...makeEvent({ tier: "C" }), prompt_text: "legit-content" };
+    const res = await postEvents({ events: [ev] }, "Bearer dm_cintenant_abc");
+    expect(res.status).toBe(202);
+    resetDeps();
+    beforeAllReseed();
+  });
+
+  test("Phase 2 (c) POST event tier=C with opt-in=false → 403 TIER_C_NOT_OPTED_IN", async () => {
+    // baseline "test" org has opt-in=false
+    const ev: Event = makeEvent({ tier: "C" });
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("TIER_C_NOT_OPTED_IN");
+  });
+
+  test("Phase 2 (d) POST event tier=A with nested raw_attrs.prompt_text → 400 FORBIDDEN_FIELD", async () => {
+    const ev = {
+      ...makeEvent({ tier: "A" }),
+      raw_attrs: { prompt_text: "snuck-in" },
+    };
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code: string; field: string };
+    expect(body.code).toBe("FORBIDDEN_FIELD");
+    expect(body.field).toBe("prompt_text");
+  });
+
+  test("Phase 2 (e) Missing policy (unmapped org) → 500 ORG_POLICY_MISSING", async () => {
+    const row: IngestKeyRow = {
+      id: "nopolkey",
+      org_id: "nopoltenant",
+      engineer_id: "eng",
+      key_sha256: hashSecret("abc"),
+      tier_default: "B",
+      revoked_at: null,
+    };
+    // Seed the key but NOT the policy — store.get("nopoltenant") → null.
+    setDeps({
+      store: makeStore([row]),
+      cache: new LRUCache({ max: 1000, ttlMs: 60_000 }),
+      orgPolicyStore: makePolicyStore({
+        // seed a different org, so "nopoltenant" lookup returns null
+        other: { tier_c_managed_cloud_optin: false, tier_default: "B" },
+      }),
+    });
+    const res = await postEvents({ events: [makeEvent()] }, "Bearer dm_nopoltenant_abc");
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { code: string };
+    expect(body.code).toBe("ORG_POLICY_MISSING");
+    resetDeps();
+    beforeAllReseed();
+  });
+
+  test("Phase 2 (f) GET /readyz response body includes fields_loaded=true", async () => {
+    const res = await handle(new Request("http://localhost/readyz"));
+    // Dep pings may fail in unit-test env → 503 is acceptable, but the payload
+    // must still carry the fields_loaded flag so ops can see invariant state.
+    const body = (await res.json()) as {
+      deps?: { fields_loaded?: boolean };
+      status: string;
+    };
+    expect(body.deps?.fields_loaded).toBe(true);
+  });
+
+  test("Phase 2 (g) ordering proof: payload with prompt_text AND zod-invalid → 400 FORBIDDEN_FIELD (pre-zod)", async () => {
+    // Intentionally drop `client_event_id` (zod-invalid) AND add prompt_text.
+    // If ordering were zod-first we'd get a zod error; proper ordering returns
+    // FORBIDDEN_FIELD from enforceTier.
+    const ev = {
+      // client_event_id omitted
+      schema_version: 1,
+      ts: "2026-04-16T12:00:00.000Z",
+      tenant_id: "org_abc",
+      engineer_id: "eng",
+      device_id: "dev",
+      source: "claude-code",
+      fidelity: "full",
+      cost_estimated: false,
+      tier: "B",
+      session_id: "s",
+      event_seq: 0,
+      dev_metrics: { event_kind: "llm_request" },
+      prompt_text: "must-reject-first",
+    };
+    const res = await postEvents({ events: [ev] });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { code: string; field?: string };
+    expect(body.code).toBe("FORBIDDEN_FIELD");
+    expect(body.field).toBe("prompt_text");
+  });
 });
 
 // -------- helpers ----------------------------------------------------------
@@ -280,6 +417,9 @@ function beforeAllReseed(): void {
     store: makeStore([row]),
     cache: new LRUCache({ max: 1000, ttlMs: 60_000 }),
     rateLimiter: permissiveRateLimiter(),
+    orgPolicyStore: makePolicyStore({
+      test: { tier_c_managed_cloud_optin: false, tier_default: "B" },
+    }),
   });
 }
 

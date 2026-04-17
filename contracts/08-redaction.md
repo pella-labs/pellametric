@@ -91,7 +91,7 @@ Anything not on the list is dropped silently with a counter increment (`raw_attr
 The ingest validator (`02-ingest-api.md`) rejects with HTTP 400 BEFORE calling `redact()` if the event is from a Tier A/B source AND contains any of:
 
 ```
-rawPrompt, prompt_text, prompt, messages,
+rawPrompt, prompt, prompt_text, messages,
 toolArgs, toolOutputs,
 fileContents, diffs, filePaths,
 ticketIds, emails, realNames
@@ -162,3 +162,8 @@ bun run test:privacy     # MERGE BLOCKER
 ## Changelog
 
 - 2026-04-16 — initial draft
+- 2026-04-16 — Sprint-1 Phase 2: reorder `prompt`/`prompt_text` so the list mirrors
+  `packages/schema/src/invariants.ts FORBIDDEN_FIELDS` 1:1 (the TypeScript constant
+  is now the single source of truth); no member added/removed. Contract-parity test
+  in `packages/schema/src/invariants.test.ts` enforces the ordering. See D-S1-25,
+  D-S1-30.

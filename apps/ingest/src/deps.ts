@@ -1,18 +1,22 @@
 // Module-level dependency injection seam for the ingest server.
-// Sprint 1 default: an empty in-memory store that rejects every bearer
-// (safe-fail), plus a permissive rate limiter. Production boot in
-// index.ts swaps these for real Postgres / Redis backed implementations.
-// Tests call setDeps({store, rateLimiter, cache}) in beforeAll to stub.
+// Sprint 1 Phase 2 defaults: empty key store (safe-fail), permissive rate
+// limiter, empty in-memory OrgPolicyStore (every org → 500 ORG_POLICY_MISSING
+// until seeded), and noopRedactStage (real pipeline lands Sprint 2).
+// Tests call setDeps({ ... }) in beforeAll to stub.
 
+import { noopRedactStage, type RedactStage } from "@bematist/redact";
 import { permissiveRateLimiter, type RateLimiter } from "./auth/rateLimit";
 import type { IngestKeyStore } from "./auth/verifyIngestKey";
 import { LRUCache } from "./auth/verifyIngestKey";
+import { InMemoryOrgPolicyStore, type OrgPolicyStore } from "./tier/enforceTier";
 
 export interface Deps {
   store: IngestKeyStore;
   rateLimiter: RateLimiter;
   cache: LRUCache;
   clock: () => number;
+  orgPolicyStore: OrgPolicyStore;
+  redactStage: RedactStage;
 }
 
 function makeDefaultDeps(): Deps {
@@ -26,6 +30,10 @@ function makeDefaultDeps(): Deps {
     rateLimiter: permissiveRateLimiter(),
     cache: new LRUCache({ max: 1000, ttlMs: 60_000 }),
     clock: () => Date.now(),
+    // Empty policy store — get() returns null for every org until seeded.
+    // Tests seed via setDeps({ orgPolicyStore: store }).
+    orgPolicyStore: new InMemoryOrgPolicyStore(),
+    redactStage: noopRedactStage,
   };
 }
 

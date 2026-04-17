@@ -1,10 +1,15 @@
-import { EventSchema } from "@bematist/schema";
+import { EventSchema, FORBIDDEN_FIELDS } from "@bematist/schema";
 import { type AuthContext, verifyBearer } from "./auth";
 import { getDeps } from "./deps";
 import { logger } from "./logger";
+import { applyTierAAllowlist, enforceTier } from "./tier/enforceTier";
 
 const MAX_EVENTS_PER_REQUEST = 1000;
 const READYZ_PING_TIMEOUT_MS = 2000;
+
+// Phase-2 invariant: FORBIDDEN_FIELDS is single-source; /readyz asserts the
+// length matches the contract-08 count of 12.
+const EXPECTED_FORBIDDEN_FIELDS_LEN = 12;
 
 function parseListenAddr(raw: string | undefined): { hostname: string; port: number } {
   const fallback = { hostname: "0.0.0.0", port: 8000 };
@@ -101,13 +106,15 @@ async function readinessChecks(): Promise<{
   postgres: boolean;
   clickhouse: boolean;
   redis: boolean;
+  fields_loaded: boolean;
 }> {
   const [postgres, clickhouse, redis] = await Promise.all([
     pingTcp(process.env.DATABASE_URL, 5432),
     pingClickHouse(process.env.CLICKHOUSE_URL),
     pingTcp(process.env.REDIS_URL, 6379),
   ]);
-  return { postgres, clickhouse, redis };
+  const fields_loaded = FORBIDDEN_FIELDS.length === EXPECTED_FORBIDDEN_FIELDS_LEN;
+  return { postgres, clickhouse, redis, fields_loaded };
 }
 
 async function handleEvents(req: Request, auth: AuthContext, requestId: string): Promise<Response> {
@@ -136,6 +143,56 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
     );
   }
 
+  // Phase-2 tier enforcement runs PRE-ZOD. Policy fetched once per batch
+  // (not per-event) from the 60s-cached OrgPolicyStore.
+  const { orgPolicyStore } = getDeps();
+  const policy = await orgPolicyStore.get(auth.tenantId);
+  if (policy === null) {
+    logger.warn(
+      { tenant_id: auth.tenantId, request_id: requestId, code: "ORG_POLICY_MISSING" },
+      "org policy missing",
+    );
+    return json(
+      {
+        error: "org policy not configured",
+        code: "ORG_POLICY_MISSING",
+        request_id: requestId,
+      },
+      { status: 500 },
+    );
+  }
+
+  // Run enforceTier on every event; any 400 (FORBIDDEN_FIELD) or 403
+  // (TIER_C_NOT_OPTED_IN) fails the entire batch — privacy violations are
+  // not partial-acceptable (contract 02 §Response codes).
+  for (let i = 0; i < events.length; i++) {
+    const res = await enforceTier(events[i], auth, policy);
+    if (res.reject) {
+      const bodyJson: Record<string, unknown> = {
+        error: res.code,
+        code: res.code,
+        request_id: requestId,
+        index: i,
+      };
+      if (res.code === "FORBIDDEN_FIELD" && res.field !== undefined) {
+        bodyJson.field = res.field;
+      }
+      logger.warn(
+        {
+          tenant_id: auth.tenantId,
+          request_id: requestId,
+          code: res.code,
+          index: i,
+          ...(res.code === "FORBIDDEN_FIELD" && res.field !== undefined
+            ? { field: res.field }
+            : {}),
+        },
+        "tier enforcement reject",
+      );
+      return json(bodyJson, { status: res.status });
+    }
+  }
+
   const rejected: Array<{ index: number; reason: string }> = [];
   for (let i = 0; i < events.length; i++) {
     const result = EventSchema.safeParse(events[i]);
@@ -158,7 +215,33 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
     return json({ accepted, rejected, request_id: requestId }, { status: 207 });
   }
 
-  // All valid. Sprint 0: log only; no dedup (Redis SETNX lands in Sprint 1+).
+  // All zod-valid. Apply Tier-A allowlist POST-zod if feature flag is on.
+  // Sprint-1 default: flag off → no-op path.
+  const enforceTierA = process.env.ENFORCE_TIER_A_ALLOWLIST === "1";
+  if (enforceTierA) {
+    let totalDropped = 0;
+    for (let i = 0; i < events.length; i++) {
+      const ev = events[i] as {
+        tier: "A" | "B" | "C";
+        raw_attrs?: Record<string, unknown>;
+        [k: string]: unknown;
+      };
+      const r = applyTierAAllowlist(ev, policy, true);
+      events[i] = r.event;
+      totalDropped += r.dropped_count;
+    }
+    if (totalDropped > 0) {
+      logger.info(
+        {
+          tenant_id: auth.tenantId,
+          request_id: requestId,
+          dropped_keys: totalDropped,
+        },
+        "tier_a_allowlist dropped keys",
+      );
+    }
+  }
+
   const accepted = events.length;
   logger.info(
     { accepted, deduped: 0, tenant_id: auth.tenantId, request_id: requestId },
@@ -177,7 +260,7 @@ export async function handle(req: Request): Promise<Response> {
 
   if (req.method === "GET" && url.pathname === "/readyz") {
     const deps = await readinessChecks();
-    const ok = deps.postgres && deps.clickhouse && deps.redis;
+    const ok = deps.postgres && deps.clickhouse && deps.redis && deps.fields_loaded;
     if (!ok) {
       const failing = Object.entries(deps)
         .filter(([, v]) => !v)

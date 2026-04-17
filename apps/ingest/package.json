@@ -12,6 +12,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@bematist/redact": "workspace:*",
     "@bematist/schema": "workspace:*",
     "pino": "^9.5.0",
     "zod": "^3.23.8"
