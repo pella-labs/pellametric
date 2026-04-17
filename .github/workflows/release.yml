@@ -1,0 +1,436 @@
+name: release
+
+# Triggered by tag push (e.g. `v0.1.0`). Produces a signed, provenance-attested
+# release of the `bematist` collector binary across linux/darwin/windows ×
+# x64/arm64, plus distro-package artifacts.
+#
+# Security posture (CLAUDE.md §Security Rules):
+#   - Distro packages are the PRIMARY install path; `curl | sh` is FALLBACK.
+#   - Every binary is cosign keyless-signed using the GH Actions OIDC identity.
+#   - SLSA Level 3 provenance is attached via the SLSA reusable workflow.
+#   - SHA-256 of every artifact is written into the GH Release body so
+#     consumers can `gh release download` + `cosign verify` without trusting
+#     any intermediate layer.
+#
+# Status: scaffold. First real tag will flesh in the `HOMEBREW_TAP_TOKEN`,
+# `AUR_SSH_KEY`, `CHOCO_API_KEY` secrets and the homebrew-tap repo name.
+# Cross-platform bun --compile is supported natively — no QEMU needed.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to (re)build, e.g. v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BUN_VERSION: "1.2.0"
+  BINARY_NAME: bematist
+
+jobs:
+  meta:
+    name: resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - id: v
+        name: Resolve tag and version
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          version="${tag#v}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: build ${{ matrix.target }}
+    needs: meta
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            runner: ubuntu-latest
+            bun_target: bun-linux-x64
+            ext: ""
+          - target: linux-arm64
+            runner: ubuntu-latest
+            bun_target: bun-linux-arm64
+            ext: ""
+          - target: darwin-x64
+            runner: macos-13
+            bun_target: bun-darwin-x64
+            ext: ""
+          - target: darwin-arm64
+            runner: macos-14
+            bun_target: bun-darwin-arm64
+            ext: ""
+          - target: windows-x64
+            runner: windows-latest
+            bun_target: bun-windows-x64
+            ext: ".exe"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install deps
+        run: bun install --frozen-lockfile
+
+      - name: Compile collector binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          out="dist/${{ env.BINARY_NAME }}-${{ needs.meta.outputs.tag }}-${{ matrix.target }}${{ matrix.ext }}"
+          bun build \
+            --compile \
+            --minify \
+            --sourcemap \
+            --target="${{ matrix.bun_target }}" \
+            apps/collector/src/cli.ts \
+            --outfile "$out"
+          ls -la "$out"
+
+      - name: Compute SHA-256
+        id: sha
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="dist/${{ env.BINARY_NAME }}-${{ needs.meta.outputs.tag }}-${{ matrix.target }}${{ matrix.ext }}"
+          if command -v sha256sum >/dev/null 2>&1; then
+            hash=$(sha256sum "$out" | awk '{print $1}')
+          else
+            hash=$(shasum -a 256 "$out" | awk '{print $1}')
+          fi
+          echo "digest=$hash" >> "$GITHUB_OUTPUT"
+          echo "$hash  $(basename "$out")" > "$out.sha256"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Cosign keyless sign
+        shell: bash
+        env:
+          COSIGN_YES: "true"
+        run: |
+          set -euo pipefail
+          out="dist/${{ env.BINARY_NAME }}-${{ needs.meta.outputs.tag }}-${{ matrix.target }}${{ matrix.ext }}"
+          cosign sign-blob \
+            --yes \
+            --output-signature "$out.sig" \
+            --output-certificate "$out.pem" \
+            "$out"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}-${{ matrix.target }}
+          path: |
+            dist/${{ env.BINARY_NAME }}-${{ needs.meta.outputs.tag }}-${{ matrix.target }}${{ matrix.ext }}
+            dist/${{ env.BINARY_NAME }}-${{ needs.meta.outputs.tag }}-${{ matrix.target }}${{ matrix.ext }}.sha256
+            dist/${{ env.BINARY_NAME }}-${{ needs.meta.outputs.tag }}-${{ matrix.target }}${{ matrix.ext }}.sig
+            dist/${{ env.BINARY_NAME }}-${{ needs.meta.outputs.tag }}-${{ matrix.target }}${{ matrix.ext }}.pem
+          if-no-files-found: error
+          retention-days: 7
+
+  collect-hashes:
+    name: assemble SHA-256 manifest
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    outputs:
+      hashes: ${{ steps.h.outputs.hashes }}
+    steps:
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: ${{ env.BINARY_NAME }}-*
+          merge-multiple: true
+
+      - name: Build base64 hash manifest for SLSA
+        id: h
+        run: |
+          set -euo pipefail
+          # SLSA generator expects base64-encoded `sha256 name\n...` list.
+          (
+            cd dist
+            for f in ${BINARY_NAME}-*; do
+              case "$f" in
+                *.sha256|*.sig|*.pem) continue ;;
+              esac
+              sha256sum "$f"
+            done
+          ) > dist/manifest.sha256
+          b64=$(base64 -w0 < dist/manifest.sha256)
+          echo "hashes=$b64" >> "$GITHUB_OUTPUT"
+
+      - name: Upload manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifest
+          path: dist/manifest.sha256
+
+  provenance:
+    name: SLSA L3 provenance
+    needs: [meta, collect-hashes]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: ${{ needs.collect-hashes.outputs.hashes }}
+      upload-assets: false
+      provenance-name: bematist-${{ needs.meta.outputs.tag }}.intoto.jsonl
+
+  package:
+    name: build distro packages
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: ${{ env.BINARY_NAME }}-*
+          merge-multiple: true
+
+      - name: Build .deb (linux-x64 + linux-arm64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash packaging/deb/build.sh \
+            "${{ needs.meta.outputs.version }}" \
+            "dist/${{ env.BINARY_NAME }}-${{ needs.meta.outputs.tag }}-linux-x64" \
+            dist/${{ env.BINARY_NAME }}_${{ needs.meta.outputs.version }}_amd64.deb \
+            amd64
+          bash packaging/deb/build.sh \
+            "${{ needs.meta.outputs.version }}" \
+            "dist/${{ env.BINARY_NAME }}-${{ needs.meta.outputs.tag }}-linux-arm64" \
+            dist/${{ env.BINARY_NAME }}_${{ needs.meta.outputs.version }}_arm64.deb \
+            arm64
+
+      - name: Render Homebrew formula
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash packaging/homebrew/render.sh \
+            "${{ needs.meta.outputs.version }}" \
+            "${{ github.repository }}" \
+            dist > dist/bematist.rb
+
+      - name: Render AUR PKGBUILD
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash packaging/aur/render.sh \
+            "${{ needs.meta.outputs.version }}" \
+            "${{ github.repository }}" \
+            dist > dist/PKGBUILD
+
+      - name: Render Chocolatey nuspec
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash packaging/choco/render.sh \
+            "${{ needs.meta.outputs.version }}" \
+            "${{ github.repository }}" \
+            dist
+
+      - name: Upload distro package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: distro-packages
+          path: |
+            dist/*.deb
+            dist/bematist.rb
+            dist/PKGBUILD
+            dist/bematist.nuspec
+            dist/tools/**
+          if-no-files-found: error
+          retention-days: 7
+
+  sbom:
+    name: CycloneDX SBOM
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: ${{ env.BINARY_NAME }}-*
+          merge-multiple: true
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: dist/
+          format: cyclonedx-json
+          output-file: bematist-${{ needs.meta.outputs.tag }}.cdx.json
+          artifact-name: bematist-${{ needs.meta.outputs.tag }}.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ needs.meta.outputs.tag }}
+          path: bematist-${{ needs.meta.outputs.tag }}.cdx.json
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: publish GH release
+    needs: [meta, build, collect-hashes, provenance, package, sbom]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          # Binaries + signatures + certs + per-file .sha256
+          find artifacts -type f \( \
+               -name "${{ env.BINARY_NAME }}-*" \
+            -o -name "*.deb" \
+            -o -name "bematist.rb" \
+            -o -name "PKGBUILD" \
+            -o -name "bematist.nuspec" \
+            -o -name "manifest.sha256" \
+            -o -name "*.intoto.jsonl" \
+            -o -name "*.cdx.json" \
+          \) -exec cp {} release/ \;
+          ls -la release/
+
+      - name: Assemble release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > release/NOTES.md <<EOF
+          ## Bematist ${{ needs.meta.outputs.tag }}
+
+          Open-source, self-hostable AI-engineering analytics. Apache 2.0.
+
+          ### Install (recommended)
+
+          \`\`\`sh
+          # 1. Download matching asset + signature
+          gh release download ${{ needs.meta.outputs.tag }} \\
+            --repo ${{ github.repository }} \\
+            --pattern '${{ env.BINARY_NAME }}-*-<os>-<arch>*'
+
+          # 2. Verify cosign keyless signature (trusted OIDC identity)
+          cosign verify-blob \\
+            --certificate-identity-regexp '^https://github.com/${{ github.repository }}/\.github/workflows/release\.yml@refs/tags/v' \\
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \\
+            --certificate ${{ env.BINARY_NAME }}-*-<os>-<arch>.pem \\
+            --signature ${{ env.BINARY_NAME }}-*-<os>-<arch>.sig \\
+            ${{ env.BINARY_NAME }}-*-<os>-<arch>
+
+          # 3. Install to PATH
+          install -m 0755 ${{ env.BINARY_NAME }}-*-<os>-<arch> /usr/local/bin/bematist
+          \`\`\`
+
+          ### Distro packages
+
+          - Homebrew: \`brew install bematist/tap/bematist\`
+          - Debian/Ubuntu: download \`bematist_${{ needs.meta.outputs.version }}_<arch>.deb\` and \`dpkg -i\`
+          - Arch (AUR): \`yay -S bematist-bin\`
+          - Windows (Chocolatey): \`choco install bematist\`
+
+          ### SHA-256 manifest
+
+          \`\`\`
+          $(cat release/manifest.sha256)
+          \`\`\`
+
+          ### Provenance
+
+          SLSA Level 3 provenance is attached as \`bematist-${{ needs.meta.outputs.tag }}.intoto.jsonl\`.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.meta.outputs.tag }}
+          name: Bematist ${{ needs.meta.outputs.tag }}
+          body_path: release/NOTES.md
+          draft: true
+          prerelease: ${{ contains(needs.meta.outputs.tag, '-') }}
+          files: |
+            release/${{ env.BINARY_NAME }}-*
+            release/*.deb
+            release/bematist.rb
+            release/PKGBUILD
+            release/bematist.nuspec
+            release/manifest.sha256
+            release/*.intoto.jsonl
+            release/*.cdx.json
+
+  publish-homebrew:
+    name: publish Homebrew formula
+    needs: [meta, release]
+    runs-on: ubuntu-latest
+    # First real release fills in the HOMEBREW_TAP_TOKEN + tap repo name.
+    if: ${{ false && !contains(needs.meta.outputs.tag, '-') }}
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v4
+        with:
+          repository: bematist-org/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Download formula artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: distro-packages
+          path: pkg
+
+      - name: Publish formula
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp pkg/bematist.rb tap/Formula/bematist.rb
+          cd tap
+          git config user.name 'bematist-release-bot'
+          git config user.email 'release-bot@bematist.dev'
+          git add Formula/bematist.rb
+          git commit -m "bematist ${{ needs.meta.outputs.tag }}"
+          git push

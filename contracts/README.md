@@ -1,4 +1,4 @@
-# DevMetrics — Contracts
+# Bematist — Contracts
 
 > **Read this first.** These contracts are a **guide, not a lock.** They exist so 4 people can build in parallel without colliding at the seams. If a contract turns out to be wrong, change it — just ping the consumers in the PR. The goal is unblocking work, not freezing the design.
 >
@@ -16,7 +16,7 @@ One file per seam between workstreams. A "seam" is anywhere code from one workst
 | `04-scoring-io.md` | Scoring inputs/outputs | H |
 | `05-embed-provider.md` | Embedding provider abstraction | H |
 | `06-clio-pipeline.md` | On-device prompt pipeline + `PromptRecord` | G + B |
-| `07-manager-api.md` | tRPC + SSE for the dashboard | E + C |
+| `07-manager-api.md` | Next.js Server Actions + Route Handlers + SSE for the dashboard | E + C |
 | `08-redaction.md` | Server-side redaction contract | G |
 | `09-storage-schema.md` | ClickHouse + Postgres tables read by multiple workstreams | D |
 

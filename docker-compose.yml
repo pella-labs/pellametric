@@ -1,11 +1,18 @@
-# Bematist — production template. NOT used in Sprint 0; wired up by workstream owners in Sprint 1+.
-# Reference: CLAUDE.md §"Self-host stack (prod template)".
+# Bematist — production self-host template (team tenant default).
+# Reference: CLAUDE.md §"Self-host stack (prod template)" and §"Product shape (D2)".
+#
+# Environment is driven by a .env file. Use .env.example as the template.
+#
+# The per-app Dockerfiles referenced below don't exist yet — this compose file
+# is the contract that Sprint 2 polish will deliver against. See the TODO lines.
+
 services:
   postgres:
-    image: timescale/timescaledb:latest-pg16
+    image: postgres:16-alpine
+    container_name: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-bematist}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -17,7 +24,8 @@ services:
       retries: 10
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25.8-alpine
+    image: clickhouse/clickhouse-server:25-alpine
+    container_name: clickhouse
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DB:-bematist}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
@@ -35,6 +43,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: redis
     volumes:
       - redis-data:/data
     command: ["redis-server", "--appendonly", "yes"]
@@ -45,58 +54,81 @@ services:
       timeout: 5s
       retries: 10
 
-  ingest:
-    image: bematist/ingest:latest
+  # Redpanda (gateway queue, partition-by-tenant, 7-day retention) lands here when
+  # gateway workstream needs it. Stubbed for now — ingest's redpanda dep below is
+  # commented until the image is pinned.
+  #
+  # redpanda:
+  #   image: redpandadata/redpanda:latest
+  #   container_name: redpanda
+  #   command:
+  #     - redpanda
+  #     - start
+  #     - --smp=1
+  #     - --overprovisioned
+  #   restart: unless-stopped
+
+  web:
+    container_name: web
+    # TODO: Dockerfile at apps/web/Dockerfile lands in Sprint 2 polish.
     build:
       context: .
-      dockerfile: Dockerfile
-      target: ingest
+      dockerfile: apps/web/Dockerfile
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bematist}
       CLICKHOUSE_URL: http://clickhouse:8123
       REDIS_URL: redis://redis:6379
-      INGEST_LISTEN_ADDR: ":8000"
-      LOG_LEVEL: info
+      WEB_LISTEN_ADDR: ":3000"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
-      - "8000:8000"
-      - "4318:4318"
+      - "3000:3000"
     depends_on:
       postgres: { condition: service_healthy }
       clickhouse: { condition: service_healthy }
       redis: { condition: service_healthy }
     restart: unless-stopped
 
-  worker:
-    image: bematist/worker:latest
+  ingest:
+    container_name: ingest
+    # TODO: Dockerfile at apps/ingest/Dockerfile lands in Sprint 2 polish.
     build:
       context: .
-      dockerfile: Dockerfile
-      target: worker
+      dockerfile: apps/ingest/Dockerfile
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bematist}
       CLICKHOUSE_URL: http://clickhouse:8123
       REDIS_URL: redis://redis:6379
+      INGEST_LISTEN_ADDR: ":8000"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "8000:8000"      # custom JSON ingest
+      - "4318:4318"      # OTLP HTTP/Protobuf
     depends_on:
       postgres: { condition: service_healthy }
+      clickhouse: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      # redpanda: { condition: service_started }
     restart: unless-stopped
 
-  web:
-    image: bematist/web:latest
+  worker:
+    container_name: worker
+    # TODO: Dockerfile at apps/worker/Dockerfile lands in Sprint 2 polish.
     build:
       context: .
-      dockerfile: Dockerfile
-      target: web
+      dockerfile: apps/worker/Dockerfile
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bematist}
       CLICKHOUSE_URL: http://clickhouse:8123
-    ports:
-      - "3000:3000"
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      ingest: { condition: service_started }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
     restart: unless-stopped
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
     profiles: ["otel-collector"]
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:

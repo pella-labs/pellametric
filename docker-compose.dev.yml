@@ -1,13 +1,16 @@
+# Bematist — dev stack (DBs only).
+# Apps run via `bun run dev` on the host for fast iteration.
+# Postgres is bound to host port 5433 (not 5432) to avoid colliding with other projects.
 services:
   postgres:
-    image: timescale/timescaledb:latest-pg16
+    image: postgres:16-alpine
     container_name: bematist-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: bematist
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -17,7 +20,7 @@ services:
       retries: 10
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25.8-alpine
+    image: clickhouse/clickhouse-server:25-alpine
     container_name: bematist-clickhouse
     environment:
       CLICKHOUSE_DB: bematist
@@ -25,8 +28,8 @@ services:
       CLICKHOUSE_PASSWORD: ""
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     ports:
-      - "8123:8123"
-      - "9000:9000"
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:9000:9000"
     volumes:
       - clickhouse-data:/var/lib/clickhouse
     ulimits:
@@ -43,7 +46,7 @@ services:
     image: redis:7-alpine
     container_name: bematist-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     command: ["redis-server", "--appendonly", "yes"]
@@ -52,19 +55,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
-    container_name: bematist-otel-collector
-    profiles: ["otel-collector"]
-    command: ["--config=/etc/otel-collector-config.yaml"]
-    volumes:
-      - ./infra/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
-    ports:
-      - "4317:4317"
-      - "4318:4318"
-    depends_on:
-      - clickhouse
 
 volumes:
   postgres-data:

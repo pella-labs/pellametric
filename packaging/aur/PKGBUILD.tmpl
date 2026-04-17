@@ -1,0 +1,19 @@
+# Maintainer: Bematist Maintainers <maintainers@bematist.dev>
+pkgname=bematist-bin
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc='Open-source AI-engineering analytics collector (prebuilt binary)'
+arch=('x86_64' 'aarch64')
+url='https://bematist.dev'
+license=('Apache-2.0')
+provides=('bematist')
+conflicts=('bematist')
+source_x86_64=("https://github.com/@REPO@/releases/download/v${pkgver}/bematist-v${pkgver}-linux-x64")
+source_aarch64=("https://github.com/@REPO@/releases/download/v${pkgver}/bematist-v${pkgver}-linux-arm64")
+sha256sums_x86_64=('@SHA256_LINUX_X64@')
+sha256sums_aarch64=('@SHA256_LINUX_ARM64@')
+
+package() {
+  install -Dm755 "${srcdir}/bematist-v${pkgver}-linux-${CARCH/x86_64/x64}" \
+    "${pkgdir}/usr/bin/bematist"
+}

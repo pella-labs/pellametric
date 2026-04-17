@@ -125,7 +125,7 @@ Loaded from Postgres `policies` table at ingest startup; cached 60s.
 
 ## PHI scan (Phase 3)
 
-`devmetrics scan --phi` is a separate offline tool that scans paste-cache, image-cache, and JSONL for PHI. Not part of the synchronous `redact()` path. Lives in `packages/redact/phi/`.
+`bematist scan --phi` is a separate offline tool that scans paste-cache, image-cache, and JSONL for PHI. Not part of the synchronous `redact()` path. Lives in `packages/redact/phi/`.
 
 ## Eval gates
 

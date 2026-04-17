@@ -2,7 +2,7 @@
 
 Bun-compiled single binary that runs on each developer's machine, discovers
 sources, and ships events to the central ingest. One binary, three modes
-(solo / self-host / hosted) switched by `DEVMETRICS_ENDPOINT`.
+(solo / self-host / hosted) switched by `BEMATIST_ENDPOINT`.
 
 Status: **seed only.** B-seed shipped the `Adapter` SDK scaffold and one stub
 adapter for Claude Code. The real parsers, Clio on-device pipeline, egress

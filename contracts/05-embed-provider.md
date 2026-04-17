@@ -47,7 +47,7 @@ export interface EmbedProvider {
   embedBatch(reqs: EmbedRequest[]): Promise<EmbedResult[]>;
 
   /** Returns true if this provider is reachable RIGHT NOW.
-   *  Used by fallback chain and `devmetrics doctor`. */
+   *  Used by fallback chain and `bematist doctor`. */
   health(): Promise<{ ok: boolean; reason?: string }>;
 }
 ```
@@ -61,7 +61,7 @@ export interface EmbedProvider {
 5. **Air-gapped fallback A:** Ollama with `nomic-embed-text` if `ollama` daemon detected on `localhost:11434`.
 6. **Air-gapped fallback B:** bundled `@xenova/transformers` MiniLM-L6 (22MB, 384-dim, lazy-loaded).
 
-The resolver lives in `packages/embed/resolve.ts`. `devmetrics doctor` reports the resolved provider for each call site.
+The resolver lives in `packages/embed/resolve.ts`. `bematist doctor` reports the resolved provider for each call site.
 
 ## Cache (two layers)
 

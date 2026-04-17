@@ -94,7 +94,7 @@ Before egress journal write, the collector MAY surface a desktop notification wi
 - **Drop** — record discarded; counters incremented; no retry.
 - **Drop & blanket-disable for this session** — disables Clio output for `session_id` for 24h.
 
-Defaults to off (latency hit) but documented as available in `devmetrics policy show`.
+Defaults to off (latency hit) but documented as available in `bematist policy show`.
 
 ## Pipeline versioning
 
@@ -160,5 +160,6 @@ bun run test:privacy     # MERGE BLOCKER
 ## Changelog
 
 - 2026-04-16 — initial draft.
-- 2026-04-16 — Sprint-0 M0: `@devmetrics/schema` import path → `@bematist/schema` (repo renamed; see PRD §D32). Product name stays DevMetrics.
+- 2026-04-16 — Sprint-0 M0: workspace packages use `@bematist/*` namespace.
 - 2026-04-16 — M1 follow-up: confirmed `@bematist/*` package references across code snippets in this contract (additive; no behavioral change).
+- 2026-04-16 — Naming retrofit: product and CLI are `Bematist` / `bematist` everywhere (single name across all surfaces; supersedes PRD §D32 "DevMetrics stays the product name").

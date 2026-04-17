@@ -76,7 +76,7 @@ export const EventSchema = z.object({
     })
     .optional(),
 
-  // DevMetrics extensions (dev_metrics.*) — coding-agent specifics
+  // Bematist extensions (dev_metrics.*) — coding-agent specifics, analog to gen_ai.*
   dev_metrics: z.object({
     event_kind: z.enum([
       "session_start",

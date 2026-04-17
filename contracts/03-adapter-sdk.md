@@ -16,7 +16,7 @@ Every IDE/coding-agent adapter implements one interface so the collector can loa
 import type { Event } from "@bematist/schema";
 
 export interface AdapterContext {
-  /** Per-machine writable dir, ~/.devmetrics/adapters/<id>/ */
+  /** Per-machine writable dir, ~/.bematist/adapters/<id>/ */
   dataDir: string;
   /** Resolved policy for this adapter (tier, redaction overrides). */
   policy: AdapterPolicy;
@@ -68,7 +68,7 @@ export interface Adapter {
    *  MUST be cancellation-safe: if the collector aborts mid-poll, no partial state. */
   poll(ctx: AdapterContext, signal: AbortSignal): Promise<Event[]>;
 
-  /** Cheap health check — populates `devmetrics status` and dashboard. */
+  /** Cheap health check — populates `bematist status` and dashboard. */
   health(ctx: AdapterContext): Promise<AdapterHealth>;
 
   /** Optional — graceful shutdown hook. */
@@ -82,7 +82,7 @@ export interface Adapter {
 2. **Init** — collector calls `init(ctx)` for every enabled adapter on startup. Failure → log + mark disabled, don't crash collector.
 3. **Poll loop** — each adapter has its own polling cadence; calls run concurrently with bounded concurrency (default 4).
 4. **Emit** — events returned from `poll` go into the egress journal (local SQLite), then the egress worker ships them via `02-ingest-api`.
-5. **Health** — `devmetrics status` and `devmetrics doctor` call `health()` on every adapter; results cached 30s.
+5. **Health** — `bematist status` and `bematist doctor` call `health()` on every adapter; results cached 30s.
 
 ## Per-source contract — what each adapter must produce
 
@@ -125,5 +125,6 @@ The collector reuses _patterns_ from `~/dev/gauntlet/knowledge-graph` (= `@pella
 ## Changelog
 
 - 2026-04-16 — initial draft.
-- 2026-04-16 — Sprint-0 M0: `@devmetrics/schema` import path → `@bematist/schema` (repo renamed; see PRD §D32). Product name stays DevMetrics.
+- 2026-04-16 — Sprint-0 M0: workspace packages use `@bematist/*` namespace.
 - 2026-04-16 — M1 follow-up: confirmed `@bematist/*` package references across code snippets in this contract (additive; no behavioral change).
+- 2026-04-16 — Naming retrofit: product and CLI are `Bematist` / `bematist` everywhere (single name across all surfaces; supersedes PRD §D32 "DevMetrics stays the product name").

@@ -275,16 +275,12 @@ describe("handleOtlp /v1/traces (Phase 5 PRD tests 1–13)", () => {
     expect(wal.drain().length).toBe(0);
   });
 
-  test("11. docker-compose.dev.yml otel-collector has profiles:['otel-collector']", () => {
-    // Port-collision documentation guard. We do NOT modify docker-compose
-    // in Phase 5; this asserts the existing guard is still in place so
-    // `:4318` doesn't double-bind in dev.
-    const yml = fsRead(
-      // From this test file's location: apps/ingest/src/otlp/server.test.ts
-      // → ../../../../docker-compose.dev.yml
-      `${__dirname}/../../../../docker-compose.dev.yml`,
-      "utf8",
-    );
+  test("11. docker-compose.yml otel-collector has profiles:['otel-collector']", () => {
+    // Port-collision documentation guard: the opt-in otel-collector sidecar
+    // must stay behind a compose profile so `:4318` doesn't double-bind when
+    // the Bun ingest's native OTLP receiver is running. Lives in the prod
+    // template (dev stack is DBs-only — apps run on host via `bun run dev`).
+    const yml = fsRead(`${__dirname}/../../../../docker-compose.yml`, "utf8");
     expect(yml).toMatch(/otel-collector:[\s\S]*profiles:\s*\[\s*"otel-collector"\s*\]/);
   });
 

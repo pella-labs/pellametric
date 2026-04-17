@@ -140,7 +140,7 @@ ALTER TABLE events ADD PROJECTION cluster_lookup (
 - **Tier C (30d):** TTL is fine.
 - **Aggregates (MVs):** retained indefinitely with `HMAC(engineer_id, tenant_salt)` pseudonymization (GDPR Art. 17(3)(e) carve-out).
 
-Partition-drop worker runs daily. **Erasure SLA: 7 days** (`devmetrics erase --user --org` triggers immediate drop, audit-logged).
+Partition-drop worker runs daily. **Erasure SLA: 7 days** (`bematist erase --user --org` triggers immediate drop, audit-logged).
 
 ## Postgres — control plane
 

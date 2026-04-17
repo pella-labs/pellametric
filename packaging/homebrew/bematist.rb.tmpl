@@ -1,0 +1,40 @@
+# typed: false
+# frozen_string_literal: true
+
+# Bematist — Homebrew formula (rendered from template at release time).
+# See packaging/homebrew/bematist.rb.tmpl for the source and
+# packaging/homebrew/render.sh for the substitution step.
+class Bematist < Formula
+  desc "Open-source, self-hostable AI-engineering analytics platform"
+  homepage "https://bematist.dev"
+  version "@VERSION@"
+  license "Apache-2.0"
+
+  on_macos do
+    if Hardware::CPU.arm?
+      url "https://github.com/@REPO@/releases/download/v#{version}/bematist-v#{version}-darwin-arm64"
+      sha256 "@SHA256_DARWIN_ARM64@"
+    else
+      url "https://github.com/@REPO@/releases/download/v#{version}/bematist-v#{version}-darwin-x64"
+      sha256 "@SHA256_DARWIN_X64@"
+    end
+  end
+
+  on_linux do
+    if Hardware::CPU.arm?
+      url "https://github.com/@REPO@/releases/download/v#{version}/bematist-v#{version}-linux-arm64"
+      sha256 "@SHA256_LINUX_ARM64@"
+    else
+      url "https://github.com/@REPO@/releases/download/v#{version}/bematist-v#{version}-linux-x64"
+      sha256 "@SHA256_LINUX_X64@"
+    end
+  end
+
+  def install
+    bin.install Dir["bematist-*"].first => "bematist"
+  end
+
+  test do
+    assert_match "bematist", shell_output("#{bin}/bematist --version", 2)
+  end
+end

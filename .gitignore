@@ -42,9 +42,12 @@ bun-debug.log*
 coverage/
 .nyc_output/
 *.lcov
+playwright-report/
+test-results/
+tests/perf/summary.json
 
-# Local data (DevMetrics-specific)
-.devmetrics/
+# Local data (Bematist-specific)
+.bematist/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

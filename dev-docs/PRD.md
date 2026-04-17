@@ -1,9 +1,9 @@
-# DevMetrics — Product Requirements Document
+# Bematist — Product Requirements Document
 
 **Version:** 1.0 (consolidated from `research.md`, `analytics_gpt_research.md`, `PRD-team-visibility.md`, `analytics-research/PRD.md`, `analytics-research/dev-docs/*`, `grammata-audit.md`)
 **Date:** 2026-04-16
 **Status:** Draft for implementation. Locks the union of the best ideas across five parallel research artifacts.
-**Independence statement:** DevMetrics is a new, independent project. It is **not** a feature of, child of, or extension to Pharos. Grammata (the NPM package) is a building block whose field-level parsers may be reused or superseded, but Pharos / Electron / `pharos-ade.com` are not product surfaces.
+**Independence statement:** Bematist is a new, independent project. It is **not** a feature of, child of, or extension to Pharos. Grammata (the NPM package) is a building block whose field-level parsers may be reused or superseded, but Pharos / Electron / `pharos-ade.com` are not product surfaces.
 
 ---
 
@@ -45,9 +45,9 @@
 |---|---|---|---|
 | **Solo / embedded** | Individual dev, ≤5 engineers | Single binary bundling Postgres+TimescaleDB (not DuckDB — single-writer contention in challenger A4) | Local web at `:9873` |
 | **Team self-host** | Org 5–500 devs | `docker compose up` — web + ingest + worker + Postgres + ClickHouse + Redis | On-prem web; OAuth login |
-| **Team managed** | SaaS tier (Phase 4+) | Hosted multi-tenant, ClickHouse row-policy isolation | Hosted web at `devmetrics.dev` |
+| **Team managed** | SaaS tier (Phase 4+) | Hosted multi-tenant, ClickHouse row-policy isolation | Hosted web at `bematist.dev` |
 
-The same agent binary runs in all three. `DEVMETRICS_ENDPOINT=<url>` is the only switch.
+The same agent binary runs in all three. `BEMATIST_ENDPOINT=<url>` is the only switch.
 
 ### 2.3 Non-goals (explicit — copied from `PRD-team-visibility.md`, `analytics-research/PRD.md` §10 and Loop 6)
 
@@ -80,24 +80,24 @@ The same agent binary runs in all three. `DEVMETRICS_ENDPOINT=<url>` is the only
 
 ## 4. Product Surfaces
 
-### 4.1 CLI (`devmetrics`)
+### 4.1 CLI (`bematist`)
 
 | Command | Purpose | Notes |
 |---|---|---|
-| `devmetrics install` | Installer — detects every IDE on the machine, configures adapters, registers daemon (launchd/systemd), opens local dashboard. | Distro package primary; `curl \| sh` fallback wrapped in a function for partial-pipe safety. Sigstore + cosign signature. SLSA L3 attestation. |
-| `devmetrics status` | Adapters active, last event, queue depth, version, signature SHA. | |
-| `devmetrics audit --tail` | What bytes left this machine (the "egress journal" — local SQLite, kept forever). | Privacy commitment #1 in the Bill of Rights. |
-| `devmetrics dry-run` | Default on first run — logs what would be sent, sends nothing. | |
-| `devmetrics policy show` | Current effective tier + redaction rules. | |
-| `devmetrics doctor` | Checks `ulimit -c 0`, binary signature, ingest reachability, IDE adapter health. | |
-| `devmetrics purge --session <id>` | Local egress journal purge for a session. | |
-| `devmetrics erase --user <id> --org <id>` | GDPR erasure (server-side, triggers partition drop within 7 d). | |
-| `devmetrics serve --embedded` | Single-binary mode, bundled Postgres+Timescale, local web. | Solo / ≤5-dev orgs. |
-| `devmetrics outcomes` | Cost per merged PR / commit / green test for this project. | Uses `git log` + local adapter data. `research.md` Lane 1. |
-| `devmetrics waste` | In-session anti-pattern report for the last 30 d. | `research.md` Lane 3. |
-| `devmetrics prompts` | Personal prompt-quality patterns with cohort sizes. | `research.md` Lane 2. |
-| `devmetrics export --compliance` | Signed JSON bundle + SHA-256 manifest + optional PGP sig + EU AI Act / SOC 2 report mappings. | Phase 2; PRD-team C2. |
-| `devmetrics scan --phi` | Detect PHI / secrets in paste-cache / image-cache / JSONL. | Phase 3; PRD-team C1 (HIPAA gap — Anthropic BAA excludes Claude Code). |
+| `bematist install` | Installer — detects every IDE on the machine, configures adapters, registers daemon (launchd/systemd), opens local dashboard. | Distro package primary; `curl \| sh` fallback wrapped in a function for partial-pipe safety. Sigstore + cosign signature. SLSA L3 attestation. |
+| `bematist status` | Adapters active, last event, queue depth, version, signature SHA. | |
+| `bematist audit --tail` | What bytes left this machine (the "egress journal" — local SQLite, kept forever). | Privacy commitment #1 in the Bill of Rights. |
+| `bematist dry-run` | Default on first run — logs what would be sent, sends nothing. | |
+| `bematist policy show` | Current effective tier + redaction rules. | |
+| `bematist doctor` | Checks `ulimit -c 0`, binary signature, ingest reachability, IDE adapter health. | |
+| `bematist purge --session <id>` | Local egress journal purge for a session. | |
+| `bematist erase --user <id> --org <id>` | GDPR erasure (server-side, triggers partition drop within 7 d). | |
+| `bematist serve --embedded` | Single-binary mode, bundled Postgres+Timescale, local web. | Solo / ≤5-dev orgs. |
+| `bematist outcomes` | Cost per merged PR / commit / green test for this project. | Uses `git log` + local adapter data. `research.md` Lane 1. |
+| `bematist waste` | In-session anti-pattern report for the last 30 d. | `research.md` Lane 3. |
+| `bematist prompts` | Personal prompt-quality patterns with cohort sizes. | `research.md` Lane 2. |
+| `bematist export --compliance` | Signed JSON bundle + SHA-256 manifest + optional PGP sig + EU AI Act / SOC 2 report mappings. | Phase 2; PRD-team C2. |
+| `bematist scan --phi` | Detect PHI / secrets in paste-cache / image-cache / JSONL. | Phase 3; PRD-team C1 (HIPAA gap — Anthropic BAA excludes Claude Code). |
 
 ### 4.2 Web dashboard
 
@@ -139,7 +139,7 @@ Managers and individual contributors both hit the same Next.js 16 app; **role in
 │  Claude Code ──native OTLP──┐                  │
 │  Codex / Cursor / OpenCode /│                  │
 │  Goose / Copilot / Continue /│                 │
-│  Cline / Roo       ──── adapters ──► devmetrics-agent (Bun-compiled binary)
+│  Cline / Roo       ──── adapters ──► bematist-agent (Bun-compiled binary)
 │                              │       • OTLP HTTP receiver (:4318 loopback)
 │                              │       • 5 file-tailing adapters
 │                              │       • redaction + team.id tagging
@@ -149,7 +149,7 @@ Managers and individual contributors both hit the same Next.js 16 app; **role in
 └──────────────────────┬───────┴────── local dashboard at :9873 ─┘
                        │ OTLP/HTTP + protobuf + gzip, mTLS optional
                        ▼
-┌──────────── DEVMETRICS GATEWAY (single container image) ─────┐
+┌──────────── BEMATIST GATEWAY (single container image) ───────┐
 │  Envoy + Rust ext_authz ── JWT verify, rate limit             │
 │  OTEL Collector (opt-in sidecar) OR native Bun OTLP receiver  │
 │  Redpanda (7-day queue, partition-by-tenant)                  │
@@ -225,7 +225,7 @@ Retention: 30 d Tier-C default (OSS template; EU-privacy-friendly), 90 d Tier-B,
 | **B — counters + redacted envelopes** **(DEFAULT)** | Above + event type, hashed file path, error class, duration, prompt **length** (not text), diff line-count (not body) | All orgs by default — matches Anthropic's own `OTEL_LOG_USER_PROMPTS=0` posture; works-council compatible |
 | **C — full events + prompt text** | Above + raw `user_prompt.prompt`, `tool_result.result`, file paths, diff bodies | Opt-in per-project by IC; or tenant-wide admin flip with signed Ed25519 config + 7-day cooldown + IC banner |
 
-**Default changed from research.md → DevMetrics's "Tier C default" → to PRD-team's counters+envelopes.** Full-prompt-default loses the EU mid-market and violates works-council expectations; the commercial upside of counters+envelopes default is that *more* orgs install *because* the default is safe.
+**Default changed from research.md → the earlier "Tier C default" → to PRD-team's counters+envelopes.** Full-prompt-default loses the EU mid-market and violates works-council expectations; the commercial upside of counters+envelopes default is that *more* orgs install *because* the default is safe.
 
 ### 6.2 Role × privacy matrix
 
@@ -253,7 +253,7 @@ Contains:
 - Own maturity-ladder stage (Aware → Operator → Builder → Architect) — **private to the IC, never auto-assigned to a performance review**.
 - Own Waste Radar findings + suggested fix templates.
 - Own prompt-pattern cohorts ("your one-shot rate is 47%; patterns that correlate in your data…").
-- Egress audit log (`devmetrics audit --tail` equivalent in the web UI).
+- Egress audit log (`bematist audit --tail` equivalent in the web UI).
 - Stage never auto-assigned for a performance review. Docs say so. Contract template says so.
 
 ### 6.4 k-anonymity floor and differential privacy
@@ -398,15 +398,15 @@ Citation validator is a sanity check; the real gate is enum constraint in H4a–
 
 Per-dev rolling baseline + 3σ; cohort fallback for new devs. Writes to `alerts`; Slack/Discord/email webhook fan-out. Threshold: 3σ deviation from own baseline OR 5× cohort 95th percentile. **Hourly** (`research.md` + challenger §G). No waiting a week to notice an engineer burned $400 on an infinite loop.
 
-### 8.5 Outcome attribution (`devmetrics outcomes`)
+### 8.5 Outcome attribution (`bematist outcomes`)
 
 Hourly Git enrichment worker. Three attribution layers, most-reliable-first:
 
 1. **`code_edit_tool.decision=accept` event** as the primary attribution anchor (PRD-team F12 fix — rebase/squash-resilient; the accepted hunk hash is the join key).
-2. **Opt-in `AI-Assisted:` commit trailer** — when enabled in `devmetrics policy set ai-assisted-trailer=on`, a local `post-commit` git hook appends a trailer to the last commit message: `AI-Assisted: devmetrics-<sessionId>`. The GitHub App webhook parser extracts the trailer → joins session → outcome. Unlike Copilot Metrics API, this works for any agent (Claude Code, Codex, Cursor, Continue, …), is org-gate-free, and sidesteps the Anthropic Enterprise-key TOS restriction on prompt logging.
+2. **Opt-in `AI-Assisted:` commit trailer** — when enabled in `bematist policy set ai-assisted-trailer=on`, a local `post-commit` git hook appends a trailer to the last commit message: `AI-Assisted: bematist-<sessionId>`. The GitHub App webhook parser extracts the trailer → joins session → outcome. Unlike Copilot Metrics API, this works for any agent (Claude Code, Codex, Cursor, Continue, …), is org-gate-free, and sidesteps the Anthropic Enterprise-key TOS restriction on prompt logging.
 3. **`git log --merges` + `gh pr list --state merged` (if `gh` available)** + denormalized `pr_number` / `commit_sha` / `branch` onto ClickHouse `events` as the fallback for ICs who haven't opted into the trailer.
 
-**GitHub App (`devmetrics-github` Cloud Function equivalent):** subscribes to `pull_request`, `pull_request_review`, `workflow_run`, `push`, `check_suite`. Writes `tenant_id, pr_number, merged, ciConclusion, reviewOutcome, revertOf?, revertedBy?, commitShas[], aiAssistedSessionIds[]` into the `outcomes` table. Validates webhook HMAC. Reconciliation cron: daily GET of last 7 days of PRs via REST to detect missed webhooks.
+**GitHub App (`bematist-github` Cloud Function equivalent):** subscribes to `pull_request`, `pull_request_review`, `workflow_run`, `push`, `check_suite`. Writes `tenant_id, pr_number, merged, ciConclusion, reviewOutcome, revertOf?, revertedBy?, commitShas[], aiAssistedSessionIds[]` into the `outcomes` table. Validates webhook HMAC. Reconciliation cron: daily GET of last 7 days of PRs via REST to detect missed webhooks.
 
 **Revert detection** combines three signals (challenger G7): commit-message regex `^Revert ".*"`, `This reverts commit <sha>` in body, AND a programmatic `git revert` marker. 1000-PR real-repo sample target: < 0.5 % false positives.
 
@@ -583,7 +583,7 @@ The "data_fidelity" indicator renders next to every IDE in every dashboard picke
 
 ### Phase 2 — Team gateway, privacy-first default (XL; ≈ 6–8 weeks after Phase 1)
 
-- [ ] Gateway container `ghcr.io/devmetrics/gateway:<sha>`; Docker Compose on-prem; hosted multi-tenant with ClickHouse row policies.
+- [ ] Gateway container `ghcr.io/bematist/gateway:<sha>`; Docker Compose on-prem; hosted multi-tenant with ClickHouse row policies.
 - [ ] Envoy + Rust `ext_authz` JWT verify; Redpanda queue; Redis dedup; ClickHouse schema w/ `tenant_id` partition; `events_raw` bucket for unknown events.
 - [ ] GitHub OAuth + workspace model (IC / Team Lead / Manager / Admin).
 - [ ] Managed-settings.json generator UI: signed Ed25519, Jamf / Intune / Kandji / GPO packages.
@@ -592,8 +592,8 @@ The "data_fidelity" indicator renders next to every IDE in every dashboard picke
 - [ ] Privacy-mode cooldown (signed config + 7-day delay + IC banner).
 - [ ] SOC 2 Type I evidence collection starts (Drata / Vanta).
 - [ ] `/privacy` page publishes Bill of Rights + GDPR notice + DPIA template.
-- [ ] Compliance export (`devmetrics export --compliance`) — signed JSON + SHA-256 manifest + optional PGP sig.
-- [ ] PHI / secrets scan (`devmetrics scan --phi`) — healthcare dev painkiller given Anthropic BAA exclusion.
+- [ ] Compliance export (`bematist export --compliance`) — signed JSON + SHA-256 manifest + optional PGP sig.
+- [ ] PHI / secrets scan (`bematist scan --phi`) — healthcare dev painkiller given Anthropic BAA exclusion.
 
 ### Phase 3 — AI/ML depth + EU region (XL; ≈ 1 quarter)
 
@@ -607,7 +607,7 @@ The "data_fidelity" indicator renders next to every IDE in every dashboard picke
 - [ ] Copilot IDE adapter + Cline/Roo/Kilo 3-in-1 adapter + Antigravity land-grab.
 - [ ] EU-region hosted instance (Frankfurt) with SCCs + DPF.
 - [ ] SOC 2 Type II observation (M9–M12).
-- [ ] GitHub Action for PR-comment reporting (`uses: devmetrics/report-action@v1` — every merged PR becomes an ad, no competitor ships this).
+- [ ] GitHub Action for PR-comment reporting (`uses: bematist/report-action@v1` — every merged PR becomes an ad, no competitor ships this).
 - [ ] Raycast extension (inherit 1 M+ installed base; `ccusage` Raycast precedent exists).
 
 ### Phase 4 — Enterprise SSO/SCIM/air-gap (L; ≈ 1 quarter)
@@ -788,13 +788,13 @@ Anchor: Helicone $20 / seat, Langfuse $59 / mo, Anthropic Team Analytics bundled
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | DevMetrics is an independent project, not tied to Pharos. | Brief; repeated plan mistake in 3 of 5 research artifacts. |
+| D1 | Bematist is an independent project, not tied to Pharos. | Brief; repeated plan mistake in 3 of 5 research artifacts. |
 | D2 | Single-binary agent runs in solo / team-self-host / team-hosted modes. | Preserves solo UX on day 1; env-var flip unlocks team mode; no re-install. |
 | D3 | Claude Code capture = native OTEL first, hook/JSONL fallback. | Anthropic ships the schema; avoid drift. |
 | D4 | Other agents = adapter shims re-emitting a canonical event schema. | Single downstream storage shape. |
 | D5 | Storage = ClickHouse (gateway) + Postgres+TimescaleDB (embedded ≤50 devs). | 7–11× compression; kernel row policies; Postgres+Timescale replaces DuckDB single-writer trap. |
 | D6 | Identity = workspace model + GitHub OAuth v0; SAML/OIDC Phase 4. | Mid-market self-serve. |
-| D7 | Privacy default = **counters + redacted envelopes** (Tier B). | Mirrors Anthropic's own `OTEL_LOG_USER_PROMPTS=0`; works-council compatible; overrides DevMetrics "Tier C default." |
+| D7 | Privacy default = **counters + redacted envelopes** (Tier B). | Mirrors Anthropic's own `OTEL_LOG_USER_PROMPTS=0`; works-council compatible; overrides the earlier "Tier C default" from the superseded research artifacts. |
 | D8 | Manager cannot read IC prompt text at v0 except under 3 named audit-logged exceptions. | Enforced in product + contract + Bill of Rights. |
 | D9 | k ≥ 5 floor for every team view; k ≥ 25 for DP releases. | Works-council + EU AI Act Annex III defensibility. |
 | D10 | No second-order LLM calls per session. | Goodhart + TOS + cost-cliff + privacy. Per-session scoring is rule-based; LLM runs weekly for team-aggregate digest only. |
@@ -816,10 +816,10 @@ Anchor: Helicone $20 / seat, Langfuse $59 / mo, Anthropic Team Analytics bundled
 | D26 | **No managed-service / vendor-locked backend.** Reject Firestore, Firebase Auth, Cloud Functions, Cloud Scheduler as the primary stack. | Kills the open-source + self-host + on-prem + air-gapped positioning locked in D1–D2. Schema concepts (subcollection-tenant) map onto ClickHouse row policies without them. |
 | D27 | **Clio-adapted on-device prompt pipeline is the only way prompt text surfaces at team level.** Redact → abstract (via user's own running agent, never a cloud LLM on raw prompts) → Clio-style verify-non-identifying second pass → embed → cluster with k ≥ 3 contributor floor. | `analytics-product/` plan. Only privacy-preserving path to prompt-level drill. Anthropic Clio (2024) + OpenClio are the prior art. Cloud LLM touches only already-redacted, already-verified abstracts at the cluster-labeler step. |
 | D28 | **AI Leverage Score math locked as eval-gateable formulas** with winsorized-p5/p95 + percentile-rank within cohort + `confidence = √(outcomes/10) · √(active_days/10)` + `final = raw · confidence`. Gated by a frozen 500-case synthetic dev-month fixture with MAE ≤ 3. | Prevents silent drift of scoring math between releases; makes the score legally defensible; matches the specificity of the `analytics-product/` plan. |
-| D29 | **`AI-Assisted:` commit trailer is the primary opt-in attribution path for non-Claude-Code agents.** Avoids Copilot Metrics API (org-gated, Enterprise-only). Local `post-commit` git hook appends `AI-Assisted: devmetrics-<sessionId>`. | Works across every agent (Claude, Codex, Cursor, Continue, Cline, Roo, Kilo); TOS-compatible for personal API keys; merges cleanly with `code_edit_tool.decision=accept` primary anchor + `git log` fallback. |
+| D29 | **`AI-Assisted:` commit trailer is the primary opt-in attribution path for non-Claude-Code agents.** Avoids Copilot Metrics API (org-gated, Enterprise-only). Local `post-commit` git hook appends `AI-Assisted: bematist-<sessionId>`. | Works across every agent (Claude, Codex, Cursor, Continue, Cline, Roo, Kilo); TOS-compatible for personal API keys; merges cleanly with `code_edit_tool.decision=accept` primary anchor + `git log` fallback. |
 | D30 | **Developer notified of every manager view of their drill page.** Audit-log row at view-time; daily digest by default; immediate-notification option available. | Transparency primitive from `analytics-product/`. Turns the audit-log from a passive compliance artifact into an active trust signal for the IC. |
 | D31 | **Promote-to-Playbook is the Team Impact subscore's primary signal source.** | Without explicit positive-consent sharing, Team Impact has no non-gameable data source. Clio clustering + IC promotion + downstream cluster-membership adoption closes the loop. |
-| D32 | **Repo/code slug `bematist`, product name `DevMetrics`, CLI binary `devmetrics`, env var prefix `DEVMETRICS_*`.** GitHub repo slug and workspace package names use `bematist`/`@bematist/*` (internal, changed Sprint 0 kickoff 2026-04-16 when the repo was renamed from `devmetrics`). Product name in all docs, UI, marketing, CLI binary name, and env var prefixes stay **DevMetrics** / `devmetrics` / `DEVMETRICS_*` — user-facing and locked. Also: ClickHouse events engine is `ReplacingMergeTree(ts)` not `(client_event_id)` — CH 25+ rejects UUID as the version column. See `contracts/09-storage-schema.md` Changelog. | Clean separation between code slug (freely renamable) and product identity (locked for legal/contract stability). Avoids PRD/CLAUDE.md churn every time a repo is renamed, while keeping code identifiers aligned with the GitHub URL contributors see. |
+| D32 | **Single name everywhere: Bematist.** Repo, product, CLI binary, env var prefix, package namespace, UI copy, marketing. Workspace packages `@bematist/*`; CLI binary `bematist`; env var prefix `BEMATIST_*`; ingest bearer prefix `bm_`. One name across every surface, no translation layer. Also: ClickHouse events engine is `ReplacingMergeTree(ts)` not `(client_event_id)` — CH 25+ rejects UUID as the version column. See `contracts/09-storage-schema.md` Changelog. | Single name removes a class of bugs (which surface gets which name) and matches the GitHub URL contributors see. An earlier version of this entry split repo slug from product name; that split was superseded 2026-04-16 and retrofitted across docs and code. |
 
 ---
 

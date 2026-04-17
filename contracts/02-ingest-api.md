@@ -30,7 +30,7 @@ For adapters without native OTel.
 | Method | Path | Body | Notes |
 |---|---|---|---|
 | POST | `/v1/events` | `{ events: Event[] }` (≤1000 per request) | zod-validated; dedup via Redis SETNX |
-| POST | `/v1/heartbeat` | `{ device_id, version, adapters: AdapterStatus[] }` | every 60s; powers `devmetrics doctor` and dashboard collector health |
+| POST | `/v1/heartbeat` | `{ device_id, version, adapters: AdapterStatus[] }` | every 60s; powers `bematist doctor` and dashboard collector health |
 | POST | `/v1/audit/journal` | `{ entries: EgressJournalEntry[] }` | one-way mirror of the collector's local egress journal for tenant-side audit (Bill of Rights #1) |
 
 ### 3. Webhooks — `:8000`
@@ -46,7 +46,7 @@ Subscribed events (GitHub baseline): `pull_request`, `pull_request_review`, `wor
 ## Auth
 
 ```
-Authorization: Bearer dm_<orgId>_<rand>
+Authorization: Bearer bm_<orgId>_<rand>
 ```
 
 - One ingest key per `(org, environment)` pair.

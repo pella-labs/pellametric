@@ -1,0 +1,3 @@
+# Ownership split per WORKSTREAMS.md — F / E / G-frontend currently owned by @SebastianGarces; other workstreams TBD.
+# Until per-directory owners are assigned, every path falls back to the repo owner for review.
+* @SebastianGarces

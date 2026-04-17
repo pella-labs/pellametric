@@ -1,0 +1,21 @@
+$ErrorActionPreference = 'Stop'
+
+# Substituted at render time: @VERSION@, @REPO@, @SHA256_WINDOWS_X64@.
+$packageName = 'bematist'
+$toolsDir    = "$(Split-Path -Parent $MyInvocation.MyCommand.Definition)"
+$version     = '@VERSION@'
+$url64       = "https://github.com/@REPO@/releases/download/v$version/bematist-v$version-windows-x64.exe"
+$checksum64  = '@SHA256_WINDOWS_X64@'
+
+$packageArgs = @{
+  packageName    = $packageName
+  fileFullPath64 = Join-Path $toolsDir 'bematist.exe'
+  url64bit       = $url64
+  checksum64     = $checksum64
+  checksumType64 = 'sha256'
+}
+
+Get-ChocolateyWebFile @packageArgs
+
+# Install into Chocolatey's shim dir.
+Install-BinFile -Name 'bematist' -Path $packageArgs.fileFullPath64

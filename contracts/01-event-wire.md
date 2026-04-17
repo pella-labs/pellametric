@@ -70,7 +70,7 @@ export const EventSchema = z.object({
     }).optional(),
   }).optional(),
 
-  // DevMetrics extensions (dev_metrics.*) — coding-agent specifics
+  // Bematist extensions (dev_metrics.*) — coding-agent specifics, analog to gen_ai.*
   dev_metrics: z.object({
     event_kind: z.enum([
       "session_start", "session_end",
@@ -129,8 +129,8 @@ export type Event = z.infer<typeof EventSchema>;
 
 Collectors using OTLP set:
 - `gen_ai.system`, `gen_ai.request.model`, `gen_ai.usage.*` — per OTel GenAI semantic conventions.
-- `dev_metrics.event_kind`, `dev_metrics.cost_usd`, `dev_metrics.tool_name`, etc. — DevMetrics-specific extensions namespaced under `dev_metrics.*`.
-- Resource attributes: `service.name = "devmetrics-collector"`, `service.version = <binary version>`, `device.id`. **Tenant and engineer identity are NOT trusted from resource attrs** — derived server-side from the JWT.
+- `dev_metrics.event_kind`, `dev_metrics.cost_usd`, `dev_metrics.tool_name`, etc. — coding-agent extensions namespaced under `dev_metrics.*` (OTel custom namespace; the prefix is semantic, analog to `gen_ai.*`, not a product brand).
+- Resource attributes: `service.name = "bematist-collector"`, `service.version = <binary version>`, `device.id`. **Tenant and engineer identity are NOT trusted from resource attrs** — derived server-side from the JWT.
 
 The ingest's OTLP receiver maps these into the `Event` shape above before redaction and storage.
 

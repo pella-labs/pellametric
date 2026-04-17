@@ -1,4 +1,4 @@
-# DevMetrics — Workstreams
+# Bematist — Workstreams
 
 > **This is a guide, not a lock.** The contracts referenced here are starting points so 5 people can build in parallel without colliding. Any owner can propose changes via PR — the goal is unblocking parallel work, not freezing the design. Iterate as we learn. If a contract turns out to be wrong, change it; just ping the consumers in the PR description.
 >
@@ -6,7 +6,7 @@
 
 ## Why workstreams
 
-DevMetrics has too many moving parts (collector, ingest, dashboard, scoring, AI pipeline, privacy/redaction, storage, compliance) for 5 people to coordinate ad-hoc. Each workstream has one primary owner, a clear scope, and a small set of contracts they own at the seams with other workstreams. The owner is the decider for their workstream's internals; the contracts are how they communicate with the rest.
+Bematist has too many moving parts (collector, ingest, dashboard, scoring, AI pipeline, privacy/redaction, storage, compliance) for 5 people to coordinate ad-hoc. Each workstream has one primary owner, a clear scope, and a small set of contracts they own at the seams with other workstreams. The owner is the decider for their workstream's internals; the contracts are how they communicate with the rest.
 
 PRD §10 already groups the work as B–I. We keep those names so the PRD line numbers stay meaningful.
 
@@ -35,7 +35,7 @@ Names assigned. Re-slice on Sprint 0 kickoff if the load isn't right; this is a 
 | **B** | Collector & Adapters | David | `bun build --compile` per-machine binary; v1 adapters (Claude Code full, Cursor token-only, Codex, OpenCode post-migration, Continue.dev full, +1 VS Code generic); Phase-2 adapters; on-device Clio pipeline plumbing; egress journal; CLI commands. | `apps/collector`, `packages/sdk`, `packages/clio` (on-device half), `packages/redact` (collector-side defense-in-depth), `packages/fixtures` | `03-adapter-sdk`, co-owns `01-event-wire`, `06-clio-pipeline` | `02-ingest-api`, `08-redaction` |
 | **C** | Ingest & Webhooks | Walid | Bun ingest server (OTLP HTTP/Protobuf + custom JSON + webhooks); Redis SETNX dedup; tier enforcement; rate limiting; GitHub App. | `apps/ingest`, `packages/api` (ingest half) | `02-ingest-api`, co-owns `01-event-wire` | `03-adapter-sdk`, `08-redaction`, `09-storage-schema` |
 | **D** | Storage & Schema | Jorge | ClickHouse `events` table + projections + materialized views; Postgres control plane + RLS + Drizzle migrations; partition-drop GDPR worker (7-d SLA); Plan B Go side-car (if F15 soak fails). | `packages/schema`, `apps/worker` | `09-storage-schema` | `01-event-wire` |
-| **E** | Web & Manager API | Sebastian | Next.js 16 dashboard; tRPC v11 routers; SSE realtime; manager 2×2; IC `/me` views; Reveal gesture + audit confirm; CSV export rules; brand tokens + UI kit. | `apps/web`, `packages/ui`, `packages/api` (manager half) | `07-manager-api` | `04-scoring-io`, `09-storage-schema`, `08-redaction` |
+| **E** | Web & Manager API | Sebastian | Next.js 16 dashboard; Server Actions (mutations) + Route Handlers (client reads, SSE, CSV); direct-import RSC reads; manager 2×2; IC `/me` views; Reveal gesture + audit confirm; CSV export rules; brand tokens + UI kit. | `apps/web`, `packages/ui`, `packages/api` (manager half) | `07-manager-api` | `04-scoring-io`, `09-storage-schema`, `08-redaction` |
 | **F** | Foundation & Infra | Sebastian | Repo bootstrap, Bun workspaces, Biome, CI/CD (GH Actions), SLSA L3 reusable workflow, Sigstore signing, distro packaging, Docker Compose, k6 perf gates, observability defaults. | repo root, `.github/workflows/`, `Dockerfile`, `docker-compose*.yml` | (no inter-workstream contracts; sets up the platform everyone else uses) | all |
 | **G-backend** | Privacy execution | Walid | Server-side TruffleHog + Gitleaks + Presidio in ingest hot path; forbidden-field fuzzer; Tier-A allowlist enforcement; Ed25519 signed-config validator. | `packages/redact` (server side), `redaction_audit` table writes | `08-redaction`, co-owns `06-clio-pipeline` (server verifier) | `01-event-wire`, `09-storage-schema` |
 | **G-frontend** | Privacy UX | Sebastian | Bill of Rights page (`/privacy`); Reveal modal + audit confirm UX; `<REDACTED:type:hash>` chip renderer; IC daily digest UI; `cost_estimated` and `data_fidelity` indicator chips. | `apps/web/privacy`, `apps/web/me/digest`, UI components | (consumes `08-redaction` marker format) | `08-redaction`, `07-manager-api` |
@@ -215,7 +215,7 @@ If you're blocked and the table doesn't list it: ping the contract owner in chat
 
 Things to actively reject in PRs (from CLAUDE.md / PRD §2.3):
 
-- Anything Pharos-shaped (IPC, Electron, `pharos-ade.com` upload). DevMetrics is independent (D1).
+- Anything Pharos-shaped (IPC, Electron, `pharos-ade.com` upload). Bematist is independent (D1).
 - Per-engineer leaderboards, performance scores, real-time per-IC feeds, autonomous coaching.
 - IDE plugin surfaces (we observe agents, not editors).
 - Cross-tenant benchmarking.

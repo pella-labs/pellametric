@@ -1,0 +1,153 @@
+name: perf
+
+# Runs the k6 dashboard perf harness against a production build of apps/web.
+#
+# Gating behavior:
+#   - M1 (today): warn-level only. k6 still runs on every PR + push to main,
+#     thresholds fail with `continue-on-error: true` so the job never blocks
+#     a merge. Summary JSON is uploaded as an artifact for trend-watching.
+#   - M2 flip:    set `K6_GATE_M2=1` in the env block below. That toggles
+#     the 2s p(95) abortOnFail threshold ON, and we flip
+#     `continue-on-error: false`. One-line change, no workflow redesign.
+#
+# The 1M-events seeded dataset (CLAUDE.md §Testing Rules INT11) lands with
+# Jorge's db:seed script; the checkout step already pulls the seed scripts
+# and the job calls `bun run db:seed` once they're available. Until then the
+# job runs against the fixture-backed dev server — useful for trendlines but
+# the absolute numbers don't count for the merge-gate.
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/api/**"
+      - "packages/ui/**"
+      - "packages/schema/**"
+      - "packages/fixtures/**"
+      - "tests/perf/**"
+      - ".github/workflows/perf.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/api/**"
+      - "packages/ui/**"
+      - "packages/schema/**"
+      - "packages/fixtures/**"
+      - "tests/perf/**"
+      - ".github/workflows/perf.yml"
+  workflow_dispatch:
+    inputs:
+      gate_m2:
+        description: "Flip the M2 gate on for this run only"
+        required: false
+        default: "0"
+        type: choice
+        options: ["0", "1"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perf-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: "1.2.0"
+  # Flip to "1" at M2 to enable merge-blocking p(95)<2s abortOnFail.
+  K6_GATE_M2: "0"
+
+jobs:
+  perf:
+    name: k6 dashboard perf
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Cache Bun install
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Install deps
+        run: bun install --frozen-lockfile
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Start web (dev, background)
+        shell: bash
+        # Dev mode for now: getSessionCtx has a NODE_ENV!=='production' shim
+        # that synthesizes a dev-tenant ctx. `next start` will work once
+        # Walid's Better Auth handoff lands (apps/web/lib/session.ts). Flip
+        # to build + start at M2 alongside the gate.
+        run: |
+          set -euo pipefail
+          (cd apps/web && bun run dev >../../web.out 2>&1 &) &
+          for i in $(seq 1 120); do
+            if curl -fsS -o /dev/null --max-time 2 http://localhost:3000/; then
+              echo "web ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "web failed to come up — last output:" >&2
+          tail -120 web.out >&2
+          exit 1
+
+      - name: Resolve M2 gate flag
+        id: gate
+        run: |
+          g="${{ github.event.inputs.gate_m2 || env.K6_GATE_M2 }}"
+          echo "gate=$g" >> "$GITHUB_OUTPUT"
+          if [ "$g" = "1" ]; then
+            echo "::notice title=perf gate::M2 gate ENABLED — p(95)<2s is merge-blocking."
+          else
+            echo "::notice title=perf gate::M2 gate disabled — warn-level only. Set K6_GATE_M2=1 to flip."
+          fi
+
+      - name: Run k6
+        id: k6
+        continue-on-error: ${{ steps.gate.outputs.gate != '1' }}
+        env:
+          BASE_URL: http://localhost:3000
+          K6_GATE_M2: ${{ steps.gate.outputs.gate }}
+        run: bash tests/perf/run.sh
+
+      - name: Upload summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-summary-${{ github.run_id }}
+          path: |
+            tests/perf/summary.json
+            web.out
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Annotate threshold result
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.k6.outcome }}" = "failure" ]; then
+            if [ "${{ steps.gate.outputs.gate }}" = "1" ]; then
+              echo "::error title=perf gate::k6 thresholds failed — merge blocked."
+            else
+              echo "::warning title=perf gate::k6 thresholds failed (non-gating today; flip K6_GATE_M2=1 at M2)."
+            fi
+          else
+            echo "::notice title=perf gate::k6 thresholds passed."
+          fi
