@@ -166,7 +166,7 @@ describe("ingest server", () => {
   });
 
   test("POST /v1/events with invalid JSON → 400", async () => {
-    const res = await postEvents("{not json", "Bearer bm_test_abc");
+    const res = await postEvents("{not json", "Bearer dm_test_abc");
     expect(res.status).toBe(400);
   });
 
