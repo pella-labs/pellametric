@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export function dataDir(): string {
-  return process.env.DEVMETRICS_DATA_DIR || join(homedir(), ".bematist");
+  return process.env.BEMATIST_DATA_DIR || join(homedir(), ".bematist");
 }
 
 export function egressSqlite(): string {
@@ -10,7 +10,7 @@ export function egressSqlite(): string {
 }
 
 export function policyPath(): string {
-  return process.env.DEVMETRICS_POLICY_PATH || join(dataDir(), "policy.yaml");
+  return process.env.BEMATIST_POLICY_PATH || join(dataDir(), "policy.yaml");
 }
 
 export function claudeProjectsDir(): string {

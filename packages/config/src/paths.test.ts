@@ -1,40 +1,49 @@
 import { expect, test } from "bun:test";
 import { claudeProjectsDir, dataDir, egressSqlite, policyPath } from "./paths";
 
-test("dataDir honors DEVMETRICS_DATA_DIR when set", () => {
-  const prev = process.env.DEVMETRICS_DATA_DIR;
+test("dataDir honors BEMATIST_DATA_DIR when set", () => {
+  const prev = process.env.BEMATIST_DATA_DIR;
   try {
-    process.env.DEVMETRICS_DATA_DIR = "/tmp/bematist-test-datadir";
+    process.env.BEMATIST_DATA_DIR = "/tmp/bematist-test-datadir";
     expect(dataDir()).toBe("/tmp/bematist-test-datadir");
   } finally {
-    if (prev === undefined) delete process.env.DEVMETRICS_DATA_DIR;
-    else process.env.DEVMETRICS_DATA_DIR = prev;
+    if (prev === undefined) delete process.env.BEMATIST_DATA_DIR;
+    else process.env.BEMATIST_DATA_DIR = prev;
   }
 });
 
 test("dataDir falls back to ~/.bematist when env unset", () => {
-  const prev = process.env.DEVMETRICS_DATA_DIR;
+  const prev = process.env.BEMATIST_DATA_DIR;
   try {
-    delete process.env.DEVMETRICS_DATA_DIR;
+    delete process.env.BEMATIST_DATA_DIR;
     expect(dataDir()).toMatch(/[\\/]\.bematist$/);
   } finally {
-    if (prev !== undefined) process.env.DEVMETRICS_DATA_DIR = prev;
+    if (prev !== undefined) process.env.BEMATIST_DATA_DIR = prev;
   }
 });
 
 test("egressSqlite lives inside dataDir", () => {
-  expect(egressSqlite()).toContain(".bematist");
-  expect(egressSqlite()).toMatch(/egress\.sqlite$/);
+  // Scrub BEMATIST_DATA_DIR at entry so devs with a stale `.env` setting
+  // don't see false flakes — the assertion below expects the default
+  // `~/.bematist` path, which only holds when the var is unset.
+  const prev = process.env.BEMATIST_DATA_DIR;
+  try {
+    delete process.env.BEMATIST_DATA_DIR;
+    expect(egressSqlite()).toContain(".bematist");
+    expect(egressSqlite()).toMatch(/egress\.sqlite$/);
+  } finally {
+    if (prev !== undefined) process.env.BEMATIST_DATA_DIR = prev;
+  }
 });
 
-test("policyPath honors DEVMETRICS_POLICY_PATH", () => {
-  const prev = process.env.DEVMETRICS_POLICY_PATH;
+test("policyPath honors BEMATIST_POLICY_PATH", () => {
+  const prev = process.env.BEMATIST_POLICY_PATH;
   try {
-    process.env.DEVMETRICS_POLICY_PATH = "/tmp/policy.yaml";
+    process.env.BEMATIST_POLICY_PATH = "/tmp/policy.yaml";
     expect(policyPath()).toBe("/tmp/policy.yaml");
   } finally {
-    if (prev === undefined) delete process.env.DEVMETRICS_POLICY_PATH;
-    else process.env.DEVMETRICS_POLICY_PATH = prev;
+    if (prev === undefined) delete process.env.BEMATIST_POLICY_PATH;
+    else process.env.BEMATIST_POLICY_PATH = prev;
   }
 });
 
@@ -62,12 +71,12 @@ test("claudeProjectsDir defaults to ~/.claude/projects", () => {
 });
 
 test("dataDir treats empty string env var as unset (falls back to default)", () => {
-  const prev = process.env.DEVMETRICS_DATA_DIR;
+  const prev = process.env.BEMATIST_DATA_DIR;
   try {
-    process.env.DEVMETRICS_DATA_DIR = "";
+    process.env.BEMATIST_DATA_DIR = "";
     expect(dataDir()).toMatch(/[\\/]\.bematist$/);
   } finally {
-    if (prev === undefined) delete process.env.DEVMETRICS_DATA_DIR;
-    else process.env.DEVMETRICS_DATA_DIR = prev;
+    if (prev === undefined) delete process.env.BEMATIST_DATA_DIR;
+    else process.env.BEMATIST_DATA_DIR = prev;
   }
 });

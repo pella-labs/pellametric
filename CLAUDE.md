@@ -198,7 +198,7 @@ bematist serve --embedded
 ## API Rules
 
 - Three ingest endpoints: OTLP HTTP/Protobuf (`POST /v1/{traces,metrics,logs}`), custom JSON (`POST /v1/events`), webhooks (`POST /v1/webhooks/{github,gitlab,bitbucket}`).
-- Auth: `Authorization: Bearer bm_<orgId>_<rand>` per ingest key. Rate-limited via Redis token bucket.
+- Auth: `Authorization: Bearer bm_<orgId>_<keyId>_<secret>` per ingest key (3-segment; see `contracts/02-ingest-api.md`). Rate-limited via Redis token bucket.
 - Manager API: **Next.js Server Actions + Route Handlers** (no tRPC). RSC pages import server-side data-access functions from `packages/api` directly. Client components use Server Actions for mutations (reveal, policy writes) and `fetch()` Route Handlers for client-driven reads (SSE, polled widgets, CSV export). Types flow via TypeScript inference on exported action signatures. Zod schemas in `packages/api/src/schemas/` are the source of truth for inputs/outputs — shared by Server Actions, Route Handlers, and the CLI.
 - **Managed-cloud Tier-C 403 guard:** ingest REJECTS `tier='C'` events with HTTP 403 unless `org.tier_c_managed_cloud_optin=true`. Client policy file is NOT the security boundary.
 - Dashboard `prompt_text` views require explicit "Reveal" gesture + `audit_log` entry. CSV exports redact prompt columns by default; "Export with prompts" requires 2FA + audit log.

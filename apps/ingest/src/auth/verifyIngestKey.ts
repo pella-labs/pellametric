@@ -1,7 +1,7 @@
 // Sprint 1 ingest-key verifier. Replaces the prefix-only Sprint-0 stub.
 //
-// Bearer format (new): dm_<orgId>_<keyId>_<secret>   (3 segments after dm_)
-// Bearer format (legacy, 2-segment): dm_<orgId>_<secret>   (kept for compat; store
+// Bearer format (new): bm_<orgId>_<keyId>_<secret>   (3 segments after bm_)
+// Bearer format (legacy, 2-segment): bm_<orgId>_<secret>   (kept for compat; store
 // must implement a catch-all lookup — used by dev-mode only).
 //
 // Verification:
@@ -119,8 +119,8 @@ interface ParsedBearer {
 
 // Accept either 3-segment (new) or 2-segment (legacy) form.
 // Regex — 3-segment first; fall back to 2-segment.
-const BEARER_3SEG = /^dm_([A-Za-z0-9]+)_([A-Za-z0-9]+)_([A-Za-z0-9_-]+)$/;
-const BEARER_2SEG = /^dm_([A-Za-z0-9]+)_([A-Za-z0-9_-]+)$/;
+const BEARER_3SEG = /^bm_([A-Za-z0-9]+)_([A-Za-z0-9]+)_([A-Za-z0-9_-]+)$/;
+const BEARER_2SEG = /^bm_([A-Za-z0-9]+)_([A-Za-z0-9_-]+)$/;
 
 export function parseBearer(header: string | null): ParsedBearer | null {
   if (!header) return null;

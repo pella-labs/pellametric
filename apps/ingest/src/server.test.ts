@@ -17,7 +17,7 @@ function hashSecret(secret: string): string {
 }
 
 // An in-memory ingest_keys store that supports both 2-seg (legacy) and 3-seg
-// bearer lookups. Seeded in beforeAll with a row for Bearer dm_test_abc.
+// bearer lookups. Seeded in beforeAll with a row for Bearer bm_test_abc.
 function makeStore(rows: IngestKeyRow[]): IngestKeyStore {
   const byKey = new Map<string, IngestKeyRow>();
   const byOrg = new Map<string, IngestKeyRow>();
@@ -44,7 +44,7 @@ function makePolicyStore(
 }
 
 beforeAll(() => {
-  // Seed a legacy 2-seg key: dm_test_abc (orgId=test, secret=abc).
+  // Seed a legacy 2-seg key: bm_test_abc (orgId=test, secret=abc).
   const row: IngestKeyRow = {
     id: "legacy_test_key",
     org_id: "test",
@@ -88,7 +88,7 @@ function makeEvent(overrides: Partial<Event> = {}): Event {
 
 function postEvents(
   body: unknown,
-  auth: string | null = "Bearer dm_test_abc",
+  auth: string | null = "Bearer bm_test_abc",
   extraHeaders: Record<string, string> = {},
 ): Promise<Response> {
   const headers: Record<string, string> = {
@@ -166,7 +166,7 @@ describe("ingest server", () => {
   });
 
   test("POST /v1/events with invalid JSON → 400", async () => {
-    const res = await postEvents("{not json", "Bearer dm_test_abc");
+    const res = await postEvents("{not json", "Bearer bm_test_abc");
     expect(res.status).toBe(400);
   });
 
@@ -184,7 +184,7 @@ describe("ingest server", () => {
   // --- Phase 1 additions --------------------------------------------------
 
   test("POST /v1/events with unknown orgId (store miss) → 401", async () => {
-    const res = await postEvents({ events: [makeEvent()] }, "Bearer dm_unknownorg_abc");
+    const res = await postEvents({ events: [makeEvent()] }, "Bearer bm_unknownorg_abc");
     expect(res.status).toBe(401);
   });
 
@@ -202,7 +202,7 @@ describe("ingest server", () => {
       store: makeStore([row]),
       cache: new LRUCache({ max: 1000, ttlMs: 60_000 }),
     });
-    const res = await postEvents({ events: [makeEvent()] }, "Bearer dm_revokedorg_abc");
+    const res = await postEvents({ events: [makeEvent()] }, "Bearer bm_revokedorg_abc");
     expect(res.status).toBe(401);
     // restore baseline
     resetDeps();
@@ -222,7 +222,7 @@ describe("ingest server", () => {
       store: makeStore([row]),
       cache: new LRUCache({ max: 1000, ttlMs: 60_000 }),
     });
-    const res = await postEvents({ events: [makeEvent()] }, "Bearer dm_mismatchorg_WRONG");
+    const res = await postEvents({ events: [makeEvent()] }, "Bearer bm_mismatchorg_WRONG");
     expect(res.status).toBe(401);
     resetDeps();
     beforeAllReseed();
@@ -252,8 +252,8 @@ describe("ingest server", () => {
         cacheorg: { tier_c_managed_cloud_optin: false, tier_default: "B" },
       }),
     });
-    await postEvents({ events: [makeEvent()] }, "Bearer dm_cacheorg_abc");
-    await postEvents({ events: [makeEvent()] }, "Bearer dm_cacheorg_abc");
+    await postEvents({ events: [makeEvent()] }, "Bearer bm_cacheorg_abc");
+    await postEvents({ events: [makeEvent()] }, "Bearer bm_cacheorg_abc");
     expect(storeCalls).toBe(1);
     resetDeps();
     beforeAllReseed();
@@ -318,7 +318,7 @@ describe("ingest server", () => {
       }),
     });
     const ev: Event = { ...makeEvent({ tier: "C" }), prompt_text: "legit-content" };
-    const res = await postEvents({ events: [ev] }, "Bearer dm_cintenant_abc");
+    const res = await postEvents({ events: [ev] }, "Bearer bm_cintenant_abc");
     expect(res.status).toBe(202);
     resetDeps();
     beforeAllReseed();
@@ -363,7 +363,7 @@ describe("ingest server", () => {
         other: { tier_c_managed_cloud_optin: false, tier_default: "B" },
       }),
     });
-    const res = await postEvents({ events: [makeEvent()] }, "Bearer dm_nopoltenant_abc");
+    const res = await postEvents({ events: [makeEvent()] }, "Bearer bm_nopoltenant_abc");
     expect(res.status).toBe(500);
     const body = (await res.json()) as { code: string };
     expect(body.code).toBe("ORG_POLICY_MISSING");

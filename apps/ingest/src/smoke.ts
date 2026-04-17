@@ -100,7 +100,7 @@ async function main(): Promise<void> {
   process.env.INGEST_LISTEN_ADDR = `:${PORT}`;
   const srv = startServer();
 
-  const bearer = `Bearer dm_${DEV_ORG}_${DEV_KEY_ID}_${DEV_SECRET}`;
+  const bearer = `Bearer bm_${DEV_ORG}_${DEV_KEY_ID}_${DEV_SECRET}`;
   const base = `http://localhost:${PORT}`;
 
   // 4. Fire 10 valid POSTs.

@@ -51,7 +51,7 @@ describe("verifyBearer", () => {
     expect(res).toBeNull();
   });
 
-  test("garbage token (no dm_ prefix) → null", async () => {
+  test("garbage token (no bm_ prefix) → null", async () => {
     const store = makeStore({});
     const res = await verifyBearer("Bearer garbage", store);
     expect(res).toBeNull();
@@ -59,7 +59,7 @@ describe("verifyBearer", () => {
 
   test("unknown orgId → null (store miss)", async () => {
     const store = makeStore({});
-    const res = await verifyBearer("Bearer dm_unknownorg_keyid_secret", store);
+    const res = await verifyBearer("Bearer bm_unknownorg_keyid_secret", store);
     expect(res).toBeNull();
     expect(store.calls.length).toBe(1);
   });
@@ -72,7 +72,7 @@ describe("verifyBearer", () => {
       revoked_at: new Date("2026-04-15T00:00:00Z"),
     });
     const store = makeStore({ "orgabc/keyabc": row });
-    const res = await verifyBearer("Bearer dm_orgabc_keyabc_s3cret", store);
+    const res = await verifyBearer("Bearer bm_orgabc_keyabc_s3cret", store);
     expect(res).toBeNull();
   });
 
@@ -83,7 +83,7 @@ describe("verifyBearer", () => {
       key_sha256: hashSecret("correct-secret"),
     });
     const store = makeStore({ "orgabc/keyabc": row });
-    const res = await verifyBearer("Bearer dm_orgabc_keyabc_WRONG", store);
+    const res = await verifyBearer("Bearer bm_orgabc_keyabc_WRONG", store);
     expect(res).toBeNull();
   });
 
@@ -95,7 +95,7 @@ describe("verifyBearer", () => {
       key_sha256: "abc123",
     });
     const store = makeStore({ "orgabc/keyabc": row });
-    const res = await verifyBearer("Bearer dm_orgabc_keyabc_s3cret", store);
+    const res = await verifyBearer("Bearer bm_orgabc_keyabc_s3cret", store);
     expect(res).toBeNull();
   });
 
@@ -109,7 +109,7 @@ describe("verifyBearer", () => {
       engineer_id: "eng_xyz",
     } as Partial<IngestKeyRow>);
     const store = makeStore({ "orgabc/keyabc": row });
-    const res = (await verifyBearer(`Bearer dm_orgabc_keyabc_${secret}`, store)) as AuthContext;
+    const res = (await verifyBearer(`Bearer bm_orgabc_keyabc_${secret}`, store)) as AuthContext;
     expect(res).not.toBeNull();
     expect(res.tenantId).toBe("orgabc");
     expect(res.engineerId).toBe("eng_xyz");
@@ -126,7 +126,7 @@ describe("verifyBearer", () => {
     });
     const store = makeStore({ "orgabc/keyabc": row });
     const cache = new LRUCache({ max: 10, ttlMs: 60_000 });
-    const header = `Bearer dm_orgabc_keyabc_${secret}`;
+    const header = `Bearer bm_orgabc_keyabc_${secret}`;
     const r1 = await verifyBearer(header, store, cache);
     const r2 = await verifyBearer(header, store, cache);
     expect(r1).not.toBeNull();
@@ -149,7 +149,7 @@ describe("verifyBearer", () => {
       ttlMs: 60_000,
       clock: () => now,
     });
-    const header = `Bearer dm_orgabc_keyabc_${secret}`;
+    const header = `Bearer bm_orgabc_keyabc_${secret}`;
     const r1 = await verifyBearer(header, store, cache);
     expect(r1).not.toBeNull();
     now += 61_000; // past TTL
@@ -168,7 +168,7 @@ describe("verifyBearer", () => {
     expect(cache.get("c")).toBe(3);
   });
 
-  test("legacy 2-segment bearer dm_<orgId>_<secret> — keyId omitted, falls back to single-row lookup", async () => {
+  test("legacy 2-segment bearer bm_<orgId>_<secret> — keyId omitted, falls back to single-row lookup", async () => {
     const secret = "abc";
     const row = makeRow({
       org_id: "test",
@@ -185,7 +185,7 @@ describe("verifyBearer", () => {
         return null;
       },
     };
-    const res = await verifyBearer("Bearer dm_test_abc", store);
+    const res = await verifyBearer("Bearer bm_test_abc", store);
     expect(res).not.toBeNull();
     expect(res?.tenantId).toBe("test");
   });
@@ -195,7 +195,7 @@ describe("verifyBearer", () => {
     // any future "dump cache for debug" endpoint would leak every active
     // secret. Keys now hash first.
     const secret = "exposed_secret_value_42";
-    const header = `Bearer dm_orgabc_keyabc_${secret}`;
+    const header = `Bearer bm_orgabc_keyabc_${secret}`;
     const row = makeRow({ org_id: "orgabc", id: "keyabc", key_sha256: hashSecret(secret) });
     const store = makeStore({ "orgabc/keyabc": row });
     const cache = new LRUCache({ max: 10, ttlMs: 60_000 });

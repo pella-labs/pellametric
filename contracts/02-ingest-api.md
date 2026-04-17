@@ -46,7 +46,7 @@ Subscribed events (GitHub baseline): `pull_request`, `pull_request_review`, `wor
 ## Auth
 
 ```
-Authorization: Bearer bm_<orgId>_<rand>
+Authorization: Bearer bm_<orgId>_<keyId>_<secret>
 ```
 
 - One ingest key per `(org, environment)` pair.
@@ -111,3 +111,4 @@ Authorization: Bearer bm_<orgId>_<rand>
 - 2026-04-16 — Sprint-1 Phase 1: Bearer `dm_<orgId>_<keyId>_<secret>` is an ingest-key verified via timingSafeEqual + Postgres `ingest_keys` lookup with 60s LRU, NOT a JWT. JWT applies to dashboard sessions and Phase-4 B2B API only. See D-S1-1, D-S1-2.
 - 2026-04-16 — Sprint-1 Phase 4: §Invariants #1 "Ingest is the only writer" means "writes from outside the ingest boundary". The Plan-B Go side-car (apps/ingest-sidecar/) — when CLICKHOUSE_WRITER=sidecar — is part of the ingest boundary (same deployment unit, same tenant+auth context across the UNIX socket), not an external writer. The Redis Streams WAL is the ingest-internal durability seam. See D-S1-7, D-S1-24.
 - 2026-04-16 — Sprint-1 Phase 6: webhooks at /v1/webhooks/{github,gitlab,bitbucket} verified via hand-rolled HMAC (GitHub/Bitbucket) and plaintext-token+IP-allowlist (GitLab); transport dedup via dedup:webhook:<source>:<deliveryId> SETNX 7d; row dedup via git_events UNIQUE(pr_node_id). GitHub App named bematist-github per D-S1-19.
+- 2026-04-17 — Bearer prefix swapped from `dm_` → `bm_` to match the Bematist product name (finishes the D32-era rename). §Auth shows the 3-segment form `bm_<orgId>_<keyId>_<secret>`; `verifyIngestKey.ts` regexes and all server/auth tests updated in the same PR. Pre-production — no legacy `dm_` compatibility path; any in-flight collectors must be restarted with a freshly minted `bm_*` key.
