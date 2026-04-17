@@ -45,11 +45,17 @@ export type TestEvent = {
   duration_ms?: number;
 };
 
+/** Convert ISO8601 timestamps (`2026-04-01T10:00:00.000Z`) to CH DateTime64 format
+ *  (`2026-04-01 10:00:00.000`). CH's JSON parser rejects the T separator + Z suffix. */
+function toChTimestamp(iso: string): string {
+  return iso.replace("T", " ").replace("Z", "");
+}
+
 export async function insertEvents(client: ClickHouseClient, rows: TestEvent[]): Promise<void> {
   const filled = rows.map((r) => ({
     client_event_id: r.client_event_id,
     schema_version: 1,
-    ts: r.ts,
+    ts: toChTimestamp(r.ts),
     org_id: r.org_id,
     engineer_id: r.engineer_id,
     device_id: "test-device",
