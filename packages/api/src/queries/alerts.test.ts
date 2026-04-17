@@ -4,7 +4,11 @@ import { listAlerts } from "./alerts";
 
 describe("listAlerts", () => {
   test("returns alerts sorted critical > warn > info then newest-first", async () => {
-    const out = await listAlerts(makeCtx("admin"), { window: "7d", min_severity: "info", limit: 100 });
+    const out = await listAlerts(makeCtx("admin"), {
+      window: "7d",
+      min_severity: "info",
+      limit: 100,
+    });
     expect(out.alerts.length).toBeGreaterThan(0);
     const rank = { info: 0, warn: 1, critical: 2 } as const;
     for (let i = 1; i < out.alerts.length; i++) {
@@ -49,9 +53,7 @@ describe("listAlerts", () => {
   });
 });
 
-function makeCtx(
-  role: "admin" | "manager" | "engineer" | "auditor" | "viewer" = "manager",
-): Ctx {
+function makeCtx(role: "admin" | "manager" | "engineer" | "auditor" | "viewer" = "manager"): Ctx {
   return {
     tenant_id: "test-tenant",
     actor_id: "test-actor",

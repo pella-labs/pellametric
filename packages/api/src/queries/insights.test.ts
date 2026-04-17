@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { filterByConfidence, getWeeklyDigest } from "./insights";
-import type { PipelineInsight } from "../schemas/insights";
 import type { Ctx } from "../auth";
+import type { PipelineInsight } from "../schemas/insights";
+import { filterByConfidence, getWeeklyDigest } from "./insights";
 
 describe("filterByConfidence", () => {
   test("drops every low-confidence entry and counts them", () => {
@@ -17,9 +17,7 @@ describe("filterByConfidence", () => {
     expect(result.insights.map((i) => i.id)).toEqual(["a", "b", "e"]);
     // Type narrows to "high" | "medium" — no "low" survives.
     for (const kept of result.insights) {
-      expect(kept.confidence === "high" || kept.confidence === "medium").toBe(
-        true,
-      );
+      expect(kept.confidence === "high" || kept.confidence === "medium").toBe(true);
     }
   });
 
@@ -30,10 +28,7 @@ describe("filterByConfidence", () => {
   });
 
   test("all-low pipeline → all dropped, no insights ship", () => {
-    const pipeline: PipelineInsight[] = [
-      insight("a", "low"),
-      insight("b", "low"),
-    ];
+    const pipeline: PipelineInsight[] = [insight("a", "low"), insight("b", "low")];
     const result = filterByConfidence(pipeline);
     expect(result.insights).toEqual([]);
     expect(result.dropped).toBe(2);

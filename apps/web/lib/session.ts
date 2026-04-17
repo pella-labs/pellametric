@@ -1,6 +1,6 @@
 import "server-only";
-import { headers } from "next/headers";
 import type { Ctx } from "@bematist/api";
+import { headers } from "next/headers";
 import { getDbClients } from "./db";
 
 /**

@@ -16,15 +16,11 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("/me/digest", () => {
-  test("renders with notification preference + opt-out transparency copy", async ({
-    page,
-  }) => {
+  test("renders with notification preference + opt-out transparency copy", async ({ page }) => {
     await page.goto("/me/digest");
 
     const main = page.getByRole("main");
-    await expect(
-      main.getByRole("heading", { name: "My digest", level: 1 }),
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "My digest", level: 1 })).toBeVisible();
 
     // Opt-out framing is the load-bearing copy — transparency default, never
     // a paid feature.
@@ -39,11 +35,7 @@ test.describe("/me/digest", () => {
 
     // Recent-views card is present even with zero events — the empty state
     // is the realistic M1 shape.
-    await expect(
-      main.getByRole("heading", { name: "Recent views" }),
-    ).toBeVisible();
-    await expect(
-      main.getByText(/Nothing in the last 24 hours/i),
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Recent views" })).toBeVisible();
+    await expect(main.getByText(/Nothing in the last 24 hours/i)).toBeVisible();
   });
 });

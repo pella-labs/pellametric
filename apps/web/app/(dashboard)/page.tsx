@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { getSummary } from "@bematist/api";
 import {
   AreaChart,
   Card,
@@ -9,7 +9,7 @@ import {
   CostEstimatedChip,
   InsufficientData,
 } from "@bematist/ui";
-import { getSummary } from "@bematist/api";
+import type { Metadata } from "next";
 import { getSessionCtx } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -94,11 +94,7 @@ export default async function DashboardHome() {
   );
 }
 
-function CostSeriesTable({
-  series,
-}: {
-  series: { x: string; y: number }[];
-}) {
+function CostSeriesTable({ series }: { series: { x: string; y: number }[] }) {
   return (
     <table className="w-full text-sm">
       <thead className="text-left text-muted-foreground">

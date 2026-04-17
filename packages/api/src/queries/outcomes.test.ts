@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Ctx } from "../auth";
-import {
-  perCommitOutcomes,
-  perDevOutcomes,
-  perPROutcomes,
-} from "./outcomes";
+import { perCommitOutcomes, perDevOutcomes, perPROutcomes } from "./outcomes";
 
 describe("perDevOutcomes", () => {
   test("returns rows with 8-char engineer hash + sorted by cost desc", async () => {
@@ -21,9 +17,7 @@ describe("perDevOutcomes", () => {
       expect(row.accepted_and_retained).toBeLessThanOrEqual(row.accepted_edits);
     }
     for (let i = 1; i < out.rows.length; i++) {
-      expect(out.rows[i - 1]!.cost_usd).toBeGreaterThanOrEqual(
-        out.rows[i]!.cost_usd,
-      );
+      expect(out.rows[i - 1]!.cost_usd).toBeGreaterThanOrEqual(out.rows[i]!.cost_usd);
     }
   });
 
@@ -78,9 +72,7 @@ describe("perCommitOutcomes", () => {
       window: "7d",
       limit: 50,
     });
-    expect(a.rows.map((r) => r.commit_sha)).toEqual(
-      b.rows.map((r) => r.commit_sha),
-    );
+    expect(a.rows.map((r) => r.commit_sha)).toEqual(b.rows.map((r) => r.commit_sha));
     for (const row of a.rows) {
       expect(row.commit_sha.length).toBe(40);
       expect(row.author_engineer_id_hash.length).toBe(8);
@@ -88,9 +80,7 @@ describe("perCommitOutcomes", () => {
   });
 });
 
-function makeCtx(
-  role: "admin" | "manager" | "engineer" | "auditor" | "viewer" = "manager",
-): Ctx {
+function makeCtx(role: "admin" | "manager" | "engineer" | "auditor" | "viewer" = "manager"): Ctx {
   return {
     tenant_id: "test-tenant",
     actor_id: "test-actor",

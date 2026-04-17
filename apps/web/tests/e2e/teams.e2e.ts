@@ -15,18 +15,14 @@ test.describe("/teams", () => {
     await page.goto("/teams");
 
     const main = page.getByRole("main");
-    await expect(
-      main.getByRole("heading", { name: "Teams", level: 1 }),
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Teams", level: 1 })).toBeVisible();
 
     // Header sub-copy restates the invariant — a load-bearing contract string.
     await expect(main.getByText(/IC names are always hidden/i)).toBeVisible();
 
     // 2×2 block heading is present — the chart renders as role="img" with an
     // aria-label naming the selected team, not engineers.
-    await expect(
-      main.getByRole("img", { name: /2×2 scatter for /i }),
-    ).toBeVisible();
+    await expect(main.getByRole("img", { name: /2×2 scatter for /i })).toBeVisible();
 
     // In chart mode (default), no scatter-table row exists — the stable
     // 8-hex engineer_id_hash only appears inside the table toggle. The
@@ -47,16 +43,12 @@ test.describe("/teams", () => {
     await expect(monoCells).toHaveCount(0);
   });
 
-  test("below-cohort team renders InsufficientData with named gate", async ({
-    page,
-  }) => {
+  test("below-cohort team renders InsufficientData with named gate", async ({ page }) => {
     // team_ml has 4 engineers — under the k≥5 floor, the 2×2 must suppress.
     await page.goto("/teams?team=team_ml");
 
     const main = page.getByRole("main");
-    await expect(
-      main.getByRole("heading", { name: "Teams", level: 1 }),
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Teams", level: 1 })).toBeVisible();
 
     // The InsufficientData component announces the k-anonymity gate name and
     // the team's actual cohort size. Both must be visible.

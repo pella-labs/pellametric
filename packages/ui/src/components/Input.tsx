@@ -6,11 +6,7 @@ const baseClasses =
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (
-    <input
-      ref={ref}
-      className={cn(baseClasses, "h-9", className)}
-      {...props}
-    />
+    <input ref={ref} className={cn(baseClasses, "h-9", className)} {...props} />
   ),
 );
 Input.displayName = "Input";

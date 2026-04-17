@@ -1,14 +1,24 @@
 // @bematist/ui — shared UI primitives for the Bematist dashboard.
 // Dark mode default, WCAG AA target, every chart has a table toggle.
 
-export { brand } from "../brand.config";
 export type { BrandColor } from "../brand.config";
-
-export { cn } from "./lib/cn";
-
+export { brand } from "../brand.config";
+// Charts
+export {
+  AreaChart,
+  type AreaChartDatum,
+  type AreaChartFormat,
+  type AreaChartProps,
+} from "./charts/AreaChart";
+export { ChartTableToggle } from "./charts/ChartTableToggle";
+export {
+  ScatterChart,
+  type ScatterChartProps,
+  type ScatterDatum,
+} from "./charts/ScatterChart";
 // Components
 export { Badge, type BadgeProps } from "./components/Badge";
-export { Button, buttonVariants, type ButtonProps } from "./components/Button";
+export { Button, type ButtonProps, buttonVariants } from "./components/Button";
 export {
   Card,
   CardHeader,
@@ -26,8 +36,8 @@ export {
   DialogTrigger,
 } from "./components/Dialog";
 export { Input, Textarea } from "./components/Input";
-export { ScrollArea, ScrollBar } from "./components/scroll-area";
 export { Skeleton } from "./components/Skeleton";
+export { ScrollArea, ScrollBar } from "./components/scroll-area";
 export {
   Tooltip,
   TooltipContent,
@@ -35,52 +45,36 @@ export {
   TooltipRoot,
   TooltipTrigger,
 } from "./components/Tooltip";
-
-// Charts
-export {
-  AreaChart,
-  type AreaChartDatum,
-  type AreaChartFormat,
-  type AreaChartProps,
-} from "./charts/AreaChart";
-export { ChartTableToggle } from "./charts/ChartTableToggle";
-export {
-  ScatterChart,
-  type ScatterChartProps,
-  type ScatterDatum,
-} from "./charts/ScatterChart";
-
-// Tables
-export {
-  VirtualTable,
-  type ColumnDef,
-  type VirtualTableProps,
-} from "./tables/VirtualTable";
-
+export { cn } from "./lib/cn";
 // Motion
 export { fadeIn, slideUp, stagger } from "./motion/presets";
-
 // Privacy
-export { ConfidenceBadge, type Confidence } from "./privacy/ConfidenceBadge";
+export { type Confidence, ConfidenceBadge } from "./privacy/ConfidenceBadge";
 export { CostEstimatedChip } from "./privacy/CostEstimatedChip";
-export { FidelityChip, type Fidelity } from "./privacy/FidelityChip";
+export { type Fidelity, FidelityChip } from "./privacy/FidelityChip";
 export {
-  InsufficientData,
   type GateReason,
+  InsufficientData,
 } from "./privacy/InsufficientData";
 export {
   RedactedChip,
-  renderWithRedactions,
   type RedactedChipProps,
+  renderWithRedactions,
 } from "./privacy/RedactedChip";
 export {
-  RevealDialog,
   type ActionResultLike,
+  RevealDialog,
   type RevealDialogProps,
 } from "./privacy/RevealDialog";
 export {
-  REDACTION_MARKER_REGEX,
   findMarkers,
   type MarkerMatch,
+  REDACTION_MARKER_REGEX,
   type RedactionType,
 } from "./privacy/redactionMarker";
+// Tables
+export {
+  type ColumnDef,
+  VirtualTable,
+  type VirtualTableProps,
+} from "./tables/VirtualTable";

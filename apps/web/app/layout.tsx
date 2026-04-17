@@ -1,7 +1,7 @@
+import { cn, TooltipProvider } from "@bematist/ui";
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
 import { Geist, Geist_Mono, IBM_Plex_Sans } from "next/font/google";
-import { TooltipProvider, cn } from "@bematist/ui";
+import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -34,12 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={cn(
-        "dark antialiased",
-        fontSans.variable,
-        fontMono.variable,
-        fontHeading.variable,
-      )}
+      className={cn("dark antialiased", fontSans.variable, fontMono.variable, fontHeading.variable)}
       suppressHydrationWarning
     >
       <body>

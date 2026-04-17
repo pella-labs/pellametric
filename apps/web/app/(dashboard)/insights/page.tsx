@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
-import {
-  Badge,
-  Card,
-  CardHeader,
-  CardTitle,
-  ConfidenceBadge,
-} from "@bematist/ui";
 import { getWeeklyDigest } from "@bematist/api";
+import { Badge, Card, CardHeader, CardTitle, ConfidenceBadge } from "@bematist/ui";
+import type { Metadata } from "next";
 import { getSessionCtx } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -33,9 +27,8 @@ export default async function InsightsPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Insights</h1>
         <p className="text-sm text-muted-foreground">
-          Weekly digest from the Insight Engine. Low-confidence entries are
-          dropped server-side. Citations link back to the session or cluster
-          that grounded the claim.
+          Weekly digest from the Insight Engine. Low-confidence entries are dropped server-side.
+          Citations link back to the session or cluster that grounded the claim.
         </p>
       </header>
 
@@ -45,9 +38,7 @@ export default async function InsightsPage() {
           {digest.insights.length} insight{digest.insights.length === 1 ? "" : "s"}
         </Badge>
         {digest.dropped_low_confidence > 0 ? (
-          <Badge tone="warning">
-            {digest.dropped_low_confidence} low-confidence · not shown
-          </Badge>
+          <Badge tone="warning">{digest.dropped_low_confidence} low-confidence · not shown</Badge>
         ) : null}
         <span className="text-muted-foreground/80">
           Generated {new Date(digest.generated_at).toLocaleString()}
@@ -57,9 +48,8 @@ export default async function InsightsPage() {
       {digest.insights.length === 0 ? (
         <Card>
           <p className="text-sm text-muted-foreground">
-            No high- or medium-confidence insights for this week. The pipeline
-            ran, but every candidate fell below the confidence threshold — the
-            server does not surface those.
+            No high- or medium-confidence insights for this week. The pipeline ran, but every
+            candidate fell below the confidence threshold — the server does not surface those.
           </p>
         </Card>
       ) : (
@@ -76,9 +66,7 @@ export default async function InsightsPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <p className="text-sm leading-relaxed text-foreground">
-                  {i.body}
-                </p>
+                <p className="text-sm leading-relaxed text-foreground">{i.body}</p>
                 {i.citations.length > 0 ? (
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">

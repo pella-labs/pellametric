@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
-import {
-  Badge,
-  Card,
-  CardHeader,
-  CardTitle,
-  FidelityChip,
-} from "@bematist/ui";
 import { listClusters } from "@bematist/api";
+import { Badge, Card, CardHeader, CardTitle, FidelityChip } from "@bematist/ui";
+import type { Metadata } from "next";
 import { getSessionCtx } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -28,10 +22,9 @@ export default async function ClustersPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Clusters</h1>
         <p className="text-sm text-muted-foreground">
-          Prompt-pattern clusters from the on-device Clio pipeline. Labels are
-          3–5 words, regex-validated — no URLs, no proper nouns, no PII. The
-          k≥3 contributor floor is enforced server-side: clusters below the
-          floor are computed but never surfaced.
+          Prompt-pattern clusters from the on-device Clio pipeline. Labels are 3–5 words,
+          regex-validated — no URLs, no proper nouns, no PII. The k≥3 contributor floor is enforced
+          server-side: clusters below the floor are computed but never surfaced.
         </p>
       </header>
 
@@ -39,9 +32,7 @@ export default async function ClustersPage() {
         <Badge tone="neutral">30-day window</Badge>
         <Badge tone="accent">{data.clusters.length} clusters</Badge>
         {data.suppressed_below_floor > 0 ? (
-          <Badge tone="warning">
-            {data.suppressed_below_floor} suppressed · below k=3 floor
-          </Badge>
+          <Badge tone="warning">{data.suppressed_below_floor} suppressed · below k=3 floor</Badge>
         ) : null}
       </div>
 
@@ -95,9 +86,8 @@ export default async function ClustersPage() {
       {data.clusters.length === 0 ? (
         <Card>
           <p className="text-sm text-muted-foreground">
-            No clusters pass the k≥3 floor for this window. This is the
-            privacy-preserving default — clusters emerge as more engineers
-            contribute prompts in the same pattern.
+            No clusters pass the k≥3 floor for this window. This is the privacy-preserving default —
+            clusters emerge as more engineers contribute prompts in the same pattern.
           </p>
         </Card>
       ) : null}

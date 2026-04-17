@@ -11,9 +11,7 @@ const NAV = [
   { href: "/me/digest", label: "Digest" },
 ];
 
-const META_LINKS = [
-  { href: "/privacy", label: "Bill of Rights" },
-];
+const META_LINKS = [{ href: "/privacy", label: "Bill of Rights" }];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (

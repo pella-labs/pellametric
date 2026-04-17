@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
-import { Badge } from "@bematist/ui";
 import { listSessions, schemas } from "@bematist/api";
+import { Badge } from "@bematist/ui";
+import type { Metadata } from "next";
 import { getSessionCtx } from "@/lib/session";
 import { SessionsTable } from "./_table";
 
@@ -38,8 +38,8 @@ export default async function SessionsPage({
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
         <p className="text-sm text-muted-foreground">
-          Every agent session visible to your role. Prompt text is never shown
-          in the list — open a session and use Reveal to unlock with audit.
+          Every agent session visible to your role. Prompt text is never shown in the list — open a
+          session and use Reveal to unlock with audit.
         </p>
       </header>
 
@@ -62,9 +62,7 @@ function parseWindow(v: string | undefined): schemas.Window {
   return parsed.success ? parsed.data : "7d";
 }
 
-function parseSource(
-  v: string | undefined,
-): schemas.SessionListItem["source"] | undefined {
+function parseSource(v: string | undefined): schemas.SessionListItem["source"] | undefined {
   if (!v) return undefined;
   const parsed = schemas.SessionListItem.shape.source.safeParse(v);
   return parsed.success ? parsed.data : undefined;

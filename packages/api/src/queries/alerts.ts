@@ -14,13 +14,13 @@ const SEVERITY_ORDER: Record<AlertSeverity, number> = {
   critical: 2,
 };
 
-const KINDS: readonly AlertKind[] = [
+const KINDS = [
   "cost_spike",
   "infinite_loop",
   "collector_offline",
   "repeated_reverts",
   "model_anomaly",
-];
+] as const satisfies readonly AlertKind[];
 
 /**
  * Anomaly alert feed. Hourly cadence (per CLAUDE.md §AI Rules — not weekly).
@@ -52,7 +52,7 @@ async function listAlertsFixture(ctx: Ctx, input: ListAlertsInput): Promise<List
 
   for (let i = 0; i < rowCount; i++) {
     const r = (n: number) => rand(seed + i * 23, n);
-    const kind = input.kind ?? KINDS[Math.floor(r(1) * KINDS.length)]!;
+    const kind = input.kind ?? KINDS[Math.floor(r(1) * KINDS.length)] ?? KINDS[0];
     const severity = pickSeverity(r(2));
     if (SEVERITY_ORDER[severity] < minSev) continue;
     alerts.push(buildAlert(kind, severity, ctx.tenant_id, seed, i, r, input));

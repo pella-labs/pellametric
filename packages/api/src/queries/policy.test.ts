@@ -41,9 +41,7 @@ describe("setNotificationPref", () => {
   });
 });
 
-function makeCtx(
-  role: "admin" | "manager" | "engineer" | "auditor" | "viewer" = "manager",
-): Ctx {
+function makeCtx(role: "admin" | "manager" | "engineer" | "auditor" | "viewer" = "manager"): Ctx {
   return {
     tenant_id: "test-tenant",
     actor_id: "test-actor",

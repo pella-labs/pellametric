@@ -30,10 +30,5 @@ export type TimeseriesPoint = z.infer<typeof TimeseriesPoint>;
 export const Confidence = z.enum(["high", "medium", "low"]);
 export type Confidence = z.infer<typeof Confidence>;
 
-export const Fidelity = z.enum([
-  "full",
-  "estimated",
-  "aggregate-only",
-  "post-migration",
-]);
+export const Fidelity = z.enum(["full", "estimated", "aggregate-only", "post-migration"]);
 export type Fidelity = z.infer<typeof Fidelity>;

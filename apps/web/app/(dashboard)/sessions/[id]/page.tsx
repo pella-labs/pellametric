@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { getSession } from "@bematist/api";
 import {
   Badge,
   Card,
@@ -11,9 +11,9 @@ import {
   RevealDialog,
   renderWithRedactions,
 } from "@bematist/ui";
-import { getSession } from "@bematist/api";
-import { getRevealedCtx } from "@/lib/session";
+import type { Metadata } from "next";
 import { revealSessionAction } from "@/lib/actions/session";
+import { getRevealedCtx } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Session detail",
@@ -25,11 +25,7 @@ const USD = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
 });
 
-export default async function SessionDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await getRevealedCtx();
   const session = await getSession(ctx, { session_id: id });
@@ -37,22 +33,13 @@ export default async function SessionDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <p className="font-mono text-xs text-muted-foreground">
-          Session · {session.session_id}
-        </p>
+        <p className="font-mono text-xs text-muted-foreground">Session · {session.session_id}</p>
         <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {session.source}
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{session.source}</h1>
           <FidelityChip fidelity={session.fidelity} />
-          <Badge tone={session.tier === "C" ? "warning" : "neutral"}>
-            Tier {session.tier}
-          </Badge>
+          <Badge tone={session.tier === "C" ? "warning" : "neutral"}>Tier {session.tier}</Badge>
         </div>
-        <time
-          className="text-xs text-muted-foreground"
-          dateTime={session.started_at}
-        >
+        <time className="text-xs text-muted-foreground" dateTime={session.started_at}>
           Started {new Date(session.started_at).toLocaleString()}
           {session.ended_at
             ? ` · ended ${new Date(session.ended_at).toLocaleString()}`
@@ -74,17 +61,13 @@ export default async function SessionDetailPage({
           <CardHeader>
             <CardTitle>Input tokens</CardTitle>
           </CardHeader>
-          <CardValue className="text-xl">
-            {session.input_tokens.toLocaleString()}
-          </CardValue>
+          <CardValue className="text-xl">{session.input_tokens.toLocaleString()}</CardValue>
         </Card>
         <Card>
           <CardHeader>
             <CardTitle>Output tokens</CardTitle>
           </CardHeader>
-          <CardValue className="text-xl">
-            {session.output_tokens.toLocaleString()}
-          </CardValue>
+          <CardValue className="text-xl">{session.output_tokens.toLocaleString()}</CardValue>
         </Card>
         <Card>
           <CardHeader>
@@ -103,10 +86,7 @@ export default async function SessionDetailPage({
             <InsufficientData reason="consent_required">
               <span>Prompt hidden — consent required</span>
             </InsufficientData>
-            <RevealDialog
-              sessionId={session.session_id}
-              revealAction={revealSessionAction}
-            />
+            <RevealDialog sessionId={session.session_id} revealAction={revealSessionAction} />
           </div>
         ) : (
           <div className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground">

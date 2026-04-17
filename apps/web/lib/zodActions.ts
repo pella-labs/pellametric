@@ -1,6 +1,6 @@
 import "server-only";
-import type { z, ZodTypeAny } from "zod";
 import { AuthError, type Ctx } from "@bematist/api";
+import type { ZodTypeAny, z } from "zod";
 import { getSessionCtx } from "./session";
 
 /**
@@ -62,8 +62,7 @@ export function zodAction<Schema extends ZodTypeAny, Out>(
       if (err instanceof AuthError) {
         return { ok: false, error: { code: err.code, message: err.message } };
       }
-      const message =
-        err instanceof Error ? err.message : "Unexpected server error.";
+      const message = err instanceof Error ? err.message : "Unexpected server error.";
       return {
         ok: false,
         error: { code: "INTERNAL_SERVER_ERROR", message },

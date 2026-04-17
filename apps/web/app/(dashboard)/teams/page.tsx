@@ -1,5 +1,4 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+import { getTwoByTwo, listTeams } from "@bematist/api";
 import {
   Badge,
   Card,
@@ -8,11 +7,12 @@ import {
   CardValue,
   ChartTableToggle,
   FidelityChip,
+  type GateReason,
   InsufficientData,
   ScatterChart,
-  type GateReason,
 } from "@bematist/ui";
-import { getTwoByTwo, listTeams } from "@bematist/api";
+import type { Metadata } from "next";
+import Link from "next/link";
 import { getSessionCtx } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -52,13 +52,16 @@ export default async function TeamsPage({
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Teams</h1>
         <p className="text-sm text-muted-foreground">
-          Cohort-stratified view. IC names are always hidden — each dot is a
-          stable hash. Names only unlock via explicit IC opt-in.
+          Cohort-stratified view. IC names are always hidden — each dot is a stable hash. Names only
+          unlock via explicit IC opt-in.
         </p>
       </header>
 
       <section aria-labelledby="teams-list" className="flex flex-col gap-3">
-        <h2 id="teams-list" className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+        <h2
+          id="teams-list"
+          className="text-sm font-medium uppercase tracking-wide text-muted-foreground"
+        >
           {teamsList.teams.length} team{teamsList.teams.length === 1 ? "" : "s"} · 30-day window
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -110,7 +113,10 @@ export default async function TeamsPage({
 
       <section aria-labelledby="two-by-two" className="flex flex-col gap-3">
         <div className="flex items-baseline justify-between">
-          <h2 id="two-by-two" className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          <h2
+            id="two-by-two"
+            className="text-sm font-medium uppercase tracking-wide text-muted-foreground"
+          >
             2×2 · {selected?.label ?? "Team"} · Outcome Quality × Efficiency
           </h2>
           <TaskCategoryFilter
@@ -124,7 +130,8 @@ export default async function TeamsPage({
           <CardHeader>
             <CardTitle>Cohort-stratified scatter</CardTitle>
             <p className="text-xs text-muted-foreground">
-              X = Outcome Quality percentile · Y = Efficiency percentile · dot size = sessions · cohort k = {twoByTwo.cohort_size}
+              X = Outcome Quality percentile · Y = Efficiency percentile · dot size = sessions ·
+              cohort k = {twoByTwo.cohort_size}
             </p>
           </CardHeader>
           {twoByTwo.display.show ? (
@@ -154,8 +161,8 @@ export default async function TeamsPage({
                 }
               >
                 <span>
-                  Insufficient cohort — k={twoByTwo.cohort_size} is below the
-                  5-person floor. Names and dots are both suppressed.
+                  Insufficient cohort — k={twoByTwo.cohort_size} is below the 5-person floor. Names
+                  and dots are both suppressed.
                 </span>
               </InsufficientData>
             </div>
@@ -177,10 +184,7 @@ function TaskCategoryFilter({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <Link
-        href={{ pathname: "/teams", query: { team: selectedTeam } }}
-        className="cursor-pointer"
-      >
+      <Link href={{ pathname: "/teams", query: { team: selectedTeam } }} className="cursor-pointer">
         <Badge tone={current === null ? "accent" : "neutral"}>All tasks</Badge>
       </Link>
       {available.map((c) => {
@@ -227,10 +231,7 @@ function ScatterTable({
       </thead>
       <tbody>
         {points.map((p) => (
-          <tr
-            key={p.engineer_id_hash}
-            className="border-b border-border/50"
-          >
+          <tr key={p.engineer_id_hash} className="border-b border-border/50">
             <td className="py-2 font-mono text-xs">{p.engineer_id_hash}</td>
             <td className="py-2 text-right">{p.outcome_quality.toFixed(0)}</td>
             <td className="py-2 text-right">{p.efficiency.toFixed(0)}</td>

@@ -14,8 +14,8 @@ describe("listSessions", () => {
       expect(s.cost_usd).toBeGreaterThanOrEqual(0);
       expect(s.duration_s).not.toBeNull();
       // prompt-adjacent fields are never present in list rows
-      expect(Object.prototype.hasOwnProperty.call(s, "prompt_text")).toBe(false);
-      expect(Object.prototype.hasOwnProperty.call(s, "tool_input")).toBe(false);
+      expect(Object.hasOwn(s, "prompt_text")).toBe(false);
+      expect(Object.hasOwn(s, "tool_input")).toBe(false);
     }
   });
 
@@ -38,18 +38,14 @@ describe("listSessions", () => {
       expect(s.source).toBe("cursor");
       // Cursor auto-mode rows are always marked estimated via fidelity,
       // and optionally via the cost_estimated badge.
-      expect(
-        s.fidelity === "estimated" || s.cost_estimated === true,
-      ).toBe(true);
+      expect(s.fidelity === "estimated" || s.cost_estimated === true).toBe(true);
     }
   });
 
   test("same inputs produce the same rows (deterministic fixture)", async () => {
     const a = await listSessions(makeCtx(), { window: "7d", limit: 30 });
     const b = await listSessions(makeCtx(), { window: "7d", limit: 30 });
-    expect(a.sessions.map((s) => s.session_id)).toEqual(
-      b.sessions.map((s) => s.session_id),
-    );
+    expect(a.sessions.map((s) => s.session_id)).toEqual(b.sessions.map((s) => s.session_id));
   });
 });
 

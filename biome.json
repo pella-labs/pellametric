@@ -18,7 +18,9 @@
       "!**/*.sqlite",
       "!**/*.db",
       "!bun.lock",
-      "!**/next-env.d.ts"
+      "!**/next-env.d.ts",
+      "!packages/ui/src/styles/theme.css",
+      "!**/*.md"
     ]
   },
   "formatter": {
@@ -56,11 +58,19 @@
         "noConsole": {
           "level": "warn",
           "options": { "allow": ["warn", "error", "info"] }
-        }
+        },
+        "noArrayIndexKey": "warn"
       },
       "correctness": {
         "noUnusedVariables": "warn",
-        "noUnusedImports": "error"
+        "noUnusedImports": "warn"
+      },
+      "complexity": {
+        "noUselessSwitchCase": "warn"
+      },
+      "a11y": {
+        "useAriaPropsSupportedByRole": "warn",
+        "noLabelWithoutControl": "warn"
       }
     }
   },

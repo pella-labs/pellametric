@@ -11,15 +11,11 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("/clusters", () => {
-  test("renders and every visible cluster meets the k≥3 contributor floor", async ({
-    page,
-  }) => {
+  test("renders and every visible cluster meets the k≥3 contributor floor", async ({ page }) => {
     await page.goto("/clusters");
 
     const main = page.getByRole("main");
-    await expect(
-      main.getByRole("heading", { name: "Clusters", level: 1 }),
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Clusters", level: 1 })).toBeVisible();
 
     // Header sub-copy restates the invariant.
     await expect(main.getByText(/k≥3 contributor floor/i)).toBeVisible();

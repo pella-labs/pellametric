@@ -1,14 +1,9 @@
 "use client";
 
+import type { schemas } from "@bematist/api";
+import { type ColumnDef, CostEstimatedChip, FidelityChip, VirtualTable } from "@bematist/ui";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import {
-  type ColumnDef,
-  CostEstimatedChip,
-  FidelityChip,
-  VirtualTable,
-} from "@bematist/ui";
-import type { schemas } from "@bematist/api";
 
 type Row = schemas.SessionListItem;
 
@@ -32,10 +27,7 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
         header: "Started",
         size: 200,
         cell: ({ row }) => (
-          <time
-            dateTime={row.original.started_at}
-            className="text-muted-foreground"
-          >
+          <time dateTime={row.original.started_at} className="text-muted-foreground">
             {TIME.format(new Date(row.original.started_at))}
           </time>
         ),
@@ -66,9 +58,7 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
         header: "Duration",
         size: 110,
         cell: ({ row }) =>
-          row.original.duration_s === null
-            ? "—"
-            : formatDuration(row.original.duration_s),
+          row.original.duration_s === null ? "—" : formatDuration(row.original.duration_s),
       },
       {
         id: "cost",
@@ -98,9 +88,7 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
         id: "accepted_edits",
         header: "Accepts",
         size: 90,
-        cell: ({ row }) => (
-          <span className="tabular-nums">{row.original.accepted_edits}</span>
-        ),
+        cell: ({ row }) => <span className="tabular-nums">{row.original.accepted_edits}</span>,
       },
     ],
     [],
@@ -114,11 +102,7 @@ export function SessionsTable({ rows }: { rows: Row[] }) {
       getRowId={(row) => row.session_id}
       onRowClick={(row) => router.push(`/sessions/${row.session_id}`)}
       height="70vh"
-      empty={
-        <p className="text-sm text-muted-foreground">
-          No sessions in this window.
-        </p>
-      }
+      empty={<p className="text-sm text-muted-foreground">No sessions in this window.</p>}
     />
   );
 }

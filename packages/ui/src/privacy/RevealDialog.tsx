@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ChangeEvent, type ReactNode } from "react";
+import { type ChangeEvent, type ReactNode, useState, useTransition } from "react";
 import { Button } from "../components/Button";
 import {
   Dialog,
@@ -45,12 +45,7 @@ export interface RevealDialogProps {
 
 const MIN_REASON = 20;
 
-export function RevealDialog({
-  sessionId,
-  revealAction,
-  trigger,
-  onSuccess,
-}: RevealDialogProps) {
+export function RevealDialog({ sessionId, revealAction, trigger, onSuccess }: RevealDialogProps) {
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -81,17 +76,15 @@ export function RevealDialog({
         <DialogHeader>
           <DialogTitle>Reveal prompt text</DialogTitle>
           <DialogDescription>
-            This action is logged and the engineer is notified. Explain why the
-            reveal is needed — your note is stored in the audit log and visible
-            to the engineer in their digest.
+            This action is logged and the engineer is notified. Explain why the reveal is needed —
+            your note is stored in the audit log and visible to the engineer in their digest.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-3">
           <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
-            Reveal requires one of: IC opt-in at project scope · tenant-wide
-            signed Tier-C config · active legal hold. Without one, the server
-            will refuse.
+            Reveal requires one of: IC opt-in at project scope · tenant-wide signed Tier-C config ·
+            active legal hold. Without one, the server will refuse.
           </div>
 
           <label className="flex flex-col gap-1 text-sm">
@@ -100,9 +93,7 @@ export function RevealDialog({
             </span>
             <Textarea
               value={reason}
-              onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-                setReason(e.target.value)
-              }
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setReason(e.target.value)}
               placeholder="Investigating a cost spike for the infra task family; need to confirm the agent wasn't looping…"
               aria-invalid={reason.length > 0 && !reasonOk}
             />
@@ -124,10 +115,7 @@ export function RevealDialog({
             <DialogClose asChild>
               <Button variant="ghost">Cancel</Button>
             </DialogClose>
-            <Button
-              onClick={submit}
-              disabled={!reasonOk || isPending}
-            >
+            <Button onClick={submit} disabled={!reasonOk || isPending}>
               {isPending ? "Revealing…" : "Reveal"}
             </Button>
           </div>

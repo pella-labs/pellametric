@@ -1,8 +1,5 @@
 import { assertRole, type Ctx } from "../auth";
-import type {
-  SetNotificationPrefInput,
-  SetNotificationPrefOutput,
-} from "../schemas/policy";
+import type { SetNotificationPrefInput, SetNotificationPrefOutput } from "../schemas/policy";
 
 /**
  * Update the IC's manager-view notification preference (D30).

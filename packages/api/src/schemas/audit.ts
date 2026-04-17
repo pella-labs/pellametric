@@ -14,13 +14,7 @@ export const AuditEvent = z.object({
   /** The IC being viewed. */
   target_engineer_id: z.string(),
   /** What the actor opened. */
-  surface: z.enum([
-    "me_page",
-    "session_detail",
-    "reveal_prompt",
-    "cluster_detail",
-    "csv_export",
-  ]),
+  surface: z.enum(["me_page", "session_detail", "reveal_prompt", "cluster_detail", "csv_export"]),
   /** Populated only for reveal_prompt / csv_export. */
   reason: z.string().nullable(),
   /** Session ID when applicable. */

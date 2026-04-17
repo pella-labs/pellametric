@@ -24,8 +24,8 @@
  *   K6_DURATION     steady-state duration (default 1m)
  */
 
-import http from "k6/http";
 import { check, sleep } from "k6";
+import http from "k6/http";
 
 const BASE_URL = __ENV.BASE_URL || "http://localhost:3000";
 const VUS = Number(__ENV.K6_VUS || 10);

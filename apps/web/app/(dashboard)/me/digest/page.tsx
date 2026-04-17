@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
-import { Badge, Card, CardHeader, CardTitle } from "@bematist/ui";
 import { getMyViewHistory } from "@bematist/api";
+import { Badge, Card, CardHeader, CardTitle } from "@bematist/ui";
+import type { Metadata } from "next";
 import { getSessionCtx } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -26,10 +26,9 @@ export default async function MyDigestPage() {
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">My digest</h1>
         <p className="text-sm text-muted-foreground">
-          Every time a manager, admin, or auditor opens a surface that names
-          you, a row lands here. Default delivery is a daily digest; you can
-          switch to immediate notifications or opt out — transparency is the
-          default, never a paid feature.
+          Every time a manager, admin, or auditor opens a surface that names you, a row lands here.
+          Default delivery is a daily digest; you can switch to immediate notifications or opt out —
+          transparency is the default, never a paid feature.
         </p>
         <div className="text-xs text-muted-foreground">
           Window: <Badge tone="neutral">{history.window}</Badge> · Preference:{" "}
@@ -45,8 +44,8 @@ export default async function MyDigestPage() {
         </CardHeader>
         {history.events.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Nothing in the last 24 hours. You'll see an entry here the first
-            time someone with access opens a surface that names you.
+            Nothing in the last 24 hours. You'll see an entry here the first time someone with
+            access opens a surface that names you.
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-border">
@@ -55,14 +54,9 @@ export default async function MyDigestPage() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-medium">
                     {e.actor_display_name}{" "}
-                    <span className="font-normal text-muted-foreground">
-                      ({e.actor_role})
-                    </span>
+                    <span className="font-normal text-muted-foreground">({e.actor_role})</span>
                   </span>
-                  <time
-                    className="font-mono text-xs text-muted-foreground"
-                    dateTime={e.ts}
-                  >
+                  <time className="font-mono text-xs text-muted-foreground" dateTime={e.ts}>
                     {new Date(e.ts).toLocaleString()}
                   </time>
                 </div>

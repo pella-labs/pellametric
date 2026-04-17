@@ -22,10 +22,7 @@ describe("findMarkers", () => {
       "hello <REDACTED:email:aaaaaaaaaaaaaaaa> and <REDACTED:phone:bbbbbbbbbbbbbbbb> world";
     const markers = findMarkers(text);
     expect(markers.map((m) => m.type)).toEqual(["email", "phone"]);
-    expect(markers.map((m) => m.hash)).toEqual([
-      "aaaaaaaaaaaaaaaa",
-      "bbbbbbbbbbbbbbbb",
-    ]);
+    expect(markers.map((m) => m.hash)).toEqual(["aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb"]);
   });
 
   test("coerces unknown type tokens to 'other' to stay forward-compatible", () => {

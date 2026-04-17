@@ -19,10 +19,8 @@ export type GateReason =
   | "consent_required";
 
 const EXPLAIN: Record<GateReason, string> = {
-  insufficient_sessions:
-    "Fewer than 10 sessions in window. Wait for more usage before comparing.",
-  insufficient_active_days:
-    "Fewer than 5 active days in window. The signal is not yet stable.",
+  insufficient_sessions: "Fewer than 10 sessions in window. Wait for more usage before comparing.",
+  insufficient_active_days: "Fewer than 5 active days in window. The signal is not yet stable.",
   insufficient_outcome_events:
     "Fewer than 3 outcome events (merged PRs, green tests). Score confidence is too low to ship.",
   insufficient_cohort:

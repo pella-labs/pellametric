@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { Button } from "../components/Button";
 
 /**
@@ -31,9 +31,7 @@ export function ChartTableToggle({
           aria-labelledby={labelId}
           onClick={() => setMode((m) => (m === "chart" ? "table" : "chart"))}
         >
-          <span id={labelId}>
-            {mode === "chart" ? "View as table" : "View as chart"}
-          </span>
+          <span id={labelId}>{mode === "chart" ? "View as table" : "View as chart"}</span>
         </Button>
       </div>
       <div>{mode === "chart" ? chart : table}</div>

@@ -69,9 +69,7 @@ export function renderWithRedactions(text: string): ReactNode[] {
     if (m.start > cursor) {
       out.push(text.slice(cursor, m.start));
     }
-    out.push(
-      <RedactedChip key={`redacted-${i}-${m.start}`} type={m.type} hash={m.hash} />,
-    );
+    out.push(<RedactedChip key={`redacted-${i}-${m.start}`} type={m.type} hash={m.hash} />);
     cursor = m.end;
   });
   if (cursor < text.length) {

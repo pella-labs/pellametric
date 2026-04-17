@@ -9,12 +9,7 @@ import { Window } from "./common";
  * See CLAUDE.md §Outcome Attribution Rules for the three-layer pipeline
  * (accept event → AI-Assisted trailer → git log / PR API fallback).
  */
-export const OutcomeKind = z.enum([
-  "accepted_edit",
-  "merged_pr",
-  "green_test",
-  "revert",
-]);
+export const OutcomeKind = z.enum(["accepted_edit", "merged_pr", "green_test", "revert"]);
 export type OutcomeKind = z.infer<typeof OutcomeKind>;
 
 // --- per-engineer aggregate ---

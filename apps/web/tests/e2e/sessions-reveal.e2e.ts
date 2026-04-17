@@ -9,9 +9,7 @@ import { expect, test } from "@playwright/test";
 test("dashboard → session → reveal → error → back", async ({ page }) => {
   await page.goto("/");
 
-  await expect(
-    page.getByRole("heading", { name: "Summary", level: 1 }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Summary", level: 1 })).toBeVisible();
 
   const sidebar = page.getByRole("complementary", {
     name: "Primary navigation",
@@ -19,9 +17,7 @@ test("dashboard → session → reveal → error → back", async ({ page }) => 
   await sidebar.getByRole("link", { name: "Sessions", exact: true }).click();
 
   await expect(page).toHaveURL(/\/sessions$/);
-  await expect(
-    page.getByRole("heading", { name: "Sessions", level: 1 }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sessions", level: 1 })).toBeVisible();
 
   const sessionsTable = page.getByRole("table", { name: "Sessions" });
   await expect(sessionsTable).toBeVisible();
@@ -37,15 +33,12 @@ test("dashboard → session → reveal → error → back", async ({ page }) => 
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  await expect(
-    dialog.getByRole("heading", { name: "Reveal prompt text" }),
-  ).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Reveal prompt text" })).toBeVisible();
 
   const submit = dialog.getByRole("button", { name: /^Reveal$/ });
   await expect(submit).toBeDisabled();
 
-  const reason =
-    "Investigating a suspected runaway loop on the infra task family.";
+  const reason = "Investigating a suspected runaway loop on the infra task family.";
   await dialog.getByRole("textbox").fill(reason);
   await expect(submit).toBeEnabled();
 
@@ -60,7 +53,5 @@ test("dashboard → session → reveal → error → back", async ({ page }) => 
 
   await page.goBack();
   await expect(page).toHaveURL(/\/sessions$/);
-  await expect(
-    page.getByRole("heading", { name: "Sessions", level: 1 }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sessions", level: 1 })).toBeVisible();
 });

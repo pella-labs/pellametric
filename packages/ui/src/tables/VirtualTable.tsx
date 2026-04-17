@@ -1,11 +1,8 @@
+// biome-ignore-all lint/a11y/useSemanticElements: native <table> breaks the virtualizer — see the doc comment on VirtualTable below.
+// biome-ignore-all lint/a11y/useFocusableInteractive: rows receive tabIndex=0 when clickable; header rows intentionally non-focusable.
 "use client";
 
-import {
-  type ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useRef } from "react";
 import { cn } from "../lib/cn";
@@ -61,9 +58,7 @@ export function VirtualTable<T>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    ...(getRowId
-      ? { getRowId: (row: T, index: number) => getRowId(row, index) }
-      : {}),
+    ...(getRowId ? { getRowId: (row: T, index: number) => getRowId(row, index) } : {}),
   });
 
   const rows = table.getRowModel().rows;
@@ -77,14 +72,7 @@ export function VirtualTable<T>({
 
   if (rows.length === 0 && empty) {
     return (
-      <div
-        className={cn(
-          "rounded-xl border border-border bg-card p-6",
-          className,
-        )}
-      >
-        {empty}
-      </div>
+      <div className={cn("rounded-xl border border-border bg-card p-6", className)}>{empty}</div>
     );
   }
 
@@ -104,93 +92,84 @@ export function VirtualTable<T>({
       style={{ height }}
     >
       <div role="rowgroup" className="sticky top-0 z-10 bg-background">
-          {table.getHeaderGroups().map((headerGroup) => (
+        {table.getHeaderGroups().map((headerGroup) => (
+          <div key={headerGroup.id} role="row" className="flex border-b border-border">
+            {headerGroup.headers.map((header) => (
+              <div
+                key={header.id}
+                role="columnheader"
+                style={{
+                  flex: `${header.getSize()} 0 ${header.getSize()}px`,
+                  minWidth: header.getSize(),
+                }}
+                className="truncate px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                {header.isPlaceholder
+                  ? null
+                  : flexRender(header.column.columnDef.header, header.getContext())}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div
+        role="rowgroup"
+        style={{
+          position: "relative",
+          height: totalSize,
+        }}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const row = rows[virtualRow.index];
+          if (!row) return null;
+          const clickable = Boolean(onRowClick);
+          return (
             <div
-              key={headerGroup.id}
+              key={row.id}
               role="row"
-              className="flex border-b border-border"
+              data-index={virtualRow.index}
+              tabIndex={clickable ? 0 : undefined}
+              onClick={clickable ? () => onRowClick?.(row.original) : undefined}
+              onKeyDown={
+                clickable
+                  ? (event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onRowClick?.(row.original);
+                      }
+                    }
+                  : undefined
+              }
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: virtualRow.size,
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+              className={cn(
+                "flex border-b border-border/60 text-foreground",
+                clickable &&
+                  "cursor-pointer transition-colors hover:bg-muted focus:bg-muted focus:outline-none",
+              )}
             >
-              {headerGroup.headers.map((header) => (
+              {row.getVisibleCells().map((cell) => (
                 <div
-                  key={header.id}
-                  role="columnheader"
+                  key={cell.id}
+                  role="cell"
                   style={{
-                    flex: `${header.getSize()} 0 ${header.getSize()}px`,
-                    minWidth: header.getSize(),
+                    flex: `${cell.column.getSize()} 0 ${cell.column.getSize()}px`,
+                    minWidth: cell.column.getSize(),
                   }}
-                  className="truncate px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  className="flex items-center truncate px-3"
                 >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </div>
               ))}
             </div>
-          ))}
-        </div>
-        <div
-          role="rowgroup"
-          style={{
-            position: "relative",
-            height: totalSize,
-          }}
-        >
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const row = rows[virtualRow.index];
-            if (!row) return null;
-            const clickable = Boolean(onRowClick);
-            return (
-              <div
-                key={row.id}
-                role="row"
-                data-index={virtualRow.index}
-                tabIndex={clickable ? 0 : undefined}
-                onClick={
-                  clickable ? () => onRowClick?.(row.original) : undefined
-                }
-                onKeyDown={
-                  clickable
-                    ? (event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          onRowClick?.(row.original);
-                        }
-                      }
-                    : undefined
-                }
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: virtualRow.size,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-                className={cn(
-                  "flex border-b border-border/60 text-foreground",
-                  clickable &&
-                    "cursor-pointer transition-colors hover:bg-muted focus:bg-muted focus:outline-none",
-                )}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <div
-                    key={cell.id}
-                    role="cell"
-                    style={{
-                      flex: `${cell.column.getSize()} 0 ${cell.column.getSize()}px`,
-                      minWidth: cell.column.getSize(),
-                    }}
-                    className="flex items-center truncate px-3"
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
+          );
+        })}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import { type ComponentPropsWithoutRef, type ElementRef, forwardRef } from "react";
 import { cn } from "../lib/cn";
 
 export const Dialog = DialogPrimitive.Root;
@@ -52,16 +52,8 @@ export const DialogContent = forwardRef<
 ));
 DialogContent.displayName = "DialogContent";
 
-export function DialogHeader({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn("mb-4 flex flex-col gap-1", className)}
-      {...props}
-    />
-  );
+export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn("mb-4 flex flex-col gap-1", className)} {...props} />;
 }
 
 export const DialogTitle = forwardRef<
@@ -70,10 +62,7 @@ export const DialogTitle = forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn(
-      "text-lg font-semibold text-foreground",
-      className,
-    )}
+    className={cn("text-lg font-semibold text-foreground", className)}
     {...props}
   />
 ));
@@ -85,10 +74,7 @@ export const DialogDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn(
-      "text-sm text-muted-foreground",
-      className,
-    )}
+    className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
 ));

@@ -1,6 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { getSessionCtx } from "@/lib/session";
+import { type NextRequest, NextResponse } from "next/server";
 import { writeCsv } from "@/lib/csv";
+import { getSessionCtx } from "@/lib/session";
 
 /**
  * CSV export route — implements contract 07 §CSV export rules.
@@ -49,8 +49,7 @@ const PROMPT_COLUMNS = new Set(["prompt_text", "tool_input", "tool_output"]);
 
 export async function GET(req: NextRequest) {
   const dataset = req.nextUrl.searchParams.get("dataset") ?? "sessions";
-  const includePrompts =
-    req.nextUrl.searchParams.get("include_prompts") === "true";
+  const includePrompts = req.nextUrl.searchParams.get("include_prompts") === "true";
 
   if (dataset !== "sessions") {
     return NextResponse.json(
@@ -81,14 +80,10 @@ export async function GET(req: NextRequest) {
     void ctx;
   }
 
-  const columns = includePrompts
-    ? SESSION_COLUMNS_WITH_PROMPT
-    : SESSION_COLUMNS_BASE;
+  const columns = includePrompts ? SESSION_COLUMNS_WITH_PROMPT : SESSION_COLUMNS_BASE;
 
   const rows = buildFixtureSessions();
-  const scrubbed = includePrompts
-    ? rows
-    : rows.map((r) => stripPromptColumns(r));
+  const scrubbed = includePrompts ? rows : rows.map((r) => stripPromptColumns(r));
 
   const csv = writeCsv(columns, scrubbed);
   const filename = `bematist-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -102,9 +97,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-function stripPromptColumns(
-  row: Record<string, unknown>,
-): Record<string, unknown> {
+function stripPromptColumns(row: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(row)) {
     if (PROMPT_COLUMNS.has(k)) continue;

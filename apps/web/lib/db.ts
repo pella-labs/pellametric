@@ -1,10 +1,5 @@
 import "server-only";
-import type {
-  ClickHouseClient,
-  Ctx,
-  PgClient,
-  RedisClient,
-} from "@bematist/api";
+import type { ClickHouseClient, Ctx, PgClient, RedisClient } from "@bematist/api";
 
 /**
  * Lazy singletons for Postgres, ClickHouse, and Redis. Real connections are

@@ -15,18 +15,12 @@ test.describe("/ summary", () => {
     await page.goto("/");
 
     const main = page.getByRole("main");
-    await expect(
-      main.getByRole("heading", { name: "Summary", level: 1 }),
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Summary", level: 1 })).toBeVisible();
 
     // Three KPI cards are the contract — titles are stable strings.
     await expect(main.getByText("Total cost", { exact: true })).toBeVisible();
-    await expect(
-      main.getByText("Accepted edits", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      main.getByText("AI Leverage Score", { exact: true }),
-    ).toBeVisible();
+    await expect(main.getByText("Accepted edits", { exact: true })).toBeVisible();
+    await expect(main.getByText("AI Leverage Score", { exact: true })).toBeVisible();
 
     // The cost-per-day card renders its chart in chart mode by default. The
     // toggle flips to a real <table>. The button's accessible name comes
@@ -50,12 +44,8 @@ test.describe("/ summary", () => {
     await expect(table).toHaveCount(1);
     await expect(table).toBeVisible();
     // The cost-series table ships with "Date" and "Cost" headers.
-    await expect(
-      table.getByRole("columnheader", { name: "Date" }),
-    ).toBeVisible();
-    await expect(
-      table.getByRole("columnheader", { name: "Cost" }),
-    ).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "Date" })).toBeVisible();
+    await expect(table.getByRole("columnheader", { name: "Cost" })).toBeVisible();
   });
 
   test("renders under prefers-reduced-motion: reduce", async ({ page }) => {
@@ -63,9 +53,7 @@ test.describe("/ summary", () => {
     await page.goto("/");
 
     const main = page.getByRole("main");
-    await expect(
-      main.getByRole("heading", { name: "Summary", level: 1 }),
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Summary", level: 1 })).toBeVisible();
     await expect(main.getByText("Total cost", { exact: true })).toBeVisible();
   });
 });

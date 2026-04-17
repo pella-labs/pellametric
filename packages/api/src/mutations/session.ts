@@ -17,10 +17,7 @@ import type { RevealInput, RevealOutput } from "../schemas/session";
  * be built against the final interface. Throws `FORBIDDEN` until the three
  * conditions can actually be checked against Postgres state.
  */
-export async function revealSession(
-  ctx: Ctx,
-  input: RevealInput,
-): Promise<RevealOutput> {
+export async function revealSession(ctx: Ctx, input: RevealInput): Promise<RevealOutput> {
   assertRole(ctx, ["manager", "admin", "auditor"]);
 
   // TODO(B4): once Walid's Better Auth session + Jorge's RLS land, replace the
@@ -39,10 +36,9 @@ export async function revealSession(
   //   INSERT INTO audit_events (actor_id, target_engineer, surface='reveal_prompt', session_id, reason, ts)
   //   SETEX reveal:<random_token> 900 <session_id>:<actor_id>
   //   return { reveal_token, expires_at }
+  void input; // suppress unused-arg until the real body lands
   throw new AuthError(
     "FORBIDDEN",
     "Reveal requires one of: IC opt-in at project scope, tenant-wide signed Tier-C config, or active legal hold.",
   );
-  // Silence unused-var until the real body lands.
-  void input;
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Confidence } from "./common";
+import type { Confidence } from "./common";
 
 /**
  * Weekly Insight Engine output. Per CLAUDE.md AI Rules:

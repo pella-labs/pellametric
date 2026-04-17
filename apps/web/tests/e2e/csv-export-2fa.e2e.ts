@@ -11,9 +11,7 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("/api/export prompt-column guardrails", () => {
-  test("default export returns CSV with no prompt columns", async ({
-    request,
-  }) => {
+  test("default export returns CSV with no prompt columns", async ({ request }) => {
     const res = await request.get("/api/export");
     expect(res.status()).toBe(200);
 

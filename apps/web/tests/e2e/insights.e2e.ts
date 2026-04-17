@@ -13,15 +13,11 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("/insights", () => {
-  test("drops low-confidence, labels medium 'Investigate', keeps high", async ({
-    page,
-  }) => {
+  test("drops low-confidence, labels medium 'Investigate', keeps high", async ({ page }) => {
     await page.goto("/insights");
 
     const main = page.getByRole("main");
-    await expect(
-      main.getByRole("heading", { name: "Insights", level: 1 }),
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Insights", level: 1 })).toBeVisible();
 
     // The <ol aria-label="Weekly insights"> holds every rendered insight card.
     const list = main.locator('ol[aria-label="Weekly insights"]');
@@ -35,9 +31,7 @@ test.describe("/insights", () => {
     // Medium-confidence badges render with label "Investigate" AND
     // aria-label="Confidence: Investigate" (the ConfidenceBadge maps
     // `medium` → "Investigate").
-    const mediumBadges = list.locator(
-      '[aria-label="Confidence: Investigate"]',
-    );
+    const mediumBadges = list.locator('[aria-label="Confidence: Investigate"]');
     await expect(mediumBadges.first()).toBeVisible();
     await expect(mediumBadges.first()).toHaveText("Investigate");
 
@@ -46,8 +40,6 @@ test.describe("/insights", () => {
     await expect(lowBadges).toHaveCount(0);
 
     // And no insight card title text references the suppressed fixture.
-    await expect(
-      list.getByText("Potential autonomy regression", { exact: false }),
-    ).toHaveCount(0);
+    await expect(list.getByText("Potential autonomy regression", { exact: false })).toHaveCount(0);
   });
 });

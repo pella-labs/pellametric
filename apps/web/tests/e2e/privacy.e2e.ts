@@ -11,9 +11,7 @@ import { expect, test } from "@playwright/test";
  */
 
 test.describe("/privacy (Bill of Rights)", () => {
-  test("v1 Bill of Rights renders all six items with load-bearing copy", async ({
-    page,
-  }) => {
+  test("v1 Bill of Rights renders all six items with load-bearing copy", async ({ page }) => {
     await page.goto("/privacy");
 
     // /privacy is OUTSIDE the dashboard layout — it ships its own <main>.
@@ -44,17 +42,13 @@ test.describe("/privacy (Bill of Rights)", () => {
         name: "Managers cannot read your prompt text",
       }),
     ).toBeVisible();
-    await expect(
-      main.getByRole("heading", { name: "7-day export and erasure" }),
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "7-day export and erasure" })).toBeVisible();
     await expect(
       main.getByRole("heading", {
         name: "Counters and redacted envelopes by default",
       }),
     ).toBeVisible();
-    await expect(
-      main.getByRole("heading", { name: "Every access is logged" }),
-    ).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Every access is logged" })).toBeVisible();
     await expect(
       main.getByRole("heading", { name: "You are told when a manager looks" }),
     ).toBeVisible();
@@ -62,27 +56,15 @@ test.describe("/privacy (Bill of Rights)", () => {
     // Load-bearing body phrases from CLAUDE.md Privacy Model Rules — asserting
     // the exact surface wording keeps the legal commitment visible.
     // Rule: managers read prompts only under three named conditions.
-    await expect(
-      main.getByText(
-        /three named, audit-logged conditions/i,
-      ),
-    ).toBeVisible();
+    await expect(main.getByText(/three named, audit-logged conditions/i)).toBeVisible();
     // Rule: 7-day GDPR export + erasure, dropping the ClickHouse partition.
-    await expect(
-      main.getByText(/export or delete your data within 7 days/i),
-    ).toBeVisible();
-    await expect(
-      main.getByText(/drops the underlying ClickHouse partition/i),
-    ).toBeVisible();
+    await expect(main.getByText(/export or delete your data within 7 days/i)).toBeVisible();
+    await expect(main.getByText(/drops the underlying ClickHouse partition/i)).toBeVisible();
     // Rule: Tier B counters + envelopes is the default, Tier C is opt-in.
     await expect(
-      main.getByText(
-        /Tier B \(counters \+ server-redacted envelopes\) is the default/i,
-      ),
+      main.getByText(/Tier B \(counters \+ server-redacted envelopes\) is the default/i),
     ).toBeVisible();
-    await expect(
-      main.getByText(/Tier C \(full prompt text\) is explicit opt-in/i),
-    ).toBeVisible();
+    await expect(main.getByText(/Tier C \(full prompt text\) is explicit opt-in/i)).toBeVisible();
 
     // Exactly six items in the ordered list. The body uses a single <ol>
     // with one <li> per rule — count asserts we did not silently add/drop.

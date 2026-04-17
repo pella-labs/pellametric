@@ -2,11 +2,11 @@
 
 import {
   CartesianGrid,
+  ScatterChart as RechartsScatterChart,
+  Tooltip as RechartsTooltip,
   ReferenceLine,
   ResponsiveContainer,
   Scatter,
-  ScatterChart as RechartsScatterChart,
-  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
   ZAxis,
@@ -50,10 +50,7 @@ export function ScatterChart({
     <div role="img" aria-label={ariaLabel} style={{ width: "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
         <RechartsScatterChart margin={{ top: 8, right: 12, bottom: 24, left: 12 }}>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="var(--border)"
-          />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             type="number"
             dataKey="x"
@@ -87,16 +84,8 @@ export function ScatterChart({
             }}
           />
           <ZAxis type="number" dataKey="z" range={[40, 160]} />
-          <ReferenceLine
-            x={xThreshold}
-            stroke="var(--border)"
-            strokeDasharray="4 4"
-          />
-          <ReferenceLine
-            y={yThreshold}
-            stroke="var(--border)"
-            strokeDasharray="4 4"
-          />
+          <ReferenceLine x={xThreshold} stroke="var(--border)" strokeDasharray="4 4" />
+          <ReferenceLine y={yThreshold} stroke="var(--border)" strokeDasharray="4 4" />
           <RechartsTooltip
             cursor={{ strokeDasharray: "3 3", stroke: "var(--border)" }}
             contentStyle={{
@@ -108,13 +97,7 @@ export function ScatterChart({
             labelStyle={{ color: "var(--muted-foreground)" }}
             formatter={(value: number, name: string) => [value.toFixed(0), name]}
           />
-          <Scatter
-            data={data}
-            fill={color}
-            fillOpacity={0.75}
-            stroke={color}
-            strokeWidth={1}
-          />
+          <Scatter data={data} fill={color} fillOpacity={0.75} stroke={color} strokeWidth={1} />
         </RechartsScatterChart>
       </ResponsiveContainer>
     </div>

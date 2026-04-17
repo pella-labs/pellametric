@@ -7,9 +7,7 @@ describe("listClusters", () => {
     const out = await listClusters(makeCtx(), { window: "30d" });
     expect(out.clusters.length).toBeGreaterThan(0);
     for (const c of out.clusters) {
-      expect(c.contributor_count).toBeGreaterThanOrEqual(
-        CLUSTER_CONTRIBUTOR_FLOOR,
-      );
+      expect(c.contributor_count).toBeGreaterThanOrEqual(CLUSTER_CONTRIBUTOR_FLOOR);
     }
     // Fixture universe deliberately seeds entries < 3 contributors to exercise
     // the server-side floor.
