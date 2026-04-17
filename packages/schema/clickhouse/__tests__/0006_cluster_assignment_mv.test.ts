@@ -12,7 +12,13 @@ afterAll(async () => {
 });
 
 async function insertAssignment(
-  rows: Array<{ org_id: string; session_id: string; prompt_index: number; cluster_id: string; ts: string }>,
+  rows: Array<{
+    org_id: string;
+    session_id: string;
+    prompt_index: number;
+    cluster_id: string;
+    ts: string;
+  }>,
 ): Promise<void> {
   const filled = rows.map((r) => ({
     ...r,
@@ -37,7 +43,13 @@ test("cluster_assignment_mv exists with ReplacingMergeTree engine", async () => 
 
 test("insert round-trips (org, session, prompt_index, cluster_id, ts)", async () => {
   await insertAssignment([
-    { org_id: "org_a", session_id: "s1", prompt_index: 0, cluster_id: "c_1", ts: "2026-04-01T10:00:00.000Z" },
+    {
+      org_id: "org_a",
+      session_id: "s1",
+      prompt_index: 0,
+      cluster_id: "c_1",
+      ts: "2026-04-01T10:00:00.000Z",
+    },
   ]);
   const out = await query<{ cluster_id: string }>(
     client,
@@ -49,8 +61,20 @@ test("insert round-trips (org, session, prompt_index, cluster_id, ts)", async ()
 
 test("latest ts wins after FINAL when re-clustering happens", async () => {
   await insertAssignment([
-    { org_id: "org_a", session_id: "s1", prompt_index: 0, cluster_id: "c_old", ts: "2026-04-01T10:00:00.000Z" },
-    { org_id: "org_a", session_id: "s1", prompt_index: 0, cluster_id: "c_new", ts: "2026-04-02T10:00:00.000Z" },
+    {
+      org_id: "org_a",
+      session_id: "s1",
+      prompt_index: 0,
+      cluster_id: "c_old",
+      ts: "2026-04-01T10:00:00.000Z",
+    },
+    {
+      org_id: "org_a",
+      session_id: "s1",
+      prompt_index: 0,
+      cluster_id: "c_new",
+      ts: "2026-04-02T10:00:00.000Z",
+    },
   ]);
   const out = await query<{ cluster_id: string }>(
     client,

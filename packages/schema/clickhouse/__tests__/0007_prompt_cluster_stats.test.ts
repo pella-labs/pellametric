@@ -12,7 +12,13 @@ afterAll(async () => {
 });
 
 async function insertAssignment(
-  rows: Array<{ org_id: string; session_id: string; prompt_index: number; cluster_id: string; ts: string }>,
+  rows: Array<{
+    org_id: string;
+    session_id: string;
+    prompt_index: number;
+    cluster_id: string;
+    ts: string;
+  }>,
 ): Promise<void> {
   const filled = rows.map((r) => ({
     ...r,
@@ -39,12 +45,42 @@ test("prompt_cluster_stats exists with AggregatingMergeTree inner engine", async
 
 test("prompt_count_state increments per cluster-week; engineers uniq'd", async () => {
   await insertEvents(client, [
-    { client_event_id: "77777777-0000-0000-0000-000000000001", ts: "2026-04-01T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 0, cost_usd: 0.05, duration_ms: 1000 },
-    { client_event_id: "77777777-0000-0000-0000-000000000002", ts: "2026-04-01T10:00:01.000Z", org_id: "org_a", engineer_id: "eng_2", session_id: "s2", event_seq: 0, cost_usd: 0.03, duration_ms: 500 },
+    {
+      client_event_id: "77777777-0000-0000-0000-000000000001",
+      ts: "2026-04-01T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 0,
+      cost_usd: 0.05,
+      duration_ms: 1000,
+    },
+    {
+      client_event_id: "77777777-0000-0000-0000-000000000002",
+      ts: "2026-04-01T10:00:01.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_2",
+      session_id: "s2",
+      event_seq: 0,
+      cost_usd: 0.03,
+      duration_ms: 500,
+    },
   ]);
   await insertAssignment([
-    { org_id: "org_a", session_id: "s1", prompt_index: 0, cluster_id: "c_42", ts: "2026-04-01T10:00:00.000Z" },
-    { org_id: "org_a", session_id: "s2", prompt_index: 0, cluster_id: "c_42", ts: "2026-04-01T10:00:01.000Z" },
+    {
+      org_id: "org_a",
+      session_id: "s1",
+      prompt_index: 0,
+      cluster_id: "c_42",
+      ts: "2026-04-01T10:00:00.000Z",
+    },
+    {
+      org_id: "org_a",
+      session_id: "s2",
+      prompt_index: 0,
+      cluster_id: "c_42",
+      ts: "2026-04-01T10:00:01.000Z",
+    },
   ]);
   const out = await query<{ cluster_id: string; engineers: number; cnt: number }>(
     client,
@@ -61,10 +97,24 @@ test("prompt_count_state increments per cluster-week; engineers uniq'd", async (
 
 test("cost_usd_state reflects joined events", async () => {
   await insertEvents(client, [
-    { client_event_id: "88888888-0000-0000-0000-000000000001", ts: "2026-04-01T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s_cost", event_seq: 0, cost_usd: 1.5 },
+    {
+      client_event_id: "88888888-0000-0000-0000-000000000001",
+      ts: "2026-04-01T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s_cost",
+      event_seq: 0,
+      cost_usd: 1.5,
+    },
   ]);
   await insertAssignment([
-    { org_id: "org_a", session_id: "s_cost", prompt_index: 0, cluster_id: "c_cost", ts: "2026-04-01T10:00:00.000Z" },
+    {
+      org_id: "org_a",
+      session_id: "s_cost",
+      prompt_index: 0,
+      cluster_id: "c_cost",
+      ts: "2026-04-01T10:00:00.000Z",
+    },
   ]);
   const out = await query<{ cost: number }>(
     client,

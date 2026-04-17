@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ch, chRoot, CH_DATABASE } from "./client";
+import { CH_DATABASE, ch, chRoot } from "./client";
 
 const rootClient = chRoot();
 await rootClient.command({ query: `CREATE DATABASE IF NOT EXISTS ${CH_DATABASE}` });

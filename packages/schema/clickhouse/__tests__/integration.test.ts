@@ -58,8 +58,24 @@ test("property: sumMerge(input_tokens_state) equals naive SUM over 200 random ro
 
 test("partition drop on dev_daily_rollup removes rows for that month", async () => {
   await insertEvents(client, [
-    { client_event_id: "55555555-0000-0000-0000-000000000001", ts: "2026-03-15T10:00:00.000Z", org_id: "org_drop", engineer_id: "eng_d", session_id: "s_mar", event_seq: 0, input_tokens: 100 },
-    { client_event_id: "55555555-0000-0000-0000-000000000002", ts: "2026-04-15T10:00:00.000Z", org_id: "org_drop", engineer_id: "eng_d", session_id: "s_apr", event_seq: 0, input_tokens: 200 },
+    {
+      client_event_id: "55555555-0000-0000-0000-000000000001",
+      ts: "2026-03-15T10:00:00.000Z",
+      org_id: "org_drop",
+      engineer_id: "eng_d",
+      session_id: "s_mar",
+      event_seq: 0,
+      input_tokens: 100,
+    },
+    {
+      client_event_id: "55555555-0000-0000-0000-000000000002",
+      ts: "2026-04-15T10:00:00.000Z",
+      org_id: "org_drop",
+      engineer_id: "eng_d",
+      session_id: "s_apr",
+      event_seq: 0,
+      input_tokens: 200,
+    },
   ]);
 
   const before = await query<{ c: number }>(
@@ -79,8 +95,26 @@ test("partition drop on dev_daily_rollup removes rows for that month", async () 
 
 test("repo_weekly_rollup excludes events with NULL repo_id_hash while dev_daily_rollup counts all", async () => {
   await insertEvents(client, [
-    { client_event_id: "66666666-0000-0000-0000-000000000001", ts: "2026-04-01T10:00:00.000Z", org_id: "org_split", engineer_id: "eng_s", session_id: "s_n", event_seq: 0, input_tokens: 100, repo_id_hash: null },
-    { client_event_id: "66666666-0000-0000-0000-000000000002", ts: "2026-04-01T10:00:01.000Z", org_id: "org_split", engineer_id: "eng_s", session_id: "s_y", event_seq: 0, input_tokens: 200, repo_id_hash: "repo_y" },
+    {
+      client_event_id: "66666666-0000-0000-0000-000000000001",
+      ts: "2026-04-01T10:00:00.000Z",
+      org_id: "org_split",
+      engineer_id: "eng_s",
+      session_id: "s_n",
+      event_seq: 0,
+      input_tokens: 100,
+      repo_id_hash: null,
+    },
+    {
+      client_event_id: "66666666-0000-0000-0000-000000000002",
+      ts: "2026-04-01T10:00:01.000Z",
+      org_id: "org_split",
+      engineer_id: "eng_s",
+      session_id: "s_y",
+      event_seq: 0,
+      input_tokens: 200,
+      repo_id_hash: "repo_y",
+    },
   ]);
   const dev = await query<{ tokens: number }>(
     client,

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import postgres from "postgres";
-import { ch, CH_DATABASE } from "../clickhouse/client";
+import { CH_DATABASE, ch } from "../clickhouse/client";
 
 const pgUrl = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5435/bematist";
 const sql = postgres(pgUrl, { max: 1 });
@@ -67,8 +67,6 @@ for (let i = 0; i < 8000; i++) {
   const hour = randInt(24);
   const minute = randInt(60);
   const second = i % 60; // makes ts unique enough to minimize RMT dedup
-  const ts = `2026-03-${String(15 + dayOffset).padStart(2, "0")} ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}.000`;
-  const chTs = ts.length > 19 ? ts : `${ts}.000`;
   const isEdit = randInt(10) < 2;
   const isAccept = isEdit && randInt(10) < 7;
   const actualDay = 15 + dayOffset;

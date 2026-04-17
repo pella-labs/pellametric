@@ -25,8 +25,26 @@ test("repo_weekly_rollup exists with AggregatingMergeTree inner engine", async (
 
 test("events without repo_id_hash are excluded", async () => {
   await insertEvents(client, [
-    { client_event_id: "eeeeeeee-0000-0000-0000-000000000001", ts: "2026-04-01T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 0, input_tokens: 100, repo_id_hash: "repo_x" },
-    { client_event_id: "eeeeeeee-0000-0000-0000-000000000002", ts: "2026-04-01T10:00:01.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 1, input_tokens: 200, repo_id_hash: null },
+    {
+      client_event_id: "eeeeeeee-0000-0000-0000-000000000001",
+      ts: "2026-04-01T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 0,
+      input_tokens: 100,
+      repo_id_hash: "repo_x",
+    },
+    {
+      client_event_id: "eeeeeeee-0000-0000-0000-000000000002",
+      ts: "2026-04-01T10:00:01.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 1,
+      input_tokens: 200,
+      repo_id_hash: null,
+    },
   ]);
   const out = await query<{ tokens: number }>(
     client,
@@ -37,10 +55,46 @@ test("events without repo_id_hash are excluded", async () => {
 
 test("prs_state counts only non-null distinct pr_number", async () => {
   await insertEvents(client, [
-    { client_event_id: "ffffffff-0000-0000-0000-000000000001", ts: "2026-04-01T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 0, repo_id_hash: "repo_x", pr_number: 101 },
-    { client_event_id: "ffffffff-0000-0000-0000-000000000002", ts: "2026-04-01T10:00:01.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 1, repo_id_hash: "repo_x", pr_number: 102 },
-    { client_event_id: "ffffffff-0000-0000-0000-000000000003", ts: "2026-04-01T10:00:02.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 2, repo_id_hash: "repo_x", pr_number: 101 },
-    { client_event_id: "ffffffff-0000-0000-0000-000000000004", ts: "2026-04-01T10:00:03.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 3, repo_id_hash: "repo_x", pr_number: null },
+    {
+      client_event_id: "ffffffff-0000-0000-0000-000000000001",
+      ts: "2026-04-01T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 0,
+      repo_id_hash: "repo_x",
+      pr_number: 101,
+    },
+    {
+      client_event_id: "ffffffff-0000-0000-0000-000000000002",
+      ts: "2026-04-01T10:00:01.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 1,
+      repo_id_hash: "repo_x",
+      pr_number: 102,
+    },
+    {
+      client_event_id: "ffffffff-0000-0000-0000-000000000003",
+      ts: "2026-04-01T10:00:02.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 2,
+      repo_id_hash: "repo_x",
+      pr_number: 101,
+    },
+    {
+      client_event_id: "ffffffff-0000-0000-0000-000000000004",
+      ts: "2026-04-01T10:00:03.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 3,
+      repo_id_hash: "repo_x",
+      pr_number: null,
+    },
   ]);
   const out = await query<{ prs: number }>(
     client,
@@ -51,9 +105,36 @@ test("prs_state counts only non-null distinct pr_number", async () => {
 
 test("commits_state counts distinct commit_sha per repo-week", async () => {
   await insertEvents(client, [
-    { client_event_id: "99999999-0000-0000-0000-000000000001", ts: "2026-04-01T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 0, repo_id_hash: "repo_x", commit_sha: "abc123" },
-    { client_event_id: "99999999-0000-0000-0000-000000000002", ts: "2026-04-01T10:00:01.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 1, repo_id_hash: "repo_x", commit_sha: "abc123" },
-    { client_event_id: "99999999-0000-0000-0000-000000000003", ts: "2026-04-01T10:00:02.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 2, repo_id_hash: "repo_x", commit_sha: "def456" },
+    {
+      client_event_id: "99999999-0000-0000-0000-000000000001",
+      ts: "2026-04-01T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 0,
+      repo_id_hash: "repo_x",
+      commit_sha: "abc123",
+    },
+    {
+      client_event_id: "99999999-0000-0000-0000-000000000002",
+      ts: "2026-04-01T10:00:01.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 1,
+      repo_id_hash: "repo_x",
+      commit_sha: "abc123",
+    },
+    {
+      client_event_id: "99999999-0000-0000-0000-000000000003",
+      ts: "2026-04-01T10:00:02.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 2,
+      repo_id_hash: "repo_x",
+      commit_sha: "def456",
+    },
   ]);
   const out = await query<{ commits: number }>(
     client,

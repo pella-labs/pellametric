@@ -34,9 +34,33 @@ test("dev_team_dict dictionary is registered", async () => {
 test("team_id is NULL when dev is not in dictionary; weeks bucket by Monday UTC", async () => {
   // Monday 2026-03-30, midweek 2026-04-01 (same week), next Monday 2026-04-06
   await insertEvents(client, [
-    { client_event_id: "dddddddd-0000-0000-0000-000000000001", ts: "2026-03-30T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_unknown", session_id: "s1", event_seq: 0, input_tokens: 10 },
-    { client_event_id: "dddddddd-0000-0000-0000-000000000002", ts: "2026-04-01T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_unknown", session_id: "s2", event_seq: 0, input_tokens: 20 },
-    { client_event_id: "dddddddd-0000-0000-0000-000000000003", ts: "2026-04-06T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_unknown", session_id: "s3", event_seq: 0, input_tokens: 40 },
+    {
+      client_event_id: "dddddddd-0000-0000-0000-000000000001",
+      ts: "2026-03-30T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_unknown",
+      session_id: "s1",
+      event_seq: 0,
+      input_tokens: 10,
+    },
+    {
+      client_event_id: "dddddddd-0000-0000-0000-000000000002",
+      ts: "2026-04-01T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_unknown",
+      session_id: "s2",
+      event_seq: 0,
+      input_tokens: 20,
+    },
+    {
+      client_event_id: "dddddddd-0000-0000-0000-000000000003",
+      ts: "2026-04-06T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_unknown",
+      session_id: "s3",
+      event_seq: 0,
+      input_tokens: 40,
+    },
   ]);
   const out = await query<{ team_id: string | null; week: string; tokens: number }>(
     client,

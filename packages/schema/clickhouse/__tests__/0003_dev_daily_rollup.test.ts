@@ -48,10 +48,38 @@ test("sumMerge(input_tokens_state) equals SUM(input_tokens) across 10 events", a
 
 test("uniqMerge(sessions_state) counts distinct sessions per engineer per day", async () => {
   await insertEvents(client, [
-    { client_event_id: "aaaaaaaa-0000-0000-0000-000000000001", ts: "2026-04-01T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 0 },
-    { client_event_id: "aaaaaaaa-0000-0000-0000-000000000002", ts: "2026-04-01T11:00:00.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 1 },
-    { client_event_id: "aaaaaaaa-0000-0000-0000-000000000003", ts: "2026-04-01T12:00:00.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s2", event_seq: 0 },
-    { client_event_id: "aaaaaaaa-0000-0000-0000-000000000004", ts: "2026-04-01T13:00:00.000Z", org_id: "org_a", engineer_id: "eng_2", session_id: "s3", event_seq: 0 },
+    {
+      client_event_id: "aaaaaaaa-0000-0000-0000-000000000001",
+      ts: "2026-04-01T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 0,
+    },
+    {
+      client_event_id: "aaaaaaaa-0000-0000-0000-000000000002",
+      ts: "2026-04-01T11:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 1,
+    },
+    {
+      client_event_id: "aaaaaaaa-0000-0000-0000-000000000003",
+      ts: "2026-04-01T12:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s2",
+      event_seq: 0,
+    },
+    {
+      client_event_id: "aaaaaaaa-0000-0000-0000-000000000004",
+      ts: "2026-04-01T13:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_2",
+      session_id: "s3",
+      event_seq: 0,
+    },
   ]);
   const out = await query<{ engineer_id: string; sessions: number }>(
     client,
@@ -65,11 +93,55 @@ test("uniqMerge(sessions_state) counts distinct sessions per engineer per day", 
 
 test("accepted_edits_state counts only code_edit_decision accept events", async () => {
   await insertEvents(client, [
-    { client_event_id: "bbbbbbbb-0000-0000-0000-000000000001", ts: "2026-04-01T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 0, event_kind: "code_edit_decision", edit_decision: "accept" },
-    { client_event_id: "bbbbbbbb-0000-0000-0000-000000000002", ts: "2026-04-01T10:00:01.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 1, event_kind: "code_edit_decision", edit_decision: "accept" },
-    { client_event_id: "bbbbbbbb-0000-0000-0000-000000000003", ts: "2026-04-01T10:00:02.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 2, event_kind: "code_edit_decision", edit_decision: "accept" },
-    { client_event_id: "bbbbbbbb-0000-0000-0000-000000000004", ts: "2026-04-01T10:00:03.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 3, event_kind: "code_edit_decision", edit_decision: "reject" },
-    { client_event_id: "bbbbbbbb-0000-0000-0000-000000000005", ts: "2026-04-01T10:00:04.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 4, event_kind: "llm_request" },
+    {
+      client_event_id: "bbbbbbbb-0000-0000-0000-000000000001",
+      ts: "2026-04-01T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 0,
+      event_kind: "code_edit_decision",
+      edit_decision: "accept",
+    },
+    {
+      client_event_id: "bbbbbbbb-0000-0000-0000-000000000002",
+      ts: "2026-04-01T10:00:01.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 1,
+      event_kind: "code_edit_decision",
+      edit_decision: "accept",
+    },
+    {
+      client_event_id: "bbbbbbbb-0000-0000-0000-000000000003",
+      ts: "2026-04-01T10:00:02.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 2,
+      event_kind: "code_edit_decision",
+      edit_decision: "accept",
+    },
+    {
+      client_event_id: "bbbbbbbb-0000-0000-0000-000000000004",
+      ts: "2026-04-01T10:00:03.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 3,
+      event_kind: "code_edit_decision",
+      edit_decision: "reject",
+    },
+    {
+      client_event_id: "bbbbbbbb-0000-0000-0000-000000000005",
+      ts: "2026-04-01T10:00:04.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 4,
+      event_kind: "llm_request",
+    },
   ]);
   const out = await query<{ accepted: string }>(
     client,
@@ -80,9 +152,39 @@ test("accepted_edits_state counts only code_edit_decision accept events", async 
 
 test("accepted_retained_edits_state excludes revert_within_24h=1", async () => {
   await insertEvents(client, [
-    { client_event_id: "cccccccc-0000-0000-0000-000000000001", ts: "2026-04-01T10:00:00.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 0, event_kind: "code_edit_decision", edit_decision: "accept", revert_within_24h: 0 },
-    { client_event_id: "cccccccc-0000-0000-0000-000000000002", ts: "2026-04-01T10:00:01.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 1, event_kind: "code_edit_decision", edit_decision: "accept", revert_within_24h: 0 },
-    { client_event_id: "cccccccc-0000-0000-0000-000000000003", ts: "2026-04-01T10:00:02.000Z", org_id: "org_a", engineer_id: "eng_1", session_id: "s1", event_seq: 2, event_kind: "code_edit_decision", edit_decision: "accept", revert_within_24h: 1 },
+    {
+      client_event_id: "cccccccc-0000-0000-0000-000000000001",
+      ts: "2026-04-01T10:00:00.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 0,
+      event_kind: "code_edit_decision",
+      edit_decision: "accept",
+      revert_within_24h: 0,
+    },
+    {
+      client_event_id: "cccccccc-0000-0000-0000-000000000002",
+      ts: "2026-04-01T10:00:01.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 1,
+      event_kind: "code_edit_decision",
+      edit_decision: "accept",
+      revert_within_24h: 0,
+    },
+    {
+      client_event_id: "cccccccc-0000-0000-0000-000000000003",
+      ts: "2026-04-01T10:00:02.000Z",
+      org_id: "org_a",
+      engineer_id: "eng_1",
+      session_id: "s1",
+      event_seq: 2,
+      event_kind: "code_edit_decision",
+      edit_decision: "accept",
+      revert_within_24h: 1,
+    },
   ]);
   const out = await query<{ accepted: string; retained: string }>(
     client,
