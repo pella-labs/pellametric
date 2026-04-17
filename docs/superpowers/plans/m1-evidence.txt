@@ -1,5 +1,0 @@
-M1 smoke PASS — 2026-04-17T04:01:55.532Z
-adapter emitted 6 events from real-session fixture
-ingest POST /v1/events returned 202 (accepted=6, deduped=0)
-restart idempotency: second flush submitted=0 (INSERT OR IGNORE dedup)
-all 91 tests pass, 15 workspaces typecheck, biome clean
