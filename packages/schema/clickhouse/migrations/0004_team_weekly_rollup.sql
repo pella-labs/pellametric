@@ -9,11 +9,11 @@ CREATE DICTIONARY dev_team_dict (
 )
 PRIMARY KEY engineer_id
 SOURCE(POSTGRESQL(
-  port 5432
-  host 'bematist-postgres'
-  user 'postgres'
-  password 'postgres'
-  db 'bematist'
+  port ${PG_DICT_PORT}
+  host '${PG_DICT_HOST}'
+  user '${PG_DICT_USER}'
+  password '${PG_DICT_PASSWORD}'
+  db '${PG_DICT_DB}'
   query 'SELECT stable_hash AS engineer_id, NULL::text AS team_id FROM developers'
 ))
 LAYOUT(HASHED())
