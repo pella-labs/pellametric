@@ -33,10 +33,18 @@ export * as schemas from "./schemas";
 // Queries
 export { getSummary } from "./queries/dashboard";
 export { getMyViewHistory } from "./queries/audit";
-export { getSession } from "./queries/session";
+export { getSession, listSessions } from "./queries/session";
 export { listTeams, getTwoByTwo } from "./queries/team";
 export { listClusters, CLUSTER_CONTRIBUTOR_FLOOR } from "./queries/cluster";
 export { getWeeklyDigest, filterByConfidence } from "./queries/insights";
+export {
+  perDevOutcomes,
+  perPROutcomes,
+  perCommitOutcomes,
+} from "./queries/outcomes";
+export { listAlerts } from "./queries/alerts";
+export { getEffectivePolicy } from "./queries/policy";
 
 // Mutations
 export { revealSession } from "./mutations/session";
+export { setNotificationPref } from "./mutations/policy";

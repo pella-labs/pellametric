@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Fidelity } from "./common";
+import { Fidelity, Window } from "./common";
 
 export const SessionSummary = z.object({
   session_id: z.string(),
@@ -58,3 +58,46 @@ export const RevealOutput = z.object({
   expires_at: z.string().datetime(),
 });
 export type RevealOutput = z.infer<typeof RevealOutput>;
+
+/**
+ * Row shape for the `/sessions` list view. Subset of `SessionSummary` — we
+ * omit prompt-adjacent fields by construction so this type can never leak
+ * prompt text into a list render.
+ */
+export const SessionListItem = SessionSummary.pick({
+  session_id: true,
+  engineer_id: true,
+  source: true,
+  fidelity: true,
+  started_at: true,
+  ended_at: true,
+  cost_usd: true,
+  cost_estimated: true,
+  input_tokens: true,
+  output_tokens: true,
+  accepted_edits: true,
+  tier: true,
+}).extend({
+  /** Duration in seconds; null while the session is still open. */
+  duration_s: z.number().int().nonnegative().nullable(),
+});
+export type SessionListItem = z.infer<typeof SessionListItem>;
+
+export const ListSessionsInput = z.object({
+  window: Window.default("7d"),
+  team_id: z.string().optional(),
+  engineer_id: z.string().optional(),
+  /** Single source filter; UI can widen later. */
+  source: SessionSummary.shape.source.optional(),
+  /** Max rows returned — virtualization handles larger lists. */
+  limit: z.number().int().positive().max(5000).default(500),
+});
+export type ListSessionsInput = z.infer<typeof ListSessionsInput>;
+
+export const ListSessionsOutput = z.object({
+  sessions: z.array(SessionListItem),
+  /** Total matching rows; `sessions.length` may be <= this when capped by limit. */
+  total: z.number().int().nonnegative(),
+  window: Window,
+});
+export type ListSessionsOutput = z.infer<typeof ListSessionsOutput>;
