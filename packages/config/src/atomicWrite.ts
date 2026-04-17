@@ -1,11 +1,21 @@
 import { copyFileSync, existsSync, renameSync, writeFileSync } from "node:fs";
 
+/**
+ * Atomically write `content` to `path`. If `path` already exists, its prior
+ * content is preserved at `${path}.bak` BEFORE the rename but AFTER the new
+ * content is successfully staged to a temp file — this ordering means a
+ * failed write never clobbers the .bak story.
+ *
+ * Cross-platform: relies on same-volume rename semantics. Callers should
+ * ensure `path` and its directory are on the same filesystem (true for all
+ * collector-side users of this function).
+ */
 export async function atomicWrite(path: string, content: string): Promise<void> {
+  const tmp = `${path}.tmp.${process.pid}.${Date.now()}`;
+  writeFileSync(tmp, content, "utf8");
   if (existsSync(path)) {
     copyFileSync(path, `${path}.bak`);
   }
-  const tmp = `${path}.tmp.${process.pid}.${Date.now()}`;
-  writeFileSync(tmp, content, "utf8");
   renameSync(tmp, path);
 }
 
