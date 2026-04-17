@@ -41,6 +41,8 @@ All 13 tables from contract 09 §Tables exist in Postgres, typed in `schema.ts`,
 
 Per-table notes in `contracts/09-storage-schema.md` §Tables + §"Per-table contracts that cross workstreams". Each gets a `pgTable` definition in `packages/schema/postgres/schema.ts` with:
 
+- [ ] **`teams`** — `(id, org_id, name, created_at)` — **scope addition per D1-02 design** (2026-04-17). `team_weekly_rollup` MV depends on `dev_team_dict` CH dictionary which sources from `developers.team_id`, which needs a `teams` table to FK to. Not in original contract 09 §Tables; add via additive changelog entry.
+- [ ] **Add `developers.team_id`** — `uuid REFERENCES teams(id)` NULL for unassigned devs. Self-declared per D1-02 design D3.
 - [ ] `repos` — `(id, org_id, repo_full_name_hash, provider, created_at)` — `repo_id_hash = HMAC(repo_full_name, tenant_salt)` per contract 09 open question 2.
 - [ ] `policies` — `(org_id PK, tier_default, redaction_overrides_json, tier_c_signed_config, tier_c_activated_at)` — per-org redaction overrides + tier config.
 - [ ] `git_events` — denormalized mirror written by C; joined to CH events by `commit_sha`.
