@@ -5,6 +5,7 @@
     "": {
       "name": "bematist",
       "dependencies": {
+        "drizzle-orm": "0.36.4",
         "zod": "^3.23.8",
       },
       "devDependencies": {
