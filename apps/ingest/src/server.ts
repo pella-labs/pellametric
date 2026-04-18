@@ -3,6 +3,7 @@ import { type AuthContext, verifyBearer } from "./auth";
 import { checkDedup } from "./dedup/checkDedup";
 import { getDeps } from "./deps";
 import { logger } from "./logger";
+import { handlePolicyFlipRequest } from "./policy-flip/route";
 import { redactEventInPlace } from "./redact/hotpath";
 import { applyTierAAllowlist, enforceTier } from "./tier/enforceTier";
 import { canonicalize } from "./wal/append";
@@ -535,6 +536,18 @@ export async function handle(req: Request): Promise<Response> {
       return json({ error: "unknown webhook source", code: "UNKNOWN_SOURCE" }, { status: 404 });
     }
     return handleWebhook(req, source, getDeps());
+  }
+
+  if (url.pathname === "/v1/admin/policy-flip") {
+    if (req.method !== "POST") {
+      return json({ error: "method not allowed" }, { status: 405 });
+    }
+    const { store, cache, policyFlip } = getDeps();
+    const auth = await verifyBearer(req.headers.get("authorization"), store, cache);
+    if (!auth) {
+      return new Response(null, { status: 401 });
+    }
+    return handlePolicyFlipRequest(req, auth, requestId, { policyFlip });
   }
 
   if (url.pathname === "/v1/events") {

@@ -18,6 +18,7 @@ import { LRUCache } from "./auth/verifyIngestKey";
 import { type ClickHouseWriter, createInMemoryClickHouseWriter } from "./clickhouse";
 import { type DedupStore, InMemoryDedupStore } from "./dedup/checkDedup";
 import { type Flags, parseFlags } from "./flags";
+import type { PolicyFlipDeps } from "./policy-flip/handler";
 import { noopAuditSink } from "./redact/auditSink";
 import type { RedactionAuditSink } from "./redact/hotpath";
 import { InMemoryOrgPolicyStore, type OrgPolicyStore } from "./tier/enforceTier";
@@ -64,6 +65,13 @@ export interface Deps {
   gitEventsStore: GitEventsStore;
   /** Resolves ?org=<slug> on webhook paths to an internal org id. */
   orgResolver: OrgResolver;
+  /**
+   * Tier-C admin-flip deps (D20). Null until boot wires the Drizzle-backed
+   * store/audit/alert impls; the HTTP route refuses with 500 when null so a
+   * misconfigured deploy surfaces loudly instead of silently no-oping the
+   * audit trail.
+   */
+  policyFlip: PolicyFlipDeps | null;
 }
 
 function makeDefaultDeps(): Deps {
@@ -94,6 +102,7 @@ function makeDefaultDeps(): Deps {
     webhookDedup: new InMemoryDedupStore(),
     gitEventsStore: createInMemoryGitEventsStore(),
     orgResolver: createInMemoryOrgResolver(),
+    policyFlip: null,
   };
 }
 

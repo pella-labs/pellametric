@@ -1,3 +1,4 @@
+import { parsePublicKeysEnv } from "@bematist/config";
 import { verifyBearer } from "./auth";
 import {
   createNodeRedisLuaClient,
@@ -11,6 +12,11 @@ import { getDeps, setDeps } from "./deps";
 import { assertFlagCoherence, FlagIncoherentError, parseFlags } from "./flags";
 import { logger } from "./logger";
 import { startOtlpServer } from "./otlp/server";
+import { createPolicyFlipDbHandle } from "./policy-flip/dbClient";
+import { DrizzleAlertEmitter } from "./policy-flip/drizzleAlerts";
+import { DrizzleAuditWriter } from "./policy-flip/drizzleAudit";
+import { DrizzlePolicyFlipStore } from "./policy-flip/drizzleStore";
+import type { PolicyFlipDeps } from "./policy-flip/handler";
 import { applyCoreRlimit } from "./rlimit";
 import { startServer } from "./server";
 import { createRedisStreamsWalAppender } from "./wal/append";
@@ -41,6 +47,7 @@ try {
 // deps.ts — those never touch the network.
 let sharedNodeRedis: (NodeRedisClient & { quit(): Promise<void> }) | null = null;
 let luaRedisHandle: { quit: () => Promise<void> } | null = null;
+let policyFlipDbHandle: { close(): Promise<void> } | null = null;
 
 if (process.env.NODE_ENV !== "test") {
   try {
@@ -64,6 +71,43 @@ if (process.env.NODE_ENV !== "test") {
       { bun_version: Bun.version, redis_url: process.env.REDIS_URL ?? "default" },
       "runtime adapters wired (bun.redis dedup, node-redis lua+streams, @clickhouse/client)",
     );
+
+    // D20 policy-flip deps — pinned Ed25519 keys from env, Drizzle-backed
+    // store/audit/alert writing to the control-plane DB. Left unwired when
+    // SIGNED_CONFIG_PUBLIC_KEYS is absent so the HTTP route 500s loudly
+    // instead of silently ignoring misconfiguration.
+    try {
+      const publicKeysRaw = parsePublicKeysEnv(process.env.SIGNED_CONFIG_PUBLIC_KEYS);
+      if (publicKeysRaw.length === 0) {
+        logger.warn(
+          { code: "POLICY_FLIP_NO_KEYS" },
+          "SIGNED_CONFIG_PUBLIC_KEYS absent; /v1/admin/policy-flip will 500 until configured",
+        );
+      } else {
+        const handle = createPolicyFlipDbHandle();
+        policyFlipDbHandle = handle;
+        const policyFlip: PolicyFlipDeps = {
+          store: new DrizzlePolicyFlipStore({ db: handle.db }),
+          audit: new DrizzleAuditWriter({ db: handle.db }),
+          alerts: new DrizzleAlertEmitter({ db: handle.db }),
+          publicKeysRaw,
+          now: () => new Date(),
+        };
+        setDeps({ policyFlip });
+        logger.info(
+          { pinned_keys: publicKeysRaw.length },
+          "policy-flip deps wired (drizzle store/audit/alerts + pg_notify)",
+        );
+      }
+    } catch (err) {
+      logger.error(
+        {
+          err: err instanceof Error ? err.message : String(err),
+          code: "POLICY_FLIP_WIRING_FAILED",
+        },
+        "policy-flip wiring failed; /v1/admin/policy-flip will 500 until fixed",
+      );
+    }
   } catch (err) {
     logger.error(
       { err: err instanceof Error ? err.message : String(err), code: "ADAPTER_WIRING_FAILED" },
@@ -134,6 +178,11 @@ if (process.env.NODE_ENV !== "test") {
     if (sharedNodeRedis) {
       try {
         await sharedNodeRedis.quit();
+      } catch {}
+    }
+    if (policyFlipDbHandle) {
+      try {
+        await policyFlipDbHandle.close();
       } catch {}
     }
   };

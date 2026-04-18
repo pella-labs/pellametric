@@ -42,7 +42,9 @@
         "@bematist/redact": "workspace:*",
         "@bematist/schema": "workspace:*",
         "@clickhouse/client": "^1.18.2",
+        "drizzle-orm": "0.36.4",
         "pino": "^9.5.0",
+        "postgres": "^3.4.5",
         "redis": "^4.7.0",
         "zod": "^3.23.8",
       },
@@ -150,6 +152,8 @@
       "version": "0.0.0",
       "dependencies": {
         "@bematist/schema": "workspace:*",
+        "@clickhouse/client": "^1.18.2",
+        "postgres": "^3.4.5",
       },
       "devDependencies": {
         "@types/bun": "latest",
