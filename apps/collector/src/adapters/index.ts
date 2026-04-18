@@ -1,5 +1,6 @@
 import type { Adapter } from "@bematist/sdk";
 import { ClaudeCodeAdapter } from "./claude-code";
+import { CodexAdapter } from "./codex";
 
 export interface RegistryIdentity {
   tenantId: string;
@@ -12,5 +13,5 @@ export interface RegistryIdentity {
  * M1 ships only claude-code; M2 adds codex / cursor / opencode / continue / vscode-generic.
  */
 export function buildRegistry(id: RegistryIdentity): Adapter[] {
-  return [new ClaudeCodeAdapter(id)];
+  return [new ClaudeCodeAdapter(id), new CodexAdapter(id)];
 }
