@@ -1,0 +1,23 @@
+{
+  "name": "@bematist/tests-privacy",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "M2 privacy adversarial gate (5 thresholds) — see tests/privacy/adversarial/README.md",
+  "scripts": {
+    "test": "bun test adversarial",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bematist/clio": "workspace:*",
+    "@bematist/fixtures": "workspace:*",
+    "@bematist/redact": "workspace:*",
+    "@bematist/schema": "workspace:*",
+    "@clickhouse/client": "^1.18.2",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.3"
+  }
+}
