@@ -1,0 +1,7 @@
+{"type":"session_start","sessionId":"twn_01","timestamp":"2026-04-17T09:00:00.000Z"}
+{"type":"chat_response","sessionId":"twn_01","timestamp":"2026-04-17T09:00:04.500Z","model":"codellama:7b","inputTokens":512,"outputTokens":128}
+{"type":"chat_response","sessionId":"twn_01","timestamp":"2026-04-17T09:00:12.200Z","model":"codellama:7b","inputTokens":640,"outputTokens":256}
+{"type":"session_end","sessionId":"twn_01","timestamp":"2026-04-17T09:01:00.000Z"}
+{"type":"session_start","sessionId":"twn_02","timestamp":"2026-04-17T10:00:00.000Z"}
+{"type":"chat_response","sessionId":"twn_02","timestamp":"2026-04-17T10:00:08.000Z","model":"qwen2.5-coder:7b","inputTokens":2048,"outputTokens":512}
+{"type":"session_end","sessionId":"twn_02","timestamp":"2026-04-17T10:02:00.000Z"}
