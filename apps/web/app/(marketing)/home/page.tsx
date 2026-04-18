@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DEMO_CARD } from "../_card/demo-data";
 import { BrandMonolith } from "../_components/BrandMonolith";
+import { DashboardShot } from "../_components/DashboardShot";
 import { HeroGrid } from "../_components/HeroGrid";
+import { WrappedCard } from "../_components/WrappedCard";
 
 export const metadata: Metadata = {
   title: "Bematist · See what AI is shipping",
@@ -51,34 +54,38 @@ export default function MarketingHome() {
       {/* Hero */}
       <section className="mk-hero">
         <HeroGrid />
-        <div className="mk-hero-content">
-          <div className="mk-sys" style={{ marginBottom: 20 }}>
-            open-source. forever.
+        <div className="mk-hero-grid">
+          <div className="mk-hero-content">
+            <div className="mk-sys" style={{ marginBottom: 20 }}>
+              open-source. forever.
+            </div>
+            <h1>
+              See what AI is <em>actually shipping</em>.
+            </h1>
+            <p>
+              Bematist instruments your team's coding agents and ties every LLM
+              dollar to the code that merged. Every developer gets a private
+              card. Every team gets a dashboard.
+            </p>
+            <div className="mk-hero-actions">
+              <Link href="/demo" className="mk-btn mk-btn-primary">
+                Try with demo data
+              </Link>
+              <a
+                href="https://github.com/pella-labs/bematist"
+                className="mk-btn mk-btn-ghost"
+                rel="noreferrer"
+              >
+                View on GitHub
+              </a>
+            </div>
           </div>
-          <h1>
-            See what AI is <em>actually shipping</em>.
-          </h1>
-          <p>
-            Bematist instruments your team's coding agents and ties every LLM
-            dollar to the code that merged. Claude Code, Cursor, Codex.
-          </p>
-          <div className="mk-hero-actions">
-            <a href="#install" className="mk-btn mk-btn-primary">
-              Install
-            </a>
-            <a
-              href="https://github.com/pella-labs/bematist"
-              className="mk-btn mk-btn-ghost"
-              rel="noreferrer"
-            >
-              View on GitHub
-            </a>
-            <Link href="/" className="mk-btn mk-btn-ghost">
-              Open dashboard
-            </Link>
-          </div>
+          <WrappedCard data={DEMO_CARD} />
         </div>
       </section>
+
+      {/* Dashboard screenshot */}
+      <DashboardShot />
 
       {/* Brand monolith */}
       <BrandMonolith />

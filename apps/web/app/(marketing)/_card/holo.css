@@ -1,0 +1,189 @@
+/* Radiant holo — simey/pokemon-cards-css verbatim (MIT), scoped to .pharos-holo.
+   Hover-only. Neutral foil texture so no Pokemon image bleeds through. */
+
+.pharos-holo {
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --background-x: 50%;
+  --background-y: 50%;
+  --card-opacity: 0;
+
+  --card-radius: 24px;
+  --card-edge: hsl(281, 80%, 75%);
+  --card-glow: hsl(281, 62%, 58%);
+
+  /* full card coverage — only the rounded corners are clipped */
+  --clip: inset(0 round var(--card-radius));
+  --clip-borders: inset(0 round var(--card-radius));
+
+  --glitter: url("https://poke-holo.simey.me/img/glitter.png");
+  --foil: url("https://poke-holo.simey.me/img/trainerbg.png");
+  --space: 200px;
+  --imgsize: 25% auto;
+  --barwidth: 1.2%;
+
+  box-shadow:
+    0 0 3px -1px rgba(255, 255, 255, 0.6),
+    0 0 3px 1px var(--card-edge),
+    0 0 12px 2px var(--card-glow),
+    0 10px 20px -5px rgba(0, 0, 0, 0.7),
+    0 0 40px -30px var(--card-glow),
+    0 0 50px -20px var(--card-glow);
+  transition: box-shadow 0.4s ease;
+}
+
+.pharos-holo-shine,
+.pharos-holo-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+  pointer-events: none;
+  will-change: transform, opacity, background-image, background-size, background-position, filter;
+  transition: opacity 0.3s ease;
+}
+
+.card-flipper:is(:hover, .is-hovering) .pharos-holo { --card-opacity: 1; }
+
+/* SHINE — verbatim radiant-holo.css */
+.pharos-holo-shine {
+  z-index: 7;
+  overflow: hidden;
+  opacity: var(--card-opacity);
+  clip-path: var(--clip-borders);
+  -webkit-clip-path: var(--clip-borders);
+
+  background-image:
+    radial-gradient(
+      farthest-corner ellipse
+      at var(--pointer-x) var(--pointer-y),
+      hsl(0, 0%, 95%) 10%,
+      var(--card-glow) 90%
+    ),
+    repeating-linear-gradient(45deg,
+      hsl(0,0%,10%) 0%, hsl(0,0%,10%) 1%,
+      hsl(0,0%,10%) var(--barwidth),
+      hsl(0,0%,20%) calc(var(--barwidth) + 0.01%),
+      hsl(0,0%,20%) calc(var(--barwidth) * 2),
+      hsl(0,0%,35%) calc(var(--barwidth) * 2 + 0.01%),
+      hsl(0,0%,35%) calc(var(--barwidth) * 3),
+      hsl(0,0%,42.5%) calc(var(--barwidth) * 3 + 0.01%),
+      hsl(0,0%,42.5%) calc(var(--barwidth) * 4),
+      hsl(0,0%,50%) calc(var(--barwidth) * 4 + 0.01%),
+      hsl(0,0%,50%) calc(var(--barwidth) * 5),
+      hsl(0,0%,42.5%) calc(var(--barwidth) * 5 + 0.01%),
+      hsl(0,0%,42.5%) calc(var(--barwidth) * 6),
+      hsl(0,0%,35%) calc(var(--barwidth) * 6 + 0.01%),
+      hsl(0,0%,35%) calc(var(--barwidth) * 7),
+      hsl(0,0%,20%) calc(var(--barwidth) * 7 + 0.01%),
+      hsl(0,0%,20%) calc(var(--barwidth) * 8),
+      hsl(0,0%,10%) calc(var(--barwidth) * 8 + 0.01%),
+      hsl(0,0%,10%) calc(var(--barwidth) * 9),
+      hsl(0,0%,0%)  calc(var(--barwidth) * 9 + 0.01%),
+      hsl(0,0%,0%)  calc(var(--barwidth) * 10)
+    ),
+    repeating-linear-gradient(-45deg,
+      hsl(0,0%,10%) 0%, hsl(0,0%,10%) 1%,
+      hsl(0,0%,10%) var(--barwidth),
+      hsl(0,0%,20%) calc(var(--barwidth) + 0.01%),
+      hsl(0,0%,20%) calc(var(--barwidth) * 2),
+      hsl(0,0%,35%) calc(var(--barwidth) * 2 + 0.01%),
+      hsl(0,0%,35%) calc(var(--barwidth) * 3),
+      hsl(0,0%,42.5%) calc(var(--barwidth) * 3 + 0.01%),
+      hsl(0,0%,42.5%) calc(var(--barwidth) * 4),
+      hsl(0,0%,50%) calc(var(--barwidth) * 4 + 0.01%),
+      hsl(0,0%,50%) calc(var(--barwidth) * 5),
+      hsl(0,0%,42.5%) calc(var(--barwidth) * 5 + 0.01%),
+      hsl(0,0%,42.5%) calc(var(--barwidth) * 6),
+      hsl(0,0%,35%) calc(var(--barwidth) * 6 + 0.01%),
+      hsl(0,0%,35%) calc(var(--barwidth) * 7),
+      hsl(0,0%,20%) calc(var(--barwidth) * 7 + 0.01%),
+      hsl(0,0%,20%) calc(var(--barwidth) * 8),
+      hsl(0,0%,10%) calc(var(--barwidth) * 8 + 0.01%),
+      hsl(0,0%,10%) calc(var(--barwidth) * 9),
+      hsl(0,0%,0%)  calc(var(--barwidth) * 9 + 0.01%),
+      hsl(0,0%,0%)  calc(var(--barwidth) * 10)
+    );
+  background-size: cover, 210% 210%, 210% 210%;
+  background-position:
+    center,
+    calc(((var(--background-x) - 50%) * 1.5) + 50%) calc(((var(--background-y) - 50%) * 1.5) + 50%),
+    calc(((var(--background-x) - 50%) * 1.5) + 50%) calc(((var(--background-y) - 50%) * 1.5) + 50%);
+  background-blend-mode: exclusion, darken, color-dodge;
+  filter: brightness(.5) contrast(2) saturate(1.75);
+  mix-blend-mode: color-dodge;
+}
+
+.pharos-holo-shine::before,
+.pharos-holo-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius);
+}
+
+/* rainbow sheen, clipped to the art window */
+.pharos-holo-shine::after {
+  clip-path: var(--clip);
+  -webkit-clip-path: var(--clip);
+  background-image:
+    var(--foil),
+    repeating-linear-gradient(55deg,
+      hsl(3, 95%, 85%) calc(var(--space) * 1),
+      hsl(207, 100%, 84%) calc(var(--space) * 2),
+      hsl(29, 100%, 85%) calc(var(--space) * 3),
+      hsl(160, 100%, 86%) calc(var(--space) * 4),
+      hsl(309, 94%, 87%) calc(var(--space) * 5),
+      hsl(188, 95%, 85%) calc(var(--space) * 6),
+      hsl(3, 95%, 85%) calc(var(--space) * 7)
+    );
+  background-size: var(--imgsize), 400% 100%;
+  background-position:
+    center,
+    calc(((var(--background-x) - 50%) * -2.5) + 50%) calc(((var(--background-y) - 50%) * -2.5) + 50%);
+  filter: brightness(.6) contrast(3) saturate(2);
+  mix-blend-mode: color-dodge;
+  background-blend-mode: difference;
+}
+
+/* glitter */
+.pharos-holo-shine::before {
+  z-index: 2;
+  background-image:
+    var(--glitter),
+    radial-gradient(
+      farthest-corner ellipse at var(--pointer-x) var(--pointer-y),
+      hsla(0, 0%, 58%, 0.8) 10%,
+      hsla(0, 0%, 20%, 0.9) 20%,
+      hsla(0, 0%, 20%, 0.5) 50%
+    );
+  background-position: center;
+  background-size: 15% 15%, 350% 350%;
+  background-blend-mode: color-dodge;
+  mix-blend-mode: overlay;
+  filter: brightness(.66) contrast(2) saturate(.5);
+}
+
+/* glare — simey's hard-light radial */
+.pharos-holo-glare {
+  z-index: 8;
+  clip-path: var(--clip-borders);
+  -webkit-clip-path: var(--clip-borders);
+  opacity: var(--card-opacity);
+  background-image: radial-gradient(
+    farthest-corner circle at var(--pointer-x) var(--pointer-y),
+    hsla(0, 0%, 100%, 0.33) 0%,
+    hsl(0, 0%, 25%) 110%
+  );
+  filter: brightness(1) contrast(1.5);
+  mix-blend-mode: hard-light;
+}
+
+/* ── Firefox tone-down ──
+   Firefox renders color-dodge / hard-light blends much brighter than WebKit/Blink.
+   Damp the shine + glare intensity so the card doesn't turn into a white flashlight. */
+@supports (-moz-appearance: none) {
+  .pharos-holo-shine { filter: brightness(.35) contrast(1.5) saturate(1.3); opacity: calc(var(--card-opacity) * 0.55); }
+  .pharos-holo-shine::after { filter: brightness(.4) contrast(2) saturate(1.4); }
+  .pharos-holo-shine::before { filter: brightness(.5) contrast(1.4) saturate(.4); }
+  .pharos-holo-glare { opacity: calc(var(--card-opacity) * 0.6); filter: brightness(.85) contrast(1.2); }
+}
