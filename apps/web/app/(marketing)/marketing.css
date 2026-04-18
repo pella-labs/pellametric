@@ -881,10 +881,22 @@
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 13px;
   color: var(--mk-ink);
-  white-space: pre-wrap;
-  word-break: break-all;
-  overflow: hidden;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
   user-select: all;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.bematist-marketing .mk-getstarted-cmd pre::-webkit-scrollbar {
+  display: none;
+}
+
+.bematist-marketing .mk-getstarted-cmd .mk-btn {
+  flex-shrink: 0;
+  min-width: 84px;
+  justify-content: center;
 }
 
 .bematist-marketing .mk-getstarted-finefoot {
