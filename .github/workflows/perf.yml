@@ -126,7 +126,12 @@ jobs:
       INGEST_URL: http://localhost:8000
       BASE_URL: http://localhost:3000
       USE_FIXTURES: "0"
-      K6_GATE_M2: ${{ github.event.inputs.gate_m2 || '1' }}
+      # M2 ships warn-only: infrastructure (1M-seed + k6 dashboard/ingest scenarios + CI matrix) is wired
+      # but the merge-blocking flip waits for M3 wire-up of (a) Better Auth tenant binding so the web
+      # uses a real seeded UUID instead of `dev-tenant`, and (b) real-branch queries against
+      # pr_outcome_rollup / commit_outcome_rollup once those MVs are materialized.
+      # Flip default to '1' to make the perf gate merge-blocking.
+      K6_GATE_M2: ${{ github.event.inputs.gate_m2 || '0' }}
       PERF_SEED_TOTAL_TARGET: ${{ github.event.inputs.seed_target || '600000' }}
       # Deterministic key secret so the seed mints a known bearer the k6
       # ingest scenario can read via tests/perf/.ingest-bearer.
