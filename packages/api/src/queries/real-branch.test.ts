@@ -689,70 +689,36 @@ describe("alerts.listAlerts (real branch)", () => {
 });
 
 describe("insights.getWeeklyDigest (real branch)", () => {
-  test("reads from insights table and filters low-confidence rows", async () => {
-    const pg = mock(async () => [
-      {
-        id: "ins_1",
-        title: "High conf",
-        body: "body a",
-        confidence: "high",
-        subject_kind: "efficiency",
-        citations: [],
-        generated_at: "2026-04-14 12:00:00",
-      },
-      {
-        id: "ins_2",
-        title: "Low conf",
-        body: "body b",
-        confidence: "low",
-        subject_kind: "waste",
-        citations: [],
-        generated_at: "2026-04-14 12:00:00",
-      },
-    ]);
+  test("real branch is stubbed to empty until Workstream H writer aligns the schema", async () => {
+    // The real `insights` table columns (id, ts, org_id, team_id, week,
+    // body_json, confidence) don't match the shape the query previously
+    // assumed (title, body, subject_kind, citations, generated_at). The
+    // stub returns empty + 0 dropped until the insight writer reshapes
+    // the real-branch query. See packages/api/src/queries/insights.ts.
+    const pg = mock(async () => []);
     const ctx = makeCtx("manager", { pg });
     const out = await getWeeklyDigest(ctx, { week: "2026-W15" });
-    // Low confidence was server-side dropped.
-    expect(out.insights.length).toBe(1);
-    expect(out.dropped_low_confidence).toBe(1);
-    const [sql, params] = firstPg(pg);
-    expect(sql).toContain("FROM insights");
-    expect(params[0]).toBe("org_fixtures_off");
-    expect(params[1]).toBe("2026-W15");
-    assertNoForbiddenColumns(sql);
+    expect(out.insights).toEqual([]);
+    expect(out.dropped_low_confidence).toBe(0);
+    expect(out.week_label).toBe("Week 2026-W15");
+    // Stub never touches Postgres.
+    expect(pg).not.toHaveBeenCalled();
   });
 });
 
 describe("audit.getMyViewHistory (real branch)", () => {
-  test("reads audit_events narrowed to the actor's own id", async () => {
-    const pg = mock(async (sql: string) => {
-      if (sql.includes("notification_prefs")) {
-        return [{ notification_pref: "immediate" }];
-      }
-      return [
-        {
-          id: "audit_1",
-          ts: "2026-04-14 12:00:00",
-          actor_id: "actor_manager",
-          actor_display_name: "Manager",
-          actor_role: "manager",
-          target_engineer_id: "actor_lane1",
-          surface: "me_page",
-          reason: null,
-          session_id: null,
-        },
-      ];
-    });
+  test("real branch is stubbed to empty until audit_events query aligns with the schema", async () => {
+    // Real `audit_events` uses hashed identifiers (target_engineer_id_hash,
+    // session_id_hash) and has no actor_display_name / actor_role / reason
+    // columns. `notification_prefs` table doesn't exist at all. Stub returns
+    // empty until the schema catches up. See packages/api/src/queries/audit.ts.
+    const pg = mock(async () => []);
     const ctx = makeCtx("engineer", { pg });
     const out = await getMyViewHistory(ctx, { window: "24h" });
-    expect(out.events.length).toBe(1);
-    expect(out.notification_pref).toBe("immediate");
-    const [sql, params] = firstPg(pg);
-    expect(sql).toContain("FROM audit_events");
-    expect(params[0]).toBe("org_fixtures_off");
-    // actor_id is the narrow filter — the IC can only see their own history.
-    expect(params[1]).toBe("actor_lane1");
-    assertNoForbiddenColumns(sql);
+    expect(out.events).toEqual([]);
+    expect(out.notification_pref).toBe("daily_digest");
+    // Stub never touches Postgres.
+    expect(pg).not.toHaveBeenCalled();
   });
 });
 

@@ -51,59 +51,24 @@ async function getWeeklyDigestFixture(
 }
 
 /**
- * Real-branch Postgres read.
- *
- * EXPLAIN: `insights` indexed on (`org_id`, `week_label`, `team_id`).
- * `filterByConfidence` still runs on the returned rows — it's the single
- * load-bearing invariant and we keep it inside the query boundary so any
- * future writer can't bypass the drop.
+ * Real-branch Postgres read. Stubbed to empty until the query columns are
+ * re-aligned with the actual `insights` schema. Real table has
+ * (`id`, `ts`, `org_id`, `team_id`, `week`, `body_json`, `confidence`) —
+ * no `title` / `body` / `subject_kind` / `citations` / `generated_at`
+ * columns, and `week` is the label column (not `week_label`). Tracked as
+ * an M4 follow-up — the insight writer (Workstream H) will reshape this
+ * when it lands.
  */
 async function getWeeklyDigestReal(
-  ctx: Ctx,
+  _ctx: Ctx,
   input: InsightsDigestInput,
 ): Promise<InsightsDigestOutput> {
   const weekLabel = input.week ?? currentWeek();
-
-  const clauses = ["org_id = $1", "week_label = $2"];
-  const params: unknown[] = [ctx.tenant_id, weekLabel];
-  if (input.team_id) {
-    clauses.push(`team_id = $${params.length + 1}`);
-    params.push(input.team_id);
-  }
-
-  const rows = await ctx.db.pg.query<{
-    id: string;
-    title: string;
-    body: string;
-    confidence: "high" | "medium" | "low";
-    subject_kind: PipelineInsight["subject_kind"];
-    citations: PipelineInsight["citations"];
-    generated_at: string;
-  }>(
-    `SELECT id, title, body, confidence, subject_kind, citations, generated_at
-       FROM insights
-      WHERE ${clauses.join(" AND ")}
-      ORDER BY generated_at DESC`,
-    params,
-  );
-
-  const pipeline: PipelineInsight[] = rows.map((r) => ({
-    id: r.id,
-    title: r.title,
-    body: r.body,
-    confidence: r.confidence,
-    subject_kind: r.subject_kind,
-    citations: r.citations ?? [],
-  }));
-
-  const filtered = filterByConfidence(pipeline);
-  const generatedAt = rows[0]?.generated_at ?? new Date().toISOString();
-
   return {
-    generated_at: new Date(generatedAt).toISOString(),
+    generated_at: new Date().toISOString(),
     week_label: formatWeekLabel(weekLabel),
-    insights: filtered.insights,
-    dropped_low_confidence: filtered.dropped,
+    insights: [],
+    dropped_low_confidence: 0,
   };
 }
 

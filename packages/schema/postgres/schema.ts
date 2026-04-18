@@ -54,32 +54,37 @@ export const users = pgTable("users", {
  * our `users` table links via `users.better_auth_user_id`. Rollback = drop
  * these four tables and the two `users` columns added by migration 0004.
  */
+// Better Auth 1.5+ expects camelCase JS field names (emailVerified, expiresAt,
+// etc.) on the Drizzle schema even when the underlying columns are snake_case.
+// The original migration declared the columns snake_case; we preserve those
+// column names via `timestamp("expires_at", …)` / `text("user_id", …)` while
+// exposing camelCase JS keys so Better Auth's adapter finds the fields.
 export const betterAuthUser = pgTable("better_auth_user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  email_verified: boolean("email_verified").notNull().default(false),
+  emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
-  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const betterAuthSession = pgTable(
   "better_auth_session",
   {
     id: text("id").primaryKey(),
-    user_id: text("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => betterAuthUser.id, { onDelete: "cascade" }),
     token: text("token").notNull().unique(),
-    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
-    ip_address: text("ip_address"),
-    user_agent: text("user_agent"),
-    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    userIdx: index("better_auth_session_user_id_idx").on(table.user_id),
+    userIdx: index("better_auth_session_user_id_idx").on(table.userId),
     tokenIdx: index("better_auth_session_token_idx").on(table.token),
   }),
 );
@@ -88,27 +93,27 @@ export const betterAuthAccount = pgTable(
   "better_auth_account",
   {
     id: text("id").primaryKey(),
-    user_id: text("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => betterAuthUser.id, { onDelete: "cascade" }),
-    account_id: text("account_id").notNull(),
-    provider_id: text("provider_id").notNull(),
-    access_token: text("access_token"),
-    refresh_token: text("refresh_token"),
-    id_token: text("id_token"),
-    access_token_expires_at: timestamp("access_token_expires_at", { withTimezone: true }),
-    refresh_token_expires_at: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
     scope: text("scope"),
     password: text("password"),
-    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     providerAccountUniq: uniqueIndex("better_auth_account_provider_account_uniq").on(
-      table.provider_id,
-      table.account_id,
+      table.providerId,
+      table.accountId,
     ),
-    userIdx: index("better_auth_account_user_id_idx").on(table.user_id),
+    userIdx: index("better_auth_account_user_id_idx").on(table.userId),
   }),
 );
 
@@ -118,9 +123,9 @@ export const betterAuthVerification = pgTable(
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
-    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     identifierIdx: index("better_auth_verification_identifier_idx").on(table.identifier),

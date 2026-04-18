@@ -112,6 +112,12 @@ jobs:
         run: bun run typecheck
 
       - name: Test
+        # PG_INTEGRATION_TESTS=1 opts into the worker's anomaly-notifier
+        # integration tests, which TRUNCATE orgs + alerts on the CI-provided
+        # disposable Postgres service. Local `bun run test` leaves this unset
+        # so a dev's running stack isn't wiped.
+        env:
+          PG_INTEGRATION_TESTS: "1"
         run: bun run test
 
   e2e-use-fixtures-0:

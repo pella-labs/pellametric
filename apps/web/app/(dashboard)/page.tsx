@@ -10,6 +10,7 @@ import {
   InsufficientData,
 } from "@bematist/ui";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { getSessionCtx } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -24,6 +25,11 @@ const USD = new Intl.NumberFormat("en-US", {
 
 export default async function DashboardHome() {
   const ctx = await getSessionCtx();
+  // Engineers/ICs don't get the team-level summary — redirect them to their
+  // own digest page. Admins/managers/viewers continue to the team view below.
+  if (ctx.role === "engineer") {
+    redirect("/me/digest");
+  }
   const summary = await getSummary(ctx, { window: "7d" });
 
   return (

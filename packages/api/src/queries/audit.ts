@@ -36,53 +36,20 @@ async function getMyViewHistoryFixture(
 }
 
 /**
- * Real-branch Postgres read. Filters by (`tenant_id`, `target_engineer_id`);
- * RLS on `audit_events` prevents cross-tenant access even if a caller forges
- * the id. Window clamps `ts` via interval arithmetic server-side.
- *
- * EXPLAIN: composite btree on (`org_id`, `target_engineer_id`, `ts DESC`).
+ * Real-branch Postgres read. Stubbed to empty until the query columns are
+ * re-aligned with the actual `audit_events` schema (uses hashed identifiers
+ * — `target_engineer_id_hash`, `session_id_hash`, no `actor_display_name`
+ * or `actor_role` columns) and the `notification_prefs` table is actually
+ * created. Tracked as an M4 follow-up — see `dev-docs/m4-team-demo-plan.md`.
  */
 async function getMyViewHistoryReal(
-  ctx: Ctx,
+  _ctx: Ctx,
   input: MyViewHistoryInput,
 ): Promise<MyViewHistoryOutput> {
-  const intervalHours = WINDOW_HOURS[input.window];
-
-  const events = await ctx.db.pg.query<AuditEvent>(
-    `SELECT
-       id,
-       ts,
-       actor_id,
-       actor_display_name,
-       actor_role,
-       target_engineer_id,
-       surface,
-       reason,
-       session_id
-     FROM audit_events
-     WHERE org_id = $1
-       AND target_engineer_id = $2
-       AND ts >= now() - ($3 || ' hours')::interval
-     ORDER BY ts DESC
-     LIMIT 500`,
-    [ctx.tenant_id, ctx.actor_id, intervalHours],
-  );
-
-  const prefRows = await ctx.db.pg.query<{
-    notification_pref: "daily_digest" | "immediate" | "opted_out";
-  }>(
-    `SELECT notification_pref
-       FROM notification_prefs
-      WHERE org_id = $1
-        AND engineer_id = $2
-      LIMIT 1`,
-    [ctx.tenant_id, ctx.actor_id],
-  );
-
   return {
     window: input.window,
-    events,
-    notification_pref: prefRows[0]?.notification_pref ?? "daily_digest",
+    events: [],
+    notification_pref: "daily_digest",
   };
 }
 

@@ -102,12 +102,17 @@ function makeAuth() {
         : null;
     },
     getOrCreateDefaultOrg: async () => {
-      // The "default org" = first row by created_at. Seeded in dev by
-      // `bun run db:seed`; in prod it's whatever the operator created before
-      // inviting the team. If none exists, create one so a fresh self-host
-      // install doesn't fall over on the first sign-up.
+      // Pick the first org whose slug is alphanumeric — the ingest bearer
+      // verifier regex (apps/ingest/src/auth/verifyIngestKey.ts) requires
+      // `[A-Za-z0-9]+` slugs, so an org with an underscore-or-hyphen slug
+      // (e.g. leaked from a stale integration test) would produce bearers
+      // that fail ingest. Seeded dev orgs `acme` / `bolt` / `crux` / `default`
+      // all qualify; the `slug ~ '^[A-Za-z0-9]+$'` guard is defense-in-depth.
       const rows = (await pg`
-        SELECT id FROM orgs ORDER BY created_at ASC LIMIT 1
+        SELECT id FROM orgs
+        WHERE slug ~ '^[A-Za-z0-9]+$'
+        ORDER BY created_at ASC
+        LIMIT 1
       `) as unknown as Array<{ id: string }>;
       if (rows[0]) return rows[0].id;
       const created = (await pg`
