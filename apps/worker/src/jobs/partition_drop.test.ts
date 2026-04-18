@@ -7,6 +7,13 @@ import { handlePartitionDrop } from "./partition_drop";
 
 const chClient = ch();
 
+// This file TRUNCATEs `orgs` CASCADE and `events`, wiping every downstream row
+// in a shared dev database. Gate on an explicit opt-in env var — CI sets
+// `PG_INTEGRATION_TESTS=1` with a dedicated disposable Postgres service; local
+// `bun run test` leaves it unset so a dev's running stack isn't wiped.
+const RUN_INTEGRATION = process.env.PG_INTEGRATION_TESTS === "1";
+const testIf = RUN_INTEGRATION ? test : test.skip;
+
 async function reset() {
   await db.execute(
     sql`TRUNCATE TABLE audit_log, erasure_requests, developers, users, orgs RESTART IDENTITY CASCADE`,
@@ -116,6 +123,7 @@ function buildEvent(
 }
 
 beforeEach(async () => {
+  if (!RUN_INTEGRATION) return;
   await reset();
 });
 
@@ -124,7 +132,7 @@ afterAll(async () => {
   await pgClient.end();
 });
 
-test("worker drops partitions for target org; marks completed; writes audit_log", async () => {
+testIf("worker drops partitions for target org; marks completed; writes audit_log", async () => {
   const { orgTarget, userTarget } = await seedTwoOrgsWithEvents();
 
   await db.insert(erasure_requests).values({
@@ -154,7 +162,7 @@ test("worker drops partitions for target org; marks completed; writes audit_log"
   expect(audits[0]?.target_id).toBe("eng_target");
 });
 
-test("worker is idempotent — no-op on already-completed requests", async () => {
+testIf("worker is idempotent — no-op on already-completed requests", async () => {
   const { orgTarget, userTarget } = await seedTwoOrgsWithEvents();
   await db.insert(erasure_requests).values({
     requester_user_id: userTarget.id,
@@ -168,7 +176,7 @@ test("worker is idempotent — no-op on already-completed requests", async () =>
   expect(processed).toBe(0);
 });
 
-test("worker fails a request cleanly if CH partition drop errors", async () => {
+testIf("worker fails a request cleanly if CH partition drop errors", async () => {
   // Insert a request for a non-existent org — listPartitionsForOrg returns [], so the
   // loop is a no-op and the request completes successfully. This test verifies
   // completion without events (gracefully handles empty partition list).

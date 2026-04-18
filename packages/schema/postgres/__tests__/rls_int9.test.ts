@@ -30,6 +30,15 @@ import {
   users,
 } from "../schema";
 
+// This file TRUNCATEs every RLS-protected table CASCADE. Running it against a
+// shared dev database wipes the real org, users, developers, ingest keys, and
+// policies — discovered after it nuked the M4 Tailscale rehearsal org. Gate on
+// an explicit opt-in env var — CI sets `PG_INTEGRATION_TESTS=1` with a
+// dedicated disposable Postgres service; local `bun run test` leaves it unset
+// so a dev's running stack isn't wiped out from under them.
+const RUN_INTEGRATION = process.env.PG_INTEGRATION_TESTS === "1";
+const testIf = RUN_INTEGRATION ? test : test.skip;
+
 const superUrl = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5433/bematist";
 const appUrl = superUrl.replace(
   "postgres://postgres:postgres@",
@@ -67,6 +76,7 @@ function must<T>(value: T | undefined, label = "expected non-empty value"): T {
 }
 
 beforeAll(async () => {
+  if (!RUN_INTEGRATION) return;
   await superDb.execute(
     sql`TRUNCATE TABLE outcomes, insights, alerts, erasure_requests, audit_events, audit_log, playbooks, prompt_clusters, ingest_keys, git_events, policies, repos, developers, teams, users, orgs RESTART IDENTITY CASCADE`,
   );
@@ -164,7 +174,7 @@ afterAll(async () => {
   await appClient.end();
 });
 
-test("app_bematist role exists and is NOBYPASSRLS + NOSUPERUSER", async () => {
+testIf("app_bematist role exists and is NOBYPASSRLS + NOSUPERUSER", async () => {
   const rows = (await superClient.unsafe(
     `SELECT rolname, rolbypassrls, rolsuper FROM pg_roles WHERE rolname = 'app_bematist'`,
   )) as unknown as Array<{ rolbypassrls: boolean; rolsuper: boolean }>;
@@ -173,7 +183,7 @@ test("app_bematist role exists and is NOBYPASSRLS + NOSUPERUSER", async () => {
   expect(rows[0]?.rolsuper).toBe(false);
 });
 
-test("INT9: without app.current_org_id set, every RLS-protected table returns 0 rows", async () => {
+testIf("INT9: without app.current_org_id set, every RLS-protected table returns 0 rows", async () => {
   for (const { table } of TABLES) {
     const rows = (await appClient.unsafe(
       `SELECT count(*)::int AS c FROM ${table}`,
@@ -182,7 +192,7 @@ test("INT9: without app.current_org_id set, every RLS-protected table returns 0 
   }
 });
 
-test("INT9: with org A set, tables return ONLY org A rows (zero leak from org B)", async () => {
+testIf("INT9: with org A set, tables return ONLY org A rows (zero leak from org B)", async () => {
   await appClient.begin(async (tx) => {
     await tx.unsafe(`SET LOCAL app.current_org_id = '${orgA.id}'`);
     for (const { table, org_col } of TABLES) {
@@ -201,7 +211,7 @@ test("INT9: with org A set, tables return ONLY org A rows (zero leak from org B)
   });
 });
 
-test("INT9: with org B set, tables return ONLY org B rows (zero leak from org A)", async () => {
+testIf("INT9: with org B set, tables return ONLY org B rows (zero leak from org A)", async () => {
   await appClient.begin(async (tx) => {
     await tx.unsafe(`SET LOCAL app.current_org_id = '${orgB.id}'`);
     for (const { table, org_col } of TABLES) {
@@ -213,7 +223,7 @@ test("INT9: with org B set, tables return ONLY org B rows (zero leak from org A)
   });
 });
 
-test("INT9: transaction-scoped setting releases on commit (next query returns 0)", async () => {
+testIf("INT9: transaction-scoped setting releases on commit (next query returns 0)", async () => {
   // Inside txn with org A set — should see rows
   await appClient.begin(async (tx) => {
     await tx.unsafe(`SET LOCAL app.current_org_id = '${orgA.id}'`);

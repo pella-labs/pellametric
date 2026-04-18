@@ -62,8 +62,20 @@ export const K_ANONYMITY_FLOOR = 5;
 /**
  * Evaluate the four display gates (plus k-anonymity for team scope). Returns a
  * `Display` payload the caller embeds into its response.
+ *
+ * Small-team carve-out: per PRD §6.4 + CLAUDE.md Privacy Model Rules,
+ * "5-person teams do NOT get DP team rollups — they are a single trust domain
+ * and see raw numbers". When `BEMATIST_SINGLE_TRUST_DOMAIN=1` is set in the
+ * server env, the org is declared small-team-single-trust-domain and all
+ * display gates short-circuit to `{ show: true }`. Intended for orgs ≤5
+ * engineers (M4 rehearsal cohort is 4) and for self-host deploys where the
+ * full privacy floor isn't load-bearing yet. Never set on managed cloud.
  */
 export function applyDisplayGate(input: GateInput): Display {
+  if (process.env.BEMATIST_SINGLE_TRUST_DOMAIN === "1") {
+    return { show: true };
+  }
+
   const failed: string[] = [];
 
   if (input.team_scope && input.cohort_size < K_ANONYMITY_FLOOR) {
