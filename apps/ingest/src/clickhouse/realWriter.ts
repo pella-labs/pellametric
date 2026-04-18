@@ -19,20 +19,58 @@ import {
 } from "../clickhouse";
 import { pingClickHouse as pingClickHouseHttp } from "../lib/http";
 
-export function createRealClickHouseWriter(cfg: Partial<ClickHouseConfig> = {}): ClickHouseWriter {
+// Client-level `date_time_input_format='best_effort'` lets DateTime64 columns
+// accept ISO8601 strings (`2026-04-18T01:23:45.678Z`) — the shape EventSchema
+// requires on the wire and that canonicalize() in wal/append.ts forwards
+// verbatim. Without this, INSERTs raise CANNOT_PARSE_INPUT_ASSERTION_FAILED.
+// M2 worked around this in apps/ingest/src/smoke.ts and the web integration
+// harness; M3 item 5 promotes the setting to the real writer so every prod
+// insert parses both `basic` (ClickHouse default) and ISO8601 inputs.
+
+// Narrow client surface — only what the writer uses. Lets us inject a fake
+// in tests without pulling the real @clickhouse/client types.
+export interface CHClientLike {
+  insert(args: {
+    table: string;
+    values: Record<string, unknown>[];
+    format: "JSONEachRow";
+  }): Promise<unknown>;
+}
+
+type CHClientFactory = (opts: Record<string, unknown>) => CHClientLike;
+
+const defaultClientFactory: CHClientFactory = (opts) =>
+  createClient(opts as Parameters<typeof createClient>[0]) as unknown as CHClientLike;
+
+/**
+ * Build the @clickhouse/client options object from a merged ClickHouseConfig.
+ * Extracted so the unit test can assert the exact payload handed to the
+ * client constructor — in particular, the `clickhouse_settings` field.
+ */
+export function buildClientOptions(cfg: ClickHouseConfig): Record<string, unknown> {
+  return {
+    url: cfg.url,
+    database: cfg.database,
+    keep_alive: { idle_socket_ttl: cfg.keep_alive_idle_socket_ttl_ms },
+    request_timeout: cfg.request_timeout_ms,
+    compression: {
+      request: cfg.compression_request,
+      response: cfg.compression_response,
+    },
+    max_open_connections: cfg.max_open_connections,
+    clickhouse_settings: {
+      date_time_input_format: "best_effort",
+    },
+  };
+}
+
+export function createRealClickHouseWriter(
+  cfg: Partial<ClickHouseConfig> = {},
+  clientFactory: CHClientFactory = defaultClientFactory,
+): ClickHouseWriter {
   const merged: ClickHouseConfig = { ...defaultClickHouseConfig, ...cfg };
 
-  const client = createClient({
-    url: merged.url,
-    database: merged.database,
-    keep_alive: { idle_socket_ttl: merged.keep_alive_idle_socket_ttl_ms },
-    request_timeout: merged.request_timeout_ms,
-    compression: {
-      request: merged.compression_request,
-      response: merged.compression_response,
-    },
-    max_open_connections: merged.max_open_connections,
-  });
+  const client = clientFactory(buildClientOptions(merged));
 
   return {
     async insert(rows: Record<string, unknown>[]): Promise<{ ok: true }> {

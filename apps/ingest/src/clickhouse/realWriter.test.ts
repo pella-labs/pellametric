@@ -1,15 +1,72 @@
-// Live-only tests for the real ClickHouse writer.
-// Gated by TEST_LIVE_CLICKHOUSE=1.
+// Tests for the real ClickHouse writer.
+// - Offline unit tests (default) verify the client is configured so
+//   canonicalize()'s ISO8601 `ts` round-trips without CH parse failures.
+// - Live tests (gated by TEST_LIVE_CLICKHOUSE=1) hit a running CH and
+//   round-trip a row through insert + SELECT count().
 
 import { describe, expect, test } from "bun:test";
+import type { Event } from "@bematist/schema";
 import { createClient } from "@clickhouse/client";
-import { createRealClickHouseWriter } from "./realWriter";
+import { canonicalize } from "../wal/append";
+import { buildClientOptions, type CHClientLike, createRealClickHouseWriter } from "./realWriter";
 
 const live = process.env.TEST_LIVE_CLICKHOUSE === "1";
 const url = process.env.CLICKHOUSE_URL ?? "http://localhost:8123";
 
 // biome-ignore lint/suspicious/noExplicitAny: test.skipIf is available on bun:test
 const runIfLive = (test as any).skipIf ? (test as any).skipIf(!live) : live ? test : test.skip;
+
+describe("realClickHouseWriter (offline)", () => {
+  test("client is configured with date_time_input_format=best_effort", () => {
+    const opts = buildClientOptions({
+      url: "http://localhost:8123",
+      database: "bematist",
+      keep_alive_idle_socket_ttl_ms: 2000,
+      request_timeout_ms: 30000,
+      compression_request: true,
+      compression_response: true,
+      max_open_connections: 10,
+      table: "events",
+    });
+    const settings = opts.clickhouse_settings as { date_time_input_format?: string };
+    expect(settings.date_time_input_format).toBe("best_effort");
+  });
+
+  test("insert hands a canonicalize() row with ISO8601 ts through unchanged", async () => {
+    const captured: Array<Record<string, unknown>> = [];
+    const fake: CHClientLike = {
+      async insert({ values }) {
+        for (const v of values) captured.push(v);
+        return {};
+      },
+    };
+    const writer = createRealClickHouseWriter({ url }, () => fake);
+
+    const iso = "2026-04-18T01:23:45.678Z";
+    const event: Event = {
+      client_event_id: "11111111-1111-4111-8111-111111111111",
+      schema_version: 1,
+      ts: iso,
+      tenant_id: "wire-tenant-ignored",
+      engineer_id: "wire-engineer-ignored",
+      device_id: "dev-unit",
+      source: "claude-code",
+      fidelity: "full",
+      cost_estimated: false,
+      tier: "B",
+      session_id: "s-iso",
+      event_seq: 1,
+      dev_metrics: { event_kind: "session_start" },
+    };
+    const canonical = canonicalize(event, { tenantId: "org-unit", engineerId: "eng-unit" });
+
+    await writer.insert([canonical.row]);
+
+    expect(captured).toHaveLength(1);
+    const row = captured[0] as { ts: string };
+    expect(row.ts).toBe(iso);
+  });
+});
 
 describe("realClickHouseWriter (live)", () => {
   runIfLive("ping returns true for up server", async () => {
