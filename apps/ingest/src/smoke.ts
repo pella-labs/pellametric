@@ -2,41 +2,50 @@
 //
 // Requires:
 //   docker compose -f docker-compose.dev.yml up   (redis + clickhouse)
-//   Real-bearer flow once Jorge's ingest_keys migration is ratified. For now
-//   we boot an in-process ingest server with an in-memory IngestKeyStore
-//   seeded with a dev key (DEV_AUTH_STUB-style), so we can exercise the real
-//   Bun.redis dedup, node-redis Lua rate limiter, Redis Streams WAL and
-//   @clickhouse/client insert paths without PG.
+//   bun run db:migrate:ch                          (creates events + 5 MVs)
+//
+// Boots an in-process ingest server with an in-memory IngestKeyStore +
+// in-memory OrgPolicyStore (no PG dependency at smoke time), then exercises
+// the real Bun.redis dedup, node-redis Lua rate limiter, Redis Streams WAL,
+// and the real ClickHouse writer. Verifies that the seeded events land in
+// CH and that dev_daily_rollup's AggregatingMergeTree state functions
+// surface the cost.
 //
 // Usage:
-//   bun run src/smoke.ts            # boots server on :8000, 10 POSTs, polls CH
+//   bun run src/smoke.ts            # boots server on $INGEST_PORT or :8765,
+//                                   # POSTs 10 events as a single batch,
+//                                   # polls CH until count==10, exits 0/1.
 //
-// Exit 0 on success (count reached 10 within ~3s), 1 otherwise. NOT a
-// bun test — runnable script only.
+// Exit 0 on success, 1 otherwise. NOT a bun test — runnable script only,
+// reachable via `cd apps/ingest && bun run smoke`. The Bun-test E2E suite
+// lives at apps/web/integration-tests/use-fixtures-0.test.ts and asserts
+// everything this script demonstrates plus the USE_FIXTURES=0 routing.
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createClient as createCHClient } from "@clickhouse/client";
 import { createNodeRedisLuaClient, createSharedNodeRedisClient } from "./auth/nodeRedisLua";
 import { createLuaRateLimiter } from "./auth/rateLimit";
 import { type IngestKeyRow, type IngestKeyStore, LRUCache } from "./auth/verifyIngestKey";
-
-// Match verifyIngestKey.ts step (4): hex-encoded SHA-256 of the secret.
-function hashSecret(secret: string): string {
-  return createHash("sha256").update(secret).digest("hex");
-}
-
-import { createRealClickHouseWriter } from "./clickhouse/realWriter";
+import type { ClickHouseWriter } from "./clickhouse";
 import { createBunRedisDedupStore } from "./dedup/bunRedisDedupStore";
 import { setDeps } from "./deps";
 import { startServer } from "./server";
+import { InMemoryOrgPolicyStore } from "./tier/enforceTier";
 import { createRedisStreamsWalAppender } from "./wal/append";
 import { createWalConsumer } from "./wal/consumer";
 import { createRedisStreamsWal } from "./wal/redisStreamsWal";
 
+function hashSecret(secret: string): string {
+  return createHash("sha256").update(secret).digest("hex");
+}
+
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const CH_URL = process.env.CLICKHOUSE_URL ?? "http://localhost:8123";
-const PORT = Number(process.env.INGEST_PORT ?? 8000);
+const CH_DATABASE = process.env.CLICKHOUSE_DATABASE ?? "bematist";
+const PORT = Number(process.env.INGEST_PORT ?? 8765);
 
+// Bearer regex (apps/ingest/src/auth/verifyIngestKey.ts) accepts only
+// alphanumerics in orgId / keyId — no hyphens. Keep all dev IDs simple.
 const DEV_ORG = "smokeorg";
 const DEV_KEY_ID = "smokekey";
 const DEV_SECRET = "smokesecret";
@@ -77,7 +86,33 @@ async function main(): Promise<void> {
   const rateLimiter = createLuaRateLimiter(lua);
   const wal = createRedisStreamsWalAppender(createRedisStreamsWal(sharedRedis));
   const dedupStore = createBunRedisDedupStore({ url: REDIS_URL });
-  const clickhouseWriter = createRealClickHouseWriter({ url: CH_URL });
+
+  // ClickHouse writer with `date_time_input_format=best_effort` so DateTime64
+  // accepts EventSchema's ISO8601 ts (`2026-04-18T01:23:45.678Z`). Without
+  // this, the WAL consumer's INSERT raises CANNOT_PARSE_INPUT_ASSERTION_FAILED
+  // because canonicalize() forwards the wire ts verbatim. See
+  // apps/web/integration-tests/use-fixtures-0.test.ts §Surprises.
+  const ch = createCHClient({
+    url: CH_URL,
+    database: CH_DATABASE,
+    clickhouse_settings: { date_time_input_format: "best_effort" },
+  });
+  const clickhouseWriter: ClickHouseWriter = {
+    async insert(rows) {
+      await ch.insert({ table: "events", values: rows, format: "JSONEachRow" });
+      return { ok: true };
+    },
+    async ping() {
+      const r = await fetch(`${CH_URL}/ping`).catch(() => null);
+      return Boolean(r?.ok);
+    },
+  };
+
+  const policyStore = new InMemoryOrgPolicyStore();
+  policyStore.seed(DEV_ORG, {
+    tier_c_managed_cloud_optin: false,
+    tier_default: "B",
+  });
 
   setDeps({
     store: makeDevStore(),
@@ -86,6 +121,7 @@ async function main(): Promise<void> {
     rateLimiter,
     wal,
     clickhouseWriter,
+    orgPolicyStore: policyStore,
   });
 
   // 2. Start WAL consumer so WAL rows flow to ClickHouse.
@@ -103,55 +139,86 @@ async function main(): Promise<void> {
   const bearer = `Bearer bm_${DEV_ORG}_${DEV_KEY_ID}_${DEV_SECRET}`;
   const base = `http://localhost:${PORT}`;
 
-  // 4. Fire 10 valid POSTs.
-  const sessionId = `smoke-${Date.now()}`;
-  const results: number[] = [];
-  for (let i = 0; i < 10; i++) {
-    const clientEventId = createHash("sha256")
-      .update(`${sessionId}:${i}`)
-      .digest("hex")
-      .slice(0, 32);
-    const body = {
-      client_event_id: clientEventId,
-      schema_version: 1,
-      ts: Math.floor(Date.now() / 1000),
-      device_id: "smoke-dev",
-      source: "claude-code",
-      fidelity: "full",
-      tier: "B",
-      session_id: sessionId,
-      event_seq: i,
-      dev_metrics: { event_kind: "session_start" },
-    };
-    const res = await fetch(`${base}/v1/events`, {
-      method: "POST",
-      headers: { "content-type": "application/json", authorization: bearer },
-      body: JSON.stringify(body),
-    });
-    results.push(res.status);
-  }
-  // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ level: "info", msg: "smoke: posts done", statuses: results }));
+  // 4. Fire one batch of 10 valid events.
+  const sessionId = `smoke${Date.now()}`;
+  const baseTs = Date.now();
+  const events = Array.from({ length: 10 }, (_, i) => ({
+    client_event_id: randomUUID(),
+    schema_version: 1,
+    ts: new Date(baseTs - (10 - i) * 1000).toISOString(),
+    tenant_id: DEV_ORG,
+    engineer_id: DEV_ENG,
+    device_id: "smoke-dev",
+    source: "claude-code",
+    fidelity: "full",
+    cost_estimated: false,
+    tier: "B",
+    session_id: sessionId,
+    event_seq: i,
+    gen_ai: { system: "anthropic", usage: { input_tokens: 100 * (i + 1), output_tokens: 50 } },
+    dev_metrics: { event_kind: "llm_response", cost_usd: 0.001 * (i + 1) },
+  }));
 
-  // 5. Poll ClickHouse up to 3 times.
-  const verify = createCHClient({ url: CH_URL });
+  const res = await fetch(`${base}/v1/events`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: bearer },
+    body: JSON.stringify({ events }),
+  });
+
+  // eslint-disable-next-line no-console
+  console.log(
+    JSON.stringify({
+      level: "info",
+      msg: "smoke: post done",
+      status: res.status,
+      body: await res.text(),
+    }),
+  );
+
+  // 5. Poll ClickHouse up to ~5s.
   let count = 0;
-  for (let attempt = 0; attempt < 15; attempt++) {
-    const rs = await verify.query({
-      query: "SELECT count() AS c FROM events WHERE session_id = {s:String}",
+  let costUsd = 0;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const rs = await ch.query({
+      query:
+        "SELECT count() AS c, toFloat64(sum(cost_usd)) AS cost FROM events WHERE session_id = {s:String}",
       query_params: { s: sessionId },
       format: "JSON",
     });
-    const json = (await rs.json()) as { data: Array<{ c: string | number }> };
+    const json = (await rs.json()) as { data: Array<{ c: string | number; cost: number }> };
     count = Number(json.data[0]?.c ?? 0);
+    costUsd = Number(json.data[0]?.cost ?? 0);
     if (count >= 10) break;
     await new Promise((r) => setTimeout(r, 200));
   }
 
-  // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ level: "info", msg: "smoke: ch count", count, expected: 10 }));
+  // 6. Probe dev_daily_rollup (AggregatingMergeTree → sumMerge state read).
+  let rollupCost = 0;
+  if (count >= 10) {
+    const rs = await ch.query({
+      query: `SELECT toFloat64(sumMerge(cost_usd_state)) AS cost
+              FROM dev_daily_rollup
+              WHERE org_id = {org:String} AND engineer_id = {eng:String}`,
+      query_params: { org: DEV_ORG, eng: DEV_ENG },
+      format: "JSON",
+    });
+    const json = (await rs.json()) as { data: Array<{ cost: number }> };
+    rollupCost = Number(json.data[0]?.cost ?? 0);
+  }
 
-  // 6. Teardown
+  // eslint-disable-next-line no-console
+  console.log(
+    JSON.stringify({
+      level: "info",
+      msg: "smoke: ch summary",
+      count,
+      expected: 10,
+      cost_usd_events: costUsd,
+      cost_usd_rollup: rollupCost,
+    }),
+  );
+
+  // 7. Teardown
   await consumer.stop();
   try {
     srv.stop(true);
@@ -163,18 +230,25 @@ async function main(): Promise<void> {
     await sharedRedis.quit();
   } catch {}
   try {
-    await verify.close();
+    await ch.close();
   } catch {}
 
-  if (count >= 10) {
+  if (count >= 10 && rollupCost > 0) {
     // eslint-disable-next-line no-console
     console.log(JSON.stringify({ level: "info", msg: "smoke: OK" }));
     process.exit(0);
-  } else {
-    // eslint-disable-next-line no-console
-    console.error(JSON.stringify({ level: "error", msg: "smoke: FAILED", count }));
-    process.exit(1);
   }
+  // eslint-disable-next-line no-console
+  console.error(
+    JSON.stringify({
+      level: "error",
+      msg: "smoke: FAILED",
+      count,
+      cost_usd_events: costUsd,
+      cost_usd_rollup: rollupCost,
+    }),
+  );
+  process.exit(1);
 }
 
 main().catch((err) => {
