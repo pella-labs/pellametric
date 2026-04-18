@@ -145,11 +145,11 @@ function cleanProjectName(name: string): string {
 
 function getDailyColor(intensity: number, _hasClaude: boolean, _hasCodex: boolean, isCream = false): string {
   if (intensity === 0) return isCream ? 'rgba(0,0,0,.03)' : 'rgba(255,255,255,.02)'
-  if (intensity > 0.75) return '#7dd3fc'
-  if (intensity > 0.5) return '#38bdf8'
-  if (intensity > 0.25) return '#0ea5e9'
-  if (intensity > 0.1) return '#0284c7'
-  return '#0369a1'
+  if (intensity > 0.75) return '#b8d8a1'
+  if (intensity > 0.5) return '#8fb078'
+  if (intensity > 0.25) return '#6e8a6f'
+  if (intensity > 0.1) return '#52715a'
+  return '#3a5a45'
 }
 
 export function CardPage({ demoData }: { demoData?: CardData } = {}) {
@@ -220,7 +220,7 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
   useEffect(() => {
     if (!data) return
     const start = performance.now()
-    const T = { cardStart: 800, cardLand: 2800, content: 3200 }
+    const T = { cardStart: 0, cardLand: 1400, content: 1500 }
     let localPhase = 0
     let animId: number
 
@@ -269,8 +269,8 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
 
       if (elapsed >= T.content && localPhase < 3) {
         localPhase = 3; setPhase(3)
-        setTimeout(() => setShowShare(true), 2000)
-        setTimeout(() => setShowHint(true), 2500)
+        setShowShare(true)
+        setShowHint(true)
       }
     }
     animate()
@@ -463,7 +463,7 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
   const topProjects = Array.from(projectMap.entries()).map(([name, d]) => ({ name, ...d })).sort((a, b) => b.cost - a.cost).slice(0, 8)
   const mostExpensive = hl?.mostExpensiveSession
   const activityCategories = (hl?.activityCategories ?? []).slice(0, 5)
-  const actCatColors = ['#7a6299', '#5a80a8', '#c47a20', '#3a9a7a', '#d97706']
+  const actCatColors = ['#6e8a6f', '#8fb078', '#b07b3e', '#d4a771', '#52715a']
 
   // Daily distribution for 30-day heatmap
   const dailyDist = s.combined.dailyDistribution ?? []
@@ -659,7 +659,7 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
               <div className="sc-l" style={{ fontSize: 10, marginTop: 6 }}>total spend</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 700, color: cardTheme === 'cream' ? '#3a9a7a' : '#34d399', lineHeight: 1 }}>{viewCacheSaved}</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 32, fontWeight: 700, color: cardTheme === 'cream' ? '#3a9a7a' : '#6e8a6f', lineHeight: 1 }}>{viewCacheSaved}</div>
               <div className="sc-l" style={{ fontSize: 10, marginTop: 6 }}>saved by caching</div>
             </div>
           </div>
@@ -757,7 +757,7 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
                 ) : isCodex ? (
                   <img src="/codex-color.svg" alt="Codex" style={{ width: 32, height: 32 }} />
                 ) : (
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={cardTheme === 'cream' ? '#7a6299' : '#a78bfa'} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={cardTheme === 'cream' ? '#7a6299' : '#8fb078'} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                 )}
               </div>
               <div className="wrap-lead">You love to work with</div>
@@ -773,7 +773,7 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
                 const mIsCodex = mLower.includes('codex') || mLower.includes('gpt')
                 return (
                   <div className="wrap-other" key={m.name}>
-                    <div className="wrap-other-rank" style={{ fontSize: 14, color: '#38bdf8', fontWeight: 800 }}>#{i + 2}</div>
+                    <div className="wrap-other-rank" style={{ fontSize: 14, color: '#6e8a6f', fontWeight: 800 }}>#{i + 2}</div>
                     {mIsClaude ? (
                       <img src="/claudecode-color.svg" alt="" style={{ width: 10, height: 10 }} />
                     ) : mIsCodex ? (
@@ -797,7 +797,7 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
           <div className="top-row"><div className="brand">BEMATIST</div><div className="page-title">Projects</div></div>
           <SectionHead title="Your Top Project" sub="Where you spent the most time with AI" />
           <div className="wrap-insight" style={{ paddingBottom: 16 }}>
-            <div className="wrap-emoji"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={cardTheme === 'cream' ? '#7a6299' : '#a78bfa'} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+            <div className="wrap-emoji"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={cardTheme === 'cream' ? '#7a6299' : '#8fb078'} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
             <div className="wrap-lead">You built the most in</div>
             <div className="wrap-hero">{viewProjects[0]?.name ?? 'Unknown'}</div>
             <div className="wrap-sub">{viewProjects[0]?.sessions.toLocaleString() ?? 0} sessions {'\u00B7'} {viewProjects[0] ? formatCost(viewProjects[0].cost) : '$0'} spent</div>
@@ -805,8 +805,8 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
           {/* <SectionHead title="Also worked on" sub="" /> */}
           <div className="wrap-others">{viewProjects.slice(1, 5).map((p, i) => (
             <div className="wrap-other" key={p.name}>
-              <div className="wrap-other-rank" style={{ fontSize: 14, color: '#38bdf8', fontWeight: 800 }}>#{i + 2}</div>
-              <div className="mdot" style={{ background: p.source === 'codex' ? '#60a5fa' : '#a78bfa', width: 8, height: 8 }} />
+              <div className="wrap-other-rank" style={{ fontSize: 14, color: '#6e8a6f', fontWeight: 800 }}>#{i + 2}</div>
+              <div className="mdot" style={{ background: p.source === 'codex' ? '#8fb078' : '#8fb078', width: 8, height: 8 }} />
               <span className="wrap-other-name">{p.name}</span>
               <span className="wrap-other-val">{formatCost(p.cost)}</span>
             </div>
@@ -883,12 +883,12 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
                   <svg width="100%" height={chartH} viewBox={`0 0 ${chartW} ${chartH}`} preserveAspectRatio="none" className="an-chart">
                     <defs>
                       <linearGradient id="an-fill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#60a5fa" stopOpacity="0" />
+                        <stop offset="0%" stopColor="#8fb078" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#8fb078" stopOpacity="0" />
                       </linearGradient>
                     </defs>
                     <path d={areaPath} fill="url(#an-fill)" />
-                    <path d={linePath} fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={linePath} fill="none" stroke="#8fb078" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 ) : (
                   <div className="an-chart-empty">Not enough data yet</div>
@@ -930,9 +930,9 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
           <SectionHead title="Your Coding Journey" sub="Everything at a glance" />
           <div className="sum-grid">
             <div className="sum-card"><div className="sum-val" style={{ color: cardTheme === 'cream' ? '#1a1a2e' : '#e2e8f0' }}>{formatTokens(viewTokens)}</div><div className="sum-label">tokens generated</div></div>
-            <div className="sum-card"><div className="sum-val" style={{ color: '#38bdf8' }}>{formatCost(viewCost)}</div><div className="sum-label">total spent</div></div>
-            <div className="sum-card"><div className="sum-val" style={{ color: '#34d399' }}>{viewCacheSaved}</div><div className="sum-label">saved by caching</div></div>
-            <div className="sum-card"><div className="sum-val" style={{ color: '#f59e0b' }}>{viewActiveDays}d</div><div className="sum-label">active</div></div>
+            <div className="sum-card"><div className="sum-val" style={{ color: '#6e8a6f' }}>{formatCost(viewCost)}</div><div className="sum-label">total spent</div></div>
+            <div className="sum-card"><div className="sum-val" style={{ color: '#6e8a6f' }}>{viewCacheSaved}</div><div className="sum-label">saved by caching</div></div>
+            <div className="sum-card"><div className="sum-val" style={{ color: '#b07b3e' }}>{viewActiveDays}d</div><div className="sum-label">active</div></div>
           </div>
           {mostExpensive && (<div className="sum-callout"><div className="sum-callout-label">Biggest single session</div><div className="sum-callout-val">{formatCost(mostExpensive.cost)}</div><div className="sum-callout-project">{cleanProjectName(mostExpensive.project)} {'\u00B7'} {mostExpensive.date}</div></div>)}
           <div className="sum-footer"><div className="sum-tagline">illuminate your code</div></div>
@@ -1001,59 +1001,8 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
                 <div className="splash-glow" />
                 <div className="splash-content">
                   <div className="splash-icon">
-                    <svg width="56" height="56" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                      <defs>
-                        <linearGradient id="splashGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#8b5cf6"/><stop offset="100%" stopColor="#ec4899"/></linearGradient>
-                        <linearGradient id="splashBeam" x1="32" y1="20" x2="58" y2="20" gradientUnits="userSpaceOnUse">
-                          <stop stopColor="#c084fc" stopOpacity=".8"/><stop offset=".5" stopColor="#a855f7" stopOpacity=".4"/><stop offset="1" stopColor="#8b5cf6" stopOpacity="0"/>
-                        </linearGradient>
-                        <radialGradient id="splashHalo" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(32 20) rotate(90) scale(7.2)">
-                          <stop stopColor="#e9d5ff"/><stop offset=".5" stopColor="#c084fc" stopOpacity=".4"/><stop offset="1" stopColor="#8b5cf6" stopOpacity="0"/>
-                        </radialGradient>
-                        <filter id="splashBlur" x="24" y="2" width="38" height="36" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="2.7"/></filter>
-                        <filter id="splashHaloBlur" x="20" y="8" width="24" height="24" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="3.1"/></filter>
-                      </defs>
-                      {/* Beam — static */}
-                      <g opacity=".5">
-                        <path d="M32 20L58 10.5V29.5L32 20Z" fill="url(#splashBeam)" filter="url(#splashBlur)"/>
-                      </g>
-                      {/* Waves */}
-                      <path d="M9 50C13 49 17 51 21 50S29 48 33 50S41 52 45 50S49 48 55 50" fill="none" stroke="#a855f7" strokeLinecap="round" strokeWidth="1.5" opacity=".4"/>
-                      <path d="M9 48C13 47 17 49 21 48S29 46 33 48S41 50 45 48S49 46 55 48" fill="none" stroke="#c084fc" strokeLinecap="round" strokeWidth="2" opacity=".6"/>
-                      <path d="M9 52C13 51 17 53 21 52S29 50 33 52S41 54 45 52S49 50 55 52" fill="none" stroke="#e9d5ff" strokeLinecap="round" strokeWidth="1.3" opacity=".5"/>
-                      {/* Base */}
-                      <path d="M22.4 48.3H41.6L39.4 43.6H24.6Z" fill="#7c3aed" opacity=".7"/>
-                      <path d="M24.3 43.7H39.7L38.5 41.2H25.5Z" fill="#8b5cf6" opacity=".6"/>
-                      {/* Tower */}
-                      <path d="M27.6 41.5L29.6 23.8H34.4L36.4 41.5Z" fill="url(#splashGrad)" opacity=".25"/>
-                      <path d="M27.6 41.5L29.6 23.8H34.4L36.4 41.5Z" fill="none" stroke="url(#splashGrad)" strokeWidth=".8"/>
-                      <rect x="29.55" y="28.25" width="4.9" height=".9" rx=".45" fill="#c084fc" opacity=".4"/>
-                      <rect x="29.2" y="31.05" width="5.6" height=".9" rx=".45" fill="#a855f7" opacity=".35"/>
-                      <rect x="28.85" y="33.85" width="6.3" height=".9" rx=".45" fill="#8b5cf6" opacity=".3"/>
-                      {/* Balcony */}
-                      <path d="M25.4 22.8H38.6L37.6 25H26.4Z" fill="#c084fc" opacity=".4"/>
-                      <rect x="26.7" y="20.9" width=".55" height="2.05" rx=".2" fill="#a855f7" opacity=".5"/>
-                      <rect x="28.35" y="20.55" width=".55" height="2.4" rx=".2" fill="#a855f7" opacity=".5"/>
-                      <rect x="30" y="20.3" width=".55" height="2.65" rx=".2" fill="#a855f7" opacity=".5"/>
-                      <rect x="31.75" y="20.15" width=".55" height="2.8" rx=".2" fill="#a855f7" opacity=".5"/>
-                      <rect x="33.5" y="20.3" width=".55" height="2.65" rx=".2" fill="#a855f7" opacity=".5"/>
-                      <rect x="35.15" y="20.55" width=".55" height="2.4" rx=".2" fill="#a855f7" opacity=".5"/>
-                      <rect x="36.8" y="20.9" width=".55" height="2.05" rx=".2" fill="#a855f7" opacity=".5"/>
-                      {/* Lamp room */}
-                      <rect x="29.05" y="16.8" width="5.9" height="5.2" rx=".65" fill="#e9d5ff" opacity=".6"/>
-                      <rect x="29.8" y="17.35" width="4.4" height="3.95" rx=".5" fill="#faf5ff" opacity=".8"/>
-                      <path d="M28.45 17.1H35.55L34.55 15.1H29.45Z" fill="#7c3aed" opacity=".6"/>
-                      <rect x="29.2" y="14.55" width="5.6" height=".85" rx=".42" fill="#6d28d9" opacity=".5"/>
-                      <rect x="30.95" y="13.75" width="2.1" height=".9" rx=".45" fill="#8b5cf6" opacity=".5"/>
-                      {/* Halo */}
-                      <circle cx="32" cy="20" r="5.8" fill="url(#splashHalo)" opacity=".5" filter="url(#splashHaloBlur)"/>
-                      <circle cx="32" cy="20" r="1.9" fill="#faf5ff"/>
-                      {/* Door */}
-                      <path d="M30.3 41.5V37.2C30.3 35.95 31.02 35.1 32 35.1C32.98 35.1 33.7 35.95 33.7 37.2V41.5Z" fill="#6d28d9" opacity=".5"/>
-                      {/* Stars */}
-                      <g opacity=".5"><path d="M18.4 15.1L18.4 17.7" stroke="#c084fc" strokeWidth="1.1" strokeLinecap="round"/><path d="M17.1 16.4L19.7 16.4" stroke="#c084fc" strokeWidth="1.1" strokeLinecap="round"/></g>
-                      <g opacity=".6"><path d="M47.6 11.05L47.6 13.75" stroke="#f0abfc" strokeWidth="1.1" strokeLinecap="round"/><path d="M46.15 12.4L49.05 12.4" stroke="#f0abfc" strokeWidth="1.1" strokeLinecap="round"/></g>
-                      <circle cx="44.3" cy="18" r=".85" fill="#c084fc" opacity=".5"/>
+                    <svg width="64" height="64" viewBox="57 34 48 64" xmlns="http://www.w3.org/2000/svg" shapeRendering="geometricPrecision">
+                      <path fill="#6e8a6f" paintOrder="stroke fill" fillRule="evenodd" d="M58.2 49c.4-6.4 5.6-12.6 12.6-12.9h18.6c7.4.1 12.8 5.7 12.8 13.3v5.1c-.3 3.4-1.7 6.2-4.5 8.4 2.5 1.5 4.6 3.9 4.8 7.4v7.2c-.4 5.7-4.6 10.9-11.5 11.3H71.2V97h-13zm3.1.5v44.4H68v-8.5h22.1c5.1 0 9-3.7 9.3-8.2v-6.4c-.1-4.2-4.7-5.9-8.9-7.7 3.8-1.2 8.3-3.7 8.7-8.9v-4.7c-.1-5-4.3-10.3-10.5-10.3H71.6c-4.6 0-10 3.8-10.3 9.7zm6.8-.6c.1-2 1.4-3.2 3.3-3.2h15.9c2.8 0 5.1 1.6 5.2 4.5V54c-.1 2.9-2.2 4.8-4.9 4.9h-6.9v6.6h6.2c3 .1 5.7 1.8 5.9 5.2V76c-.2 1.6-1.2 3-3.3 3H68.1zm3.1 27.3H89c.4 0 .6-.2.7-.5v-4.6c-.1-1.5-1.2-2.6-3-2.6h-9.1V55.8h9.6c1.2 0 2-.7 2.1-1.8v-3.5c0-1.1-.9-1.9-2.1-1.9H71.8c-.4 0-.7.3-.6.7z"/>
                     </svg>
                   </div>
                   <div className="splash-brand">BEMATIST</div>

@@ -1,5 +1,49 @@
 import type { CardData } from "./card-utils";
 
+/** Build 160 days of plausible activity ending on 2026-04-17. */
+function buildDailyDistribution() {
+  const endDate = new Date("2026-04-17T00:00:00Z");
+  const rows: NonNullable<
+    CardData["stats"]["combined"]["dailyDistribution"]
+  > = [];
+  // Deterministic pseudo-random from a per-day seed.
+  const seeded = (n: number) => {
+    const x = Math.sin(n * 9301 + 49297) * 0.5 + 0.5;
+    return x - Math.floor(x);
+  };
+  const DAYS = 160;
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date(endDate);
+    d.setUTCDate(endDate.getUTCDate() - i);
+    const dow = d.getUTCDay(); // 0=Sun .. 6=Sat
+    const weekend = dow === 0 || dow === 6;
+    const rand = seeded(i + 1);
+    // Rare rest day (~3%); weekends lighter but active; weekdays heavy.
+    const restDay = rand < 0.03;
+    const base = restDay ? 0 : weekend ? 6 + rand * 14 : 18 + rand * 26;
+    const claudeShare = 0.7 + seeded(i + 100) * 0.2; // 70–90% Claude
+    const claudeSessions = Math.round(base * claudeShare);
+    const codexSessions = Math.round(base - claudeSessions);
+    const sessions = claudeSessions + codexSessions;
+    // Cost roughly $0.35–$0.55 per session for Claude, $0.25 for Codex.
+    const cost =
+      Number(
+        (
+          claudeSessions * (0.38 + seeded(i + 200) * 0.18) +
+          codexSessions * (0.22 + seeded(i + 300) * 0.1)
+        ).toFixed(2),
+      ) || 0;
+    rows.push({
+      date: d.toISOString().slice(0, 10),
+      sessions,
+      cost,
+      claudeSessions,
+      codexSessions,
+    });
+  }
+  return rows;
+}
+
 /** Curated demo data used in the hero card + /demo preview. */
 export const DEMO_CARD: CardData = {
   cardId: "demo",
@@ -72,7 +116,7 @@ export const DEMO_CARD: CardData = {
       totalInputTokens: 22_540_000,
       totalOutputTokens: 4_530_000,
       totalActiveDays: 47,
-      dailyDistribution: [],
+      dailyDistribution: buildDailyDistribution(),
     },
     highlights: {
       favoriteModel: "claude-sonnet-4-6",

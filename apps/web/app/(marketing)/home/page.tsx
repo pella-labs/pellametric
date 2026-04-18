@@ -6,10 +6,25 @@ import { DashboardShot } from "../_components/DashboardShot";
 import { HeroGrid } from "../_components/HeroGrid";
 import { WrappedCard } from "../_components/WrappedCard";
 
+const HOME_TITLE = "Bematist · The dashboard for AI-assisted engineering";
+const HOME_DESCRIPTION =
+  "Bematist is the dashboard for teams building with coding agents. Your personal card is the 30-second hook. The dashboard is where you see where every dollar lands, which workflows compound, and which wins are worth copying.";
+
 export const metadata: Metadata = {
-  title: "Bematist · See what AI is shipping",
-  description:
-    "Open-source analytics for AI-assisted engineering. Auto-instrument your team's coding agents, tie every LLM dollar to the code that actually merged.",
+  title: HOME_TITLE,
+  description: HOME_DESCRIPTION,
+  alternates: { canonical: "/home" },
+  openGraph: {
+    type: "website",
+    url: "/home",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+  },
 };
 
 const ADAPTERS = [
@@ -33,8 +48,8 @@ const ADAPTERS = [
 const FEATURES = [
   {
     eyebrow: "01",
-    title: "Passive instrumentation",
-    body: "Drop the collector on every dev machine. It watches your coding agents. No proxies, no API-key middleware, no prompts to change.",
+    title: "Dashboard you'll actually open",
+    body: "Spend by project, by developer, by week. Which agents produced the wins. Which prompts keep paying off. A surface your team will return to on Monday morning.",
   },
   {
     eyebrow: "02",
@@ -43,8 +58,8 @@ const FEATURES = [
   },
   {
     eyebrow: "03",
-    title: "Yours to run",
-    body: "Self-host in one docker compose. Your data, your machines, your rules. Managed cloud is an option, never the default.",
+    title: "Shareable cards on the way in",
+    body: "A personal card lands as soon as the collector runs — fun to share, fast to try. The real depth is the dashboard, where the card data keeps working for you and your team.",
   },
 ] as const;
 
@@ -63,13 +78,14 @@ export default function MarketingHome() {
               See what AI is <em>actually shipping</em>.
             </h1>
             <p>
-              Bematist instruments your team's coding agents and ties every LLM
-              dollar to the code that merged. Every developer gets a private
-              card. Every team gets a dashboard.
+              Bematist is the dashboard for teams building with coding agents.
+              See where every dollar lands, which workflows compound, and the
+              wins your team should be copying. Start with a personal card in
+              30 seconds — the dashboard is where you stay.
             </p>
             <div className="mk-hero-actions">
               <Link href="/demo" className="mk-btn mk-btn-primary">
-                Try it now
+                Grab your card
               </Link>
               <a
                 href="https://github.com/pella-labs/bematist"
@@ -91,9 +107,9 @@ export default function MarketingHome() {
       <BrandMonolith />
 
       {/* Features */}
-      <section aria-label="What it does">
+      <section aria-label="What the dashboard does">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">01 / What it does</span>
+          <span className="mk-mono mk-xs">01 / What the dashboard does</span>
         </div>
         <div className="mk-features">
           {FEATURES.map((f) => (

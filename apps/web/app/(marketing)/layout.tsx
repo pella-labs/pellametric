@@ -58,7 +58,15 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         </nav>
         {children}
         <footer className="mk-footer">
-          <span>bematist is not a performance-management tool.</span>
+          <div className="mk-footer-copy">
+            <span className="mk-footer-line">
+              The dashboard for AI-assisted engineering.
+            </span>
+            <span className="mk-footer-sub">
+              The card gets you in. The dashboard keeps you — spend by project,
+              wins by workflow, and patterns worth copying across your team.
+            </span>
+          </div>
           <div>
             <Link href="/privacy">Bill of Rights</Link>
             <a href="https://github.com/pella-labs/bematist" rel="noreferrer">

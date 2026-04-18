@@ -3,10 +3,25 @@ import { CardMount } from "../_card/CardMount";
 import { DEMO_CARD } from "../_card/demo-data";
 import { GetStarted } from "../_components/GetStarted";
 
+const DEMO_TITLE = "Try Bematist · Grab your card";
+const DEMO_DESCRIPTION =
+  "Grab your personal Bematist card in 30 seconds from local Claude Code, Cursor, and Codex sessions — then unlock the full dashboard your team will actually use.";
+
 export const metadata: Metadata = {
-  title: "Try Bematist · Generate your card",
-  description:
-    "Preview a Bematist card with demo data, then sign in to generate your own from local Claude Code, Cursor, and Codex sessions.",
+  title: DEMO_TITLE,
+  description: DEMO_DESCRIPTION,
+  alternates: { canonical: "/demo" },
+  openGraph: {
+    type: "website",
+    url: "/demo",
+    title: DEMO_TITLE,
+    description: DEMO_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: DEMO_TITLE,
+    description: DEMO_DESCRIPTION,
+  },
 };
 
 export default function DemoPage() {
@@ -16,12 +31,12 @@ export default function DemoPage() {
         <div className="mk-sys" style={{ marginBottom: 16 }}>
           SYS.DEMO // personal card
         </div>
-        <h1>See yours, then share it.</h1>
+        <h1>Your card is the hook.</h1>
         <p>
-          The card on the right is demo data. Sign in, star the repo, and
-          generate a one-shot token. Run the command locally and Bematist reads
-          your Claude Code, Cursor, and Codex sessions to produce your real
-          card. Only aggregated numbers leave your machine.
+          The card on the right is demo data. Sign in, star the repo, generate
+          a one-shot token, and Bematist produces yours from local Claude Code,
+          Cursor, and Codex sessions. Only aggregated numbers leave your
+          machine.
         </p>
         <GetStarted />
       </div>

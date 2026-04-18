@@ -217,3 +217,63 @@
   border-color: rgba(110, 138, 111, 0.25) !important;
   background: rgba(237, 232, 222, 0.05) !important;
 }
+
+/* ─── Tool hero + grid: replace sky-blue counters ────────────── */
+.tool-hero-rank,
+.tool-hero-count,
+.tool-card-rank,
+.tool-card-count {
+  color: #8fb078 !important;
+}
+
+/* ─── Wrapped insight (Models, Projects, Identity) ──────────── */
+.wrap-sub {
+  color: #b07b3e !important;
+}
+.wrap-other-val {
+  color: #8fb078 !important;
+}
+
+/* ─── Summary callout val: amber replaces #f59e0b ───────────── */
+.sum-callout-val {
+  color: #b07b3e !important;
+}
+
+/* ─── Fun-fact highlight classes ─────────────────────────────── */
+.highlight {
+  color: #b07b3e !important;
+}
+.green-hl {
+  color: #6e8a6f !important;
+}
+.blue-hl {
+  color: #8fb078 !important;
+}
+
+/* ─── Analytics SVG line + gradient stops ────────────────────── */
+.an-line path[stroke="#8fb078"],
+.an-line path[stroke="#6e8a6f"] {
+  stroke: #8fb078 !important;
+}
+
+/* ─── Analytics bar fill ─────────────────────────────────────── */
+.an-bar-fill {
+  background: linear-gradient(90deg, #6e8a6f, #8fb078) !important;
+  box-shadow: 0 0 8px rgba(110, 138, 111, 0.3) !important;
+}
+
+/* ─── P2 banner + divider tint ───────────────────────────────── */
+.p2-banner-bg {
+  background: linear-gradient(
+    145deg,
+    #52715a 0%,
+    #3a5a45 40%,
+    #2f4439 70%,
+    #1b2a21 100%
+  ) !important;
+}
+
+/* ─── Personality hero (Twilight/Dawn/etc.) emoji ring ───────── */
+.wrap-emoji {
+  color: #8fb078 !important;
+}

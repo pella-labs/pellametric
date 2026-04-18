@@ -4,7 +4,13 @@ import { Geist, Geist_Mono, IBM_Plex_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
+  "https://bematist.dev";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Bematist",
     template: "%s · Bematist",
@@ -12,6 +18,21 @@ export const metadata: Metadata = {
   description:
     "Open-source AI-engineering analytics — auto-instruments every developer's coding-agent usage and correlates LLM spend with Git outcomes.",
   applicationName: "Bematist",
+  openGraph: {
+    type: "website",
+    siteName: "Bematist",
+    locale: "en_US",
+    url: "/",
+    title: "Bematist · See what AI is actually shipping",
+    description:
+      "Open-source analytics for AI-assisted engineering. Tie every LLM dollar to the code that merged.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Bematist · See what AI is actually shipping",
+    description:
+      "Open-source analytics for AI-assisted engineering. Tie every LLM dollar to the code that merged.",
+  },
 };
 
 const fontSans = Geist({

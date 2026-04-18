@@ -25,11 +25,11 @@ export interface BMonogramProps {
 }
 
 export function BMonogram({
-  color = "#e9ecf2",
-  attenuationColor = "#1a1a24",
-  rimColor = "#ffb37a",
-  keyColor = "#eaf3ff",
-  backColor = "#7aa9ff",
+  color = "#6e8a6f",
+  attenuationColor = "#0f1a10",
+  rimColor = "#b07b3e",
+  keyColor = "#eaf3e5",
+  backColor = "#6e8a6f",
   interactive = true,
   autoRotate = true,
   autoRotateSpeed = 0.0035,
@@ -86,18 +86,18 @@ export function BMonogram({
 
     const material = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color(color as THREE.ColorRepresentation),
-      metalness: 0.1,
-      roughness: 0.12,
-      transmission: 0.92,
+      metalness: 0.15,
+      roughness: 0.22,
+      transmission: 0.35,
       thickness: 3.2,
-      ior: 1.52,
+      ior: 1.48,
       attenuationColor: new THREE.Color(
         attenuationColor as THREE.ColorRepresentation,
       ),
-      attenuationDistance: 2.4,
+      attenuationDistance: 1.4,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.04,
-      envMapIntensity: 1.15,
+      clearcoatRoughness: 0.08,
+      envMapIntensity: 1.0,
     });
 
     const mesh = new THREE.Mesh(geometry, material);
@@ -141,6 +141,8 @@ export function BMonogram({
       targetPitch: 0,
       yaw: 0,
       pitch: 0,
+      yawVel: 0,
+      pitchVel: 0,
       parallaxX: 0,
       parallaxY: 0,
       lastInteract: performance.now(),
@@ -155,7 +157,14 @@ export function BMonogram({
       canvas.setPointerCapture?.(e.pointerId);
     };
     const onUp = (e: PointerEvent) => {
+      if (!s.dragging) return;
       s.dragging = false;
+      // Normalize yaw to the closest equivalent angle within ±π so the spring
+      // takes the short way home instead of unwinding multiple turns.
+      const twoPi = Math.PI * 2;
+      s.yaw = ((s.yaw + Math.PI) % twoPi + twoPi) % twoPi - Math.PI;
+      s.targetYaw = 0;
+      s.targetPitch = 0;
       canvas.style.cursor = "grab";
       try {
         canvas.releasePointerCapture?.(e.pointerId);
@@ -170,21 +179,12 @@ export function BMonogram({
       if (s.dragging) {
         const dx = e.clientX - s.lastX;
         const dy = e.clientY - s.lastY;
-        s.targetYaw += dx * 0.006;
-        s.targetPitch += dy * 0.006;
-        s.targetPitch = Math.max(-1.2, Math.min(1.2, s.targetPitch));
+        s.targetYaw += dx * 0.008;
+        s.targetPitch += dy * 0.008;
         s.lastX = e.clientX;
         s.lastY = e.clientY;
         s.lastInteract = performance.now();
       }
-    };
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      camera.position.z = Math.max(
-        12,
-        Math.min(40, camera.position.z + e.deltaY * 0.012),
-      );
-      s.lastInteract = performance.now();
     };
 
     if (interactive) {
@@ -192,7 +192,6 @@ export function BMonogram({
       canvas.addEventListener("pointerup", onUp);
       canvas.addEventListener("pointercancel", onUp);
       canvas.addEventListener("pointermove", onMove);
-      canvas.addEventListener("wheel", onWheel, { passive: false });
     }
 
     const resize = () => {
@@ -227,13 +226,25 @@ export function BMonogram({
       if (!isVisible || !isOnScreen) return;
       const t = clock.getElapsedTime();
 
-      const idle = performance.now() - s.lastInteract > 1600;
+      const idle = performance.now() - s.lastInteract > 500;
       if (autoRotate && !s.dragging && (idle || !interactive)) {
         s.targetYaw += autoRotateSpeed;
       }
 
-      s.yaw += (s.targetYaw - s.yaw) * 0.08;
-      s.pitch += (s.targetPitch - s.pitch) * 0.08;
+      if (s.dragging) {
+        s.yaw += (s.targetYaw - s.yaw) * 0.25;
+        s.pitch += (s.targetPitch - s.pitch) * 0.25;
+        s.yawVel = 0;
+        s.pitchVel = 0;
+      } else {
+        // Spring back to resting z-plane with a gentle, drawn-out overshoot.
+        const stiffness = 0.022;
+        const damping = 0.9;
+        s.yawVel = s.yawVel * damping + (s.targetYaw - s.yaw) * stiffness;
+        s.pitchVel = s.pitchVel * damping + (s.targetPitch - s.pitch) * stiffness;
+        s.yaw += s.yawVel;
+        s.pitch += s.pitchVel;
+      }
 
       group.rotation.y = s.yaw + s.parallaxX * 0.18;
       group.rotation.x = s.pitch + s.parallaxY * 0.12;
@@ -261,7 +272,6 @@ export function BMonogram({
         canvas.removeEventListener("pointerup", onUp);
         canvas.removeEventListener("pointercancel", onUp);
         canvas.removeEventListener("pointermove", onMove);
-        canvas.removeEventListener("wheel", onWheel);
       }
       geometry.dispose();
       material.dispose();

@@ -225,16 +225,16 @@ export function getCacheSaved(stats: CardData['stats']): string {
 
 export function getModelColors(model: string): string {
   const m = model.toLowerCase()
-  if (m.includes('opus')) return '#9b7dff'
-  if (m.includes('sonnet')) return '#60a5fa'
-  if (m.includes('haiku')) return '#34d399'
-  if (m.includes('gpt') || m.includes('codex')) return '#fb923c'
-  if (m.includes('o3') || m.includes('o4')) return '#e8c26e'
-  return '#9ca3af'
+  if (m.includes('opus')) return '#b07b3e'
+  if (m.includes('sonnet')) return '#8fb078'
+  if (m.includes('haiku')) return '#6e8a6f'
+  if (m.includes('gpt') || m.includes('codex')) return '#d4a771'
+  if (m.includes('o3') || m.includes('o4')) return '#c9a66a'
+  return '#9ca59a'
 }
 
 export function getToolColor(idx: number): string {
-  const colors = ['#fb923c', '#9b7dff', '#5a80a8', '#3a9a7a', '#c47a20', '#7a6299', '#d97706', '#6366f1']
+  const colors = ['#6e8a6f', '#b07b3e', '#8fb078', '#d4a771', '#52715a', '#a59480', '#c9a66a', '#b8d8a1']
   return colors[idx % colors.length]
 }
 
@@ -246,10 +246,10 @@ export function normalizeHours(hourDist: number[]): number[] {
 
 // Get color for hour bar based on intensity
 export function getHourBarColor(intensity: number): string {
-  if (intensity > 0.7) return '#9b7dff'
-  if (intensity > 0.4) return '#60a5fa'
-  if (intensity > 0.15) return 'rgba(124,92,252,.4)'
-  return 'rgba(124,92,252,.12)'
+  if (intensity > 0.7) return '#b8d8a1'
+  if (intensity > 0.4) return '#8fb078'
+  if (intensity > 0.15) return 'rgba(110,138,111,.55)'
+  return 'rgba(110,138,111,.18)'
 }
 
 export type AchievementIcon = 'flame' | 'wrench' | 'rocket' | 'monitor'
@@ -262,16 +262,16 @@ export function getAchievements(stats: CardData['stats'], view: 'combined' | 'cl
   const toolCalls = view === 'codex' ? (stats.codex.totalToolCalls ?? 0) : view === 'claude' ? getTotalToolCalls(stats.claude.topTools) : getTotalToolCalls(stats.claude.topTools) + (stats.codex.totalToolCalls ?? 0)
   const models = view === 'codex' ? stats.codex.models : view === 'claude' ? stats.claude.models : { ...stats.claude.models, ...stats.codex.models }
 
-  if (activeDays >= 30) achievements.push({ name: 'Marathon', desc: `${activeDays}-day streak`, color: '#ff9f43', icon: 'flame' })
-  if (toolCalls >= 50000) achievements.push({ name: 'Power User', desc: '50K+ tool calls', color: '#9b7dff', icon: 'wrench' })
-  else if (toolCalls >= 10000) achievements.push({ name: 'Tool Master', desc: '10K+ tool calls', color: '#9b7dff', icon: 'wrench' })
-  if (sessions >= 5000) achievements.push({ name: 'Ship It', desc: '5K+ sessions', color: '#34d399', icon: 'rocket' })
-  else if (sessions >= 1000) achievements.push({ name: 'Prolific', desc: '1K+ sessions', color: '#34d399', icon: 'rocket' })
+  if (activeDays >= 30) achievements.push({ name: 'Marathon', desc: `${activeDays}-day streak`, color: '#b07b3e', icon: 'flame' })
+  if (toolCalls >= 50000) achievements.push({ name: 'Power User', desc: '50K+ tool calls', color: '#b07b3e', icon: 'wrench' })
+  else if (toolCalls >= 10000) achievements.push({ name: 'Tool Master', desc: '10K+ tool calls', color: '#b07b3e', icon: 'wrench' })
+  if (sessions >= 5000) achievements.push({ name: 'Ship It', desc: '5K+ sessions', color: '#6e8a6f', icon: 'rocket' })
+  else if (sessions >= 1000) achievements.push({ name: 'Prolific', desc: '1K+ sessions', color: '#6e8a6f', icon: 'rocket' })
 
   // Codex-specific achievements
   if (view === 'codex' || view === 'combined') {
-    if ((stats.codex.totalReasoningBlocks ?? 0) >= 5000) achievements.push({ name: 'Deep Thinker', desc: '5K+ reasoning blocks', color: '#fb923c', icon: 'monitor' })
-    if ((stats.codex.totalWebSearches ?? 0) >= 100) achievements.push({ name: 'Researcher', desc: '100+ web searches', color: '#60a5fa', icon: 'monitor' })
+    if ((stats.codex.totalReasoningBlocks ?? 0) >= 5000) achievements.push({ name: 'Deep Thinker', desc: '5K+ reasoning blocks', color: '#d4a771', icon: 'monitor' })
+    if ((stats.codex.totalWebSearches ?? 0) >= 100) achievements.push({ name: 'Researcher', desc: '100+ web searches', color: '#8fb078', icon: 'monitor' })
   }
 
   // Check for model loyalty
@@ -279,7 +279,7 @@ export function getAchievements(stats: CardData['stats'], view: 'combined' | 'cl
   for (const [name, data] of Object.entries(models)) {
     if (totalModelSessions > 0 && data.sessions / totalModelSessions > 0.9) {
       const shortName = name.includes('opus') ? 'Opus' : name.includes('sonnet') ? 'Sonnet' : name.includes('haiku') ? 'Haiku' : name.includes('codex') ? 'Codex' : name
-      achievements.push({ name: `${shortName} Loyalist`, desc: '90%+ on one model', color: '#60a5fa', icon: 'monitor' })
+      achievements.push({ name: `${shortName} Loyalist`, desc: '90%+ on one model', color: '#8fb078', icon: 'monitor' })
       break
     }
   }
@@ -299,13 +299,13 @@ export function getFunFacts(stats: CardData['stats'], view: 'combined' | 'claude
   // Tokens as novels
   const novels = Math.round(tokens / 1_000_000)
   if (novels > 0) {
-    facts.push({ text: `Your <strong>${formatTokens(tokens)} tokens</strong> equal roughly <span class="highlight">${novels} full-length novels</span> worth of generated code`, color: '#9b7dff' })
+    facts.push({ text: `Your <strong>${formatTokens(tokens)} tokens</strong> equal roughly <span class="highlight">${novels} full-length novels</span> worth of generated code`, color: '#b07b3e' })
   }
 
   // Cost efficiency
   if (cost > 0) {
     const tokensPerDollar = tokens / cost
-    facts.push({ text: `Your cost efficiency: <span class="blue-hl">${formatTokens(tokensPerDollar)} tokens per dollar</span>`, color: '#60a5fa' })
+    facts.push({ text: `Your cost efficiency: <span class="blue-hl">${formatTokens(tokensPerDollar)} tokens per dollar</span>`, color: '#8fb078' })
   }
 
   // Top model usage
@@ -314,19 +314,19 @@ export function getFunFacts(stats: CardData['stats'], view: 'combined' | 'claude
     const totalModelSessions = Object.values(models).reduce((s, m) => s + m.sessions, 0)
     const pct = Math.round((topModel[1].sessions / totalModelSessions) * 100)
     const shortName = topModel[0].includes('opus') ? 'Opus' : topModel[0].includes('sonnet') ? 'Sonnet' : topModel[0].includes('haiku') ? 'Haiku' : topModel[0].includes('codex') ? 'Codex' : topModel[0].includes('gpt') ? 'GPT' : escapeHtml(topModel[0])
-    facts.push({ text: `${escapeHtml(shortName)} handled <span class="highlight">${pct}%</span> of your turns`, color: '#fb923c' })
+    facts.push({ text: `${escapeHtml(shortName)} handled <span class="highlight">${pct}%</span> of your turns`, color: '#d4a771' })
   }
 
   // Codex-specific: reasoning blocks
   if (view === 'codex' && (stats.codex.totalReasoningBlocks ?? 0) > 0) {
-    facts.push({ text: `Codex used <span class="highlight">${(stats.codex.totalReasoningBlocks ?? 0).toLocaleString()} reasoning blocks</span> to think through your code`, color: '#fb923c' })
+    facts.push({ text: `Codex used <span class="highlight">${(stats.codex.totalReasoningBlocks ?? 0).toLocaleString()} reasoning blocks</span> to think through your code`, color: '#d4a771' })
   }
 
   // Cache savings
   if (view !== 'codex' && stats.claude.cacheSavingsUsd > 1) {
-    facts.push({ text: `Cache saved you <span class="green-hl">${formatCost(stats.claude.cacheSavingsUsd)}</span> in token costs`, color: '#34d399' })
+    facts.push({ text: `Cache saved you <span class="green-hl">${formatCost(stats.claude.cacheSavingsUsd)}</span> in token costs`, color: '#6e8a6f' })
   } else if (view === 'codex' && stats.codex.cachedInputTokens > 0) {
-    facts.push({ text: `<span class="green-hl">${formatTokens(stats.codex.cachedInputTokens)}</span> tokens served from cache`, color: '#34d399' })
+    facts.push({ text: `<span class="green-hl">${formatTokens(stats.codex.cachedInputTokens)}</span> tokens served from cache`, color: '#6e8a6f' })
   }
 
   return facts.slice(0, 3)

@@ -4,7 +4,7 @@ import gsap from "gsap";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Flow = "oauth" | "manual";
-type Step = "entry" | "signin" | "star" | "generate" | "command";
+type Step = "entry" | "signin" | "star" | "username" | "generate" | "command";
 
 const GITHUB_REPO_URL = "https://github.com/pella-labs/bematist";
 
@@ -29,6 +29,7 @@ export function GetStarted() {
   const [working, setWorking] = useState(false);
   const [copied, setCopied] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [manualUsername, setManualUsername] = useState("");
   const [firebaseReady, setFirebaseReady] = useState(false);
   const [authModule, setAuthModule] =
     useState<null | typeof import("firebase/auth")>(null);
@@ -67,7 +68,7 @@ export function GetStarted() {
     setFlow("manual");
     // Open the repo in a new tab so the user can star it right now.
     window.open(GITHUB_REPO_URL, "_blank", "noopener,noreferrer");
-    setStep("signin");
+    setStep("username");
   };
 
   // ─── Sign in ─────────────────────────────────────────────────────
@@ -154,40 +155,60 @@ export function GetStarted() {
     }
   };
 
-  // ─── Verify manually starred (flow=manual) ───────────────────────
-  const handleVerifyStar = async () => {
+  // ─── Verify-and-issue by username (flow=manual, no OAuth) ────────
+  const handleVerifyByUsername = async () => {
     setVerifyError(null);
+    const username = manualUsername.trim();
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{0,38}$/.test(username)) {
+      setVerifyError("Enter a valid GitHub username.");
+      return;
+    }
     setWorking(true);
     try {
-      if (!firebaseReady || !auth?.currentUser) {
-        playStarBurst();
-        setTimeout(() => setStep("generate"), 900);
-        return;
-      }
-      const ghData = auth.currentUser.providerData.find(
-        (p) => p.providerId === "github.com",
-      );
-      const username =
-        // Firebase exposes GitHub login on providerData under `displayName`
-        // when the provider returns it; fall back to the top-level displayName.
-        ghData?.displayName || auth.currentUser.displayName;
-      if (!username) {
-        setVerifyError("Could not read your GitHub username. Please sign in again.");
-        return;
-      }
-      const res = await fetch(
-        `/api/github/check-star?username=${encodeURIComponent(username)}`,
-      );
-      const data = (await res.json()) as { starred?: boolean; error?: string };
-      if (data.starred) {
-        playStarBurst();
-        setTimeout(() => setStep("generate"), 900);
-      } else if (data.error) {
-        setVerifyError(data.error);
-      } else {
-        setVerifyError(
-          "We didn't see your star yet. Make sure you're signed into the same GitHub account, then try again.",
+      if (!firebaseReady) {
+        // Demo mode: still verify the star against GitHub, but mint a stub
+        // token since Firestore isn't available.
+        const checkRes = await fetch(
+          `/api/github/check-star?username=${encodeURIComponent(username)}`,
         );
+        const checkData = (await checkRes.json()) as {
+          starred?: boolean;
+          error?: string;
+        };
+        if (checkData.starred) {
+          const adjPool = ["sable", "halcyon", "vesper", "gilded", "obsidian", "moonlit"];
+          const nounPool = ["reliquary", "cairn", "cipher", "penumbra", "menhir", "horizon"];
+          const adj = adjPool[Math.floor(Math.random() * adjPool.length)];
+          const noun = nounPool[Math.floor(Math.random() * nounPool.length)];
+          const num = Math.floor(Math.random() * 900) + 100;
+          setCardToken(`${adj}-${noun}-${num}`);
+          playStarBurst();
+          setTimeout(() => setStep("command"), 900);
+        } else if (checkData.starred === false) {
+          setVerifyError(
+            "We don't see a star from that account yet. Double-check your GitHub username, make sure you starred the repo, then try again.",
+          );
+        } else {
+          setVerifyError(checkData.error ?? "Could not verify. Try again in a moment.");
+        }
+        return;
+      }
+      const res = await fetch("/api/card/token-by-star", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      const data = (await res.json()) as { token?: string; error?: string };
+      if (res.ok && data.token) {
+        setCardToken(data.token);
+        playStarBurst();
+        setTimeout(() => setStep("command"), 900);
+      } else if (data.error === "not_starred") {
+        setVerifyError(
+          "We don't see a star from that account yet. Double-check your GitHub username, make sure you starred the repo, then try again.",
+        );
+      } else {
+        setVerifyError(data.error ?? "Could not verify. Try again in a moment.");
       }
     } catch {
       setVerifyError("Network error. Try again.");
@@ -240,26 +261,30 @@ export function GetStarted() {
           <button
             type="button"
             onClick={handlePickOAuth}
-            className="mk-getstarted-entry-card"
+            className="mk-getstarted-entry-card mk-getstarted-entry-primary"
           >
             <GithubMark />
             <div>
               <div className="mk-getstarted-entry-title">Sign in with GitHub</div>
               <div className="mk-getstarted-entry-sub">
-                Fastest. We handle the star for you.
+                One-click star, one-click token. Recommended.
               </div>
             </div>
+            <div className="mk-getstarted-entry-chevron" aria-hidden>→</div>
           </button>
+          <div className="mk-getstarted-entry-divider">
+            <span>or</span>
+          </div>
           <button
             type="button"
             onClick={handlePickManual}
-            className="mk-getstarted-entry-card"
+            className="mk-getstarted-entry-card mk-getstarted-entry-alt"
           >
             <StarIcon />
             <div>
-              <div className="mk-getstarted-entry-title">Star this repo on GitHub</div>
+              <div className="mk-getstarted-entry-title">Star manually, no sign-in</div>
               <div className="mk-getstarted-entry-sub">
-                Prefer to do it manually. We'll verify after.
+                Star on GitHub yourself, then enter your username. We verify the star is public.
               </div>
             </div>
           </button>
@@ -268,13 +293,10 @@ export function GetStarted() {
 
       {step === "signin" && (
         <div className="mk-getstarted-panel">
-          <h3>
-            {flow === "manual" ? "Claim your card" : "Sign in with GitHub"}
-          </h3>
+          <h3>Sign in with GitHub</h3>
           <p>
-            {flow === "manual"
-              ? "We opened the repo in a new tab. Star it there, then sign in here so we can verify and issue your card token."
-              : "We use GitHub for identity and to star the repo for you. The card token we generate next is scoped to your machine."}
+            We use GitHub for identity and to star the repo for you. The card
+            token we generate next is scoped to your machine.
           </p>
           <button
             type="button"
@@ -284,6 +306,55 @@ export function GetStarted() {
             <GithubMark />
             Continue with GitHub
           </button>
+        </div>
+      )}
+
+      {step === "username" && (
+        <div className="mk-getstarted-panel">
+          <h3>Enter your GitHub username</h3>
+          <p>
+            We opened{" "}
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="mk-getstarted-link"
+            >
+              pella-labs/bematist
+            </a>{" "}
+            in a new tab. Star it there, then drop your username below — we'll
+            check the public stargazers list and hand you your card token. No
+            sign-in needed.
+          </p>
+          <div className="mk-getstarted-username">
+            <input
+              type="text"
+              inputMode="text"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="your-github-username"
+              value={manualUsername}
+              onChange={(e) => setManualUsername(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !working) handleVerifyByUsername();
+              }}
+              disabled={working}
+              className="mk-getstarted-username-input"
+            />
+            <button
+              type="button"
+              onClick={handleVerifyByUsername}
+              disabled={working || manualUsername.trim().length === 0}
+              className="mk-btn mk-btn-primary mk-getstarted-btn"
+            >
+              <StarIcon />
+              {working ? "Verifying..." : "Verify star"}
+            </button>
+          </div>
+          {verifyError && (
+            <p className="mk-getstarted-error">{verifyError}</p>
+          )}
         </div>
       )}
 
@@ -302,38 +373,6 @@ export function GetStarted() {
               {working ? "Starring..." : "Star on GitHub"}
             </button>
           </div>
-        </div>
-      )}
-
-      {step === "star" && flow === "manual" && (
-        <div className="mk-getstarted-panel">
-          <h3>Verify your star</h3>
-          <p>
-            Once you've starred{" "}
-            <a
-              href={GITHUB_REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="mk-getstarted-link"
-            >
-              pella-labs/bematist
-            </a>
-            , click below. We check the public starred endpoint on your account.
-          </p>
-          <div ref={starRef} className="mk-getstarted-star-wrap">
-            <button
-              type="button"
-              onClick={handleVerifyStar}
-              disabled={working}
-              className="mk-btn mk-btn-primary mk-getstarted-btn"
-            >
-              <StarIcon />
-              {working ? "Checking..." : "I've starred it"}
-            </button>
-          </div>
-          {verifyError && (
-            <p className="mk-getstarted-error">{verifyError}</p>
-          )}
         </div>
       )}
 

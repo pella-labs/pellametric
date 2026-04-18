@@ -26,7 +26,7 @@ export function DashboardShot() {
     <section className="mk-dashboard-shot">
       <div style={{ textAlign: "center", maxWidth: 640 }}>
         <span className="mk-sys" style={{ display: "block", marginBottom: 12 }}>
-          What your team sees
+          Where you actually live
         </span>
         <h2
           className="mk-mono"
@@ -35,7 +35,7 @@ export function DashboardShot() {
             letterSpacing: "-0.02em",
           }}
         >
-          One dashboard for the whole org.
+          The dashboard is the product.
         </h2>
         <p
           style={{
@@ -45,8 +45,9 @@ export function DashboardShot() {
             lineHeight: 1.55,
           }}
         >
-          Individual cards aggregate into a team view. Spend, outcomes, cluster
-          patterns, and anomalies all in one place.
+          Every personal card pours into one place. Spend by project, wins by
+          workflow, anomalies before they cost a sprint, and the patterns your
+          strongest engineers use that the rest of the team could be copying.
         </p>
       </div>
 

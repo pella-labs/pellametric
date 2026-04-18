@@ -12,7 +12,7 @@ export function BrandMonolith() {
           className="mk-ring"
           text="AI SPEND · GIT OUTCOMES · ACCEPTED EDITS · MERGED PRS · VELOCITY · "
           fontSize={24}
-          fill="rgba(237,232,222,0.85)"
+          fill="rgba(110,138,111,0.85)"
           letterSpacing={8}
         />
         <Ring
