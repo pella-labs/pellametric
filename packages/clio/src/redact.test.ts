@@ -19,7 +19,12 @@ describe("Stage 1 — redact", () => {
   test("masks Slack webhook URL", async () => {
     // Construct via concat so GitHub's secret scanner doesn't false-positive
     // on the synthetic literal — the runtime regex still sees the joined string.
-    const url = ["https://hooks.slack.com/services", "TEXAMPLE", "BEXAMPLE", "exampleexampleexampleabcd"].join("/");
+    const url = [
+      "https://hooks.slack.com/services",
+      "TEXAMPLE",
+      "BEXAMPLE",
+      "exampleexampleexampleabcd",
+    ].join("/");
     const r = await runRedact({ rawPromptText: `webhook=${url}` });
     expect(r.text).not.toContain(url);
   });
