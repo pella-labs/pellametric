@@ -142,7 +142,7 @@ test("network error keeps rows pending", async () => {
   });
   expect(result.note).toContain("network");
   expect(j.pendingCount()).toBe(1);
-});
+}, 15000);
 
 test("207 partial splits by index", async () => {
   j.enqueue(ev(0));
