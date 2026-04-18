@@ -65,7 +65,7 @@ export function applyCoreRlimit(logger: RlimitLogger): CoreRlimitResult {
   if (result.applied) {
     logger.info({ rlimit_core: result.rlimit_core, applied: true }, "rlimit.core applied");
   } else {
-    const warn = logger.warn ?? logger.info;
+    const warn = logger.warn ? logger.warn.bind(logger) : logger.info.bind(logger);
     warn(
       {
         code: "RLIMIT_SKIPPED",
