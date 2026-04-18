@@ -16,10 +16,17 @@ export interface RawClaudeSessionLine {
   sessionId?: string;
   /** Wall-clock timestamp, ISO 8601. */
   timestamp?: string;
-  /** User-message payload when type==="message" && role==="user". */
+  /**
+   * Message payload.
+   * - Fixture format: `type==="message"`, with `role` and a string `content`.
+   * - Real format (`~/.claude/projects/**.jsonl`): `type` is one of
+   *   `"user" | "assistant" | "system"` at top level, and `content` is either
+   *   a string OR an array of typed blocks (`thinking`, `text`, `tool_use`,
+   *   `tool_result`) — see `RawClaudeContentBlock`.
+   */
   message?: {
     role?: "user" | "assistant" | "system";
-    content?: unknown;
+    content?: string | RawClaudeContentBlock[] | unknown;
     usage?: RawClaudeUsage;
     model?: string;
     stop_reason?: string;
@@ -57,4 +64,21 @@ export interface RawClaudeUsage {
   output_tokens?: number;
   cache_read_input_tokens?: number;
   cache_creation_input_tokens?: number;
+}
+
+/**
+ * Content block on `message.content[]` in the real Claude Code JSONL format.
+ * Assistant messages carry `thinking | text | tool_use`; user messages that
+ * are tool-result replies carry `tool_result` blocks.
+ */
+export interface RawClaudeContentBlock {
+  type?: string;
+  /** `tool_use` block */
+  name?: string;
+  input?: unknown;
+  id?: string;
+  /** `tool_result` block */
+  tool_use_id?: string;
+  content?: unknown;
+  is_error?: boolean;
 }

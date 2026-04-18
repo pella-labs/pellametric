@@ -15,7 +15,7 @@ const rand = () => {
 const randInt = (max: number) => rand() % max;
 
 // Truncate PG + CH (idempotent).
-await sql`TRUNCATE TABLE developers, users, orgs RESTART IDENTITY CASCADE`;
+await sql`TRUNCATE TABLE policies, developers, users, orgs RESTART IDENTITY CASCADE`;
 await client.command({ query: "TRUNCATE TABLE events" });
 await client.command({ query: "TRUNCATE TABLE cluster_assignment_mv" });
 // MV data is cleared by events truncate? No — explicit truncate each.
@@ -37,6 +37,8 @@ const orgs: Org[] = [
 ];
 for (const o of orgs) {
   await sql`INSERT INTO orgs (id, slug, name) VALUES (${o.id}, ${o.slug}, ${o.name})`;
+  // Default tier-B policy per org — ingest rejects events with ORG_POLICY_MISSING otherwise.
+  await sql`INSERT INTO policies (org_id, tier_default) VALUES (${o.id}, 'B')`;
 }
 
 // --- Users + developers (2 + 4 + 6 = 12 across 3 orgs)

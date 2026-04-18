@@ -3,7 +3,7 @@
 # Postgres is bound to host port 5433 (not 5432) to avoid colliding with other projects.
 services:
   postgres:
-    image: postgres:16-alpine
+    image: timescale/timescaledb:latest-pg16
     container_name: bematist-postgres
     environment:
       POSTGRES_USER: postgres
@@ -20,7 +20,7 @@ services:
       retries: 10
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25-alpine
+    image: clickhouse/clickhouse-server:25.8-alpine
     container_name: bematist-clickhouse
     environment:
       CLICKHOUSE_DB: bematist

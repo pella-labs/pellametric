@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { pricingVersionString } from "@bematist/config";
 import type { Event } from "@bematist/schema";
 import type { ParsedSession } from "./parsers/parseSessionFile";
-import type { RawClaudeSessionLine, RawClaudeUsage } from "./parsers/types";
+import type { RawClaudeContentBlock, RawClaudeSessionLine, RawClaudeUsage } from "./parsers/types";
 
 export interface ServerIdentity {
   tenantId: string;
@@ -33,6 +33,26 @@ export function normalizeSession(
   const session_id = parsed.sessionId ?? "unknown";
   const events: Event[] = [];
   let seq = 0;
+
+  // Real-format sessions (`~/.claude/projects/**.jsonl`) never emit an explicit
+  // `session_start` line — the session begins at the first user message. The
+  // fixture format does emit one. Synthesize one here if we're dealing with
+  // real-format data (detected by the presence of any top-level `user` /
+  // `assistant` type) and there's no explicit session_start in the stream.
+  const hasRealFormat = parsed.entries.some((l) => l.type === "user" || l.type === "assistant");
+  const hasExplicitStart = parsed.entries.some((l) => l.type === "session_start");
+  if (hasRealFormat && !hasExplicitStart && parsed.firstTimestamp) {
+    const synthetic: RawClaudeSessionLine = {
+      type: "session_start",
+      timestamp: parsed.firstTimestamp,
+    };
+    if (parsed.sessionId) synthetic.sessionId = parsed.sessionId;
+    const startEvents = mapLine(synthetic, parsed, id, sourceVersion, session_id, seq);
+    for (const e of startEvents) {
+      events.push(e);
+      seq++;
+    }
+  }
 
   for (const line of parsed.entries) {
     const eventsForLine = mapLine(line, parsed, id, sourceVersion, session_id, seq);
@@ -170,9 +190,148 @@ function mapLine(
     ];
   }
 
-  // Unknown line kinds are skipped for M1. M2 will expand this mapping.
+  // Real Claude Code JSONL format: top-level `type` is `"user"` / `"assistant"`
+  // (vs. the fixture format's `"message"` + nested `role`). Tool calls come
+  // embedded in `message.content[]` as typed blocks.
+  if (line.type === "user") {
+    return mapRealUserLine(line, base, session_id, seq);
+  }
+  if (line.type === "assistant") {
+    return mapRealAssistantLine(line, parsed, base, session_id, seq);
+  }
+  // `file-history-snapshot`, `system`, and any other unknown kinds are skipped.
   return [];
 }
+
+/**
+ * Map a real-format `type: "user"` line. User messages in the real format are
+ * either plain text (prompt from the developer) or a `tool_result` envelope
+ * whose `message.content[]` contains one or more `tool_result` blocks.
+ */
+function mapRealUserLine(
+  line: RawClaudeSessionLine,
+  base: EventBase,
+  session_id: string,
+  seq: number,
+): Event[] {
+  const content = line.message?.content;
+  if (Array.isArray(content)) {
+    const out: Event[] = [];
+    let i = 0;
+    for (const block of content as RawClaudeContentBlock[]) {
+      if (block?.type === "tool_result") {
+        out.push({
+          ...base,
+          event_seq: seq + i,
+          client_event_id: deterministicId(
+            `tool_result:${block.tool_use_id ?? ""}`,
+            session_id,
+            seq + i,
+            line,
+          ),
+          dev_metrics: {
+            event_kind: "tool_result",
+            tool_status: block.is_error ? "error" : "ok",
+            first_try_failure: block.is_error ? true : undefined,
+          },
+        } as Event);
+        i++;
+      }
+    }
+    return out;
+  }
+  // Plain user prompt — one llm_request-style event with no model info.
+  return [
+    {
+      ...base,
+      client_event_id: deterministicId("user_prompt", session_id, seq, line),
+      dev_metrics: { event_kind: "llm_request" },
+    } as Event,
+  ];
+}
+
+/**
+ * Map a real-format `type: "assistant"` line. Emits one `llm_response` event
+ * (with usage + cost) plus one `tool_call` event per `tool_use` content block.
+ */
+function mapRealAssistantLine(
+  line: RawClaudeSessionLine,
+  parsed: ParsedSession,
+  base: EventBase,
+  session_id: string,
+  seq: number,
+): Event[] {
+  const model = line.message?.model;
+  const usage =
+    (line.requestId && parsed.perRequestUsage.get(line.requestId)) || line.message?.usage;
+  const cost = usage && model ? computeCostUsd(model, usage) : undefined;
+
+  const events: Event[] = [
+    {
+      ...base,
+      client_event_id: deterministicId("llm_response", session_id, seq, line),
+      gen_ai: {
+        system: "anthropic",
+        response: {
+          model,
+          finish_reasons: line.message?.stop_reason ? [line.message.stop_reason] : undefined,
+        },
+        usage: {
+          input_tokens: usage?.input_tokens,
+          output_tokens: usage?.output_tokens,
+          cache_read_input_tokens: usage?.cache_read_input_tokens,
+          cache_creation_input_tokens: usage?.cache_creation_input_tokens,
+        },
+      },
+      dev_metrics: {
+        event_kind: "llm_response",
+        cost_usd: cost,
+        pricing_version: cost !== undefined ? pricingVersionString() : undefined,
+      },
+    } as Event,
+  ];
+
+  // tool_use blocks embedded in message.content[] → tool_call events.
+  const content = line.message?.content;
+  if (Array.isArray(content)) {
+    let i = 1; // event_seq offset — `llm_response` took seq+0.
+    for (const block of content as RawClaudeContentBlock[]) {
+      if (block?.type === "tool_use") {
+        events.push({
+          ...base,
+          event_seq: seq + i,
+          client_event_id: deterministicId(
+            `tool_call:${block.id ?? ""}`,
+            session_id,
+            seq + i,
+            line,
+          ),
+          dev_metrics: {
+            event_kind: "tool_call",
+            tool_name: block.name,
+          },
+        } as Event);
+        i++;
+      }
+    }
+  }
+  return events;
+}
+
+type EventBase = {
+  schema_version: 1;
+  ts: string;
+  tenant_id: string;
+  engineer_id: string;
+  device_id: string;
+  source: "claude-code";
+  source_version: string;
+  fidelity: "full";
+  cost_estimated: boolean;
+  tier: "A" | "B" | "C";
+  session_id: string;
+  event_seq: number;
+};
 
 function computeCostUsd(model: string, u: RawClaudeUsage): number | undefined {
   const p = MODEL_PRICING_PER_MTOK[model];
