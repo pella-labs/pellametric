@@ -1,50 +1,42 @@
 import "server-only";
 import type { Ctx } from "@bematist/api";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getDbClients } from "./db";
+import { resolveSessionCtx, SESSION_COOKIE_NAME } from "./session-resolver";
 
 /**
- * Resolve the current-request `Ctx` from the Better Auth session cookie.
+ * Resolve the current-request `Ctx` from the Better Auth session cookie,
+ * `BEMATIST_DEV_TENANT_ID` env pin, or non-prod deterministic fallback.
+ * See `./session-resolver` for the decision tree.
  *
- * M1 status: Walid's Better Auth hookup lives in `apps/ingest` and is not yet
- * wired through to `apps/web`. Until it is, we synthesize a dev-only Ctx in
- * local mode so the dashboard renders end-to-end. The real implementation
- * reads the session cookie, validates it, and populates tenant/actor/role.
- *
- * Import path — apps/web pages, Server Actions, and Route Handlers call this.
- * Never call from client components (marked `server-only`).
+ * Called from every RSC page, Server Action, and Route Handler that lives
+ * behind an authenticated boundary. `server-only` keeps this out of any
+ * client bundle.
  */
 export async function getSessionCtx(): Promise<Ctx> {
   // Touch headers() so the caller participates in Next.js's dynamic-rendering
   // bookkeeping — prevents accidental static caching of auth-scoped pages.
-  await headers();
+  const hs = await headers();
+  const ck = await cookies();
+  const db = getDbClients();
 
-  if (process.env.NODE_ENV !== "production") {
-    return {
-      tenant_id: "dev-tenant",
-      actor_id: "dev-actor",
-      role: "admin",
-      db: getDbClients(),
-    };
-  }
-
-  // TODO(B4 / Walid): validate Better Auth session cookie, derive tenant_id
-  // from org membership, pick RBAC role from `users.role`, attach reveal_token
-  // from the `reveal:<token>` Redis key when the request header carries one.
-  throw new Error(
-    "getSessionCtx: auth not yet wired in production — blocked on apps/ingest Better Auth handoff",
-  );
+  return resolveSessionCtx({
+    sessionCookie: ck.get(SESSION_COOKIE_NAME)?.value ?? null,
+    revealHeader: hs.get("x-reveal-token"),
+    env: process.env,
+    redis: db.redis,
+    db,
+  });
 }
 
 /**
- * Reveal-token-aware variant used by session detail routes. Pulls the token
- * from the `x-reveal-token` header (set client-side after a successful reveal
- * mutation) and stitches it onto the ctx.
+ * Reveal-token-aware variant — retained for callers that explicitly distinguish
+ * reveal paths. `getSessionCtx` already stitches the reveal token on when the
+ * header is present, so this is effectively an alias; kept for API stability
+ * with existing route handlers.
  */
 export async function getRevealedCtx(): Promise<Ctx> {
-  const hs = await headers();
-  const token = hs.get("x-reveal-token");
-  const ctx = await getSessionCtx();
-  // exactOptionalPropertyTypes — avoid writing `undefined` explicitly.
-  return token ? { ...ctx, reveal_token: token } : ctx;
+  return getSessionCtx();
 }
+
+export { DEV_ACTOR_ID_FALLBACK, DEV_TENANT_ID_FALLBACK } from "./session-resolver";
