@@ -291,6 +291,6 @@ export async function POST(req: Request) {
     ],
   );
 
-  const baseUrl = process.env.APP_URL || "http://localhost:3000";
+  const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
   return NextResponse.json({ cardUrl: `${baseUrl}/card/${cardId}`, cardId });
 }
