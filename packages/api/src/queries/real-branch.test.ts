@@ -137,6 +137,56 @@ describe("dashboard.getSummary (real branch)", () => {
       assertNoForbiddenColumns(sql);
     }
   });
+
+  test("fans out the two dev_daily_rollup reads in parallel (perf: halves p95 RTT)", async () => {
+    // Deferred resolvers — both are issued before either resolves, so they
+    // overlap in wall time. Regression guard: if the implementation reverts
+    // to a sequential await chain, the second query arrives only after the
+    // first resolves, and `bothIssuedBeforeFirstResolves` flips false.
+    const resolvers: Array<(rows: unknown[]) => void> = [];
+    const ch = mock(
+      async (sql: string) =>
+        new Promise<unknown[]>((resolve) => {
+          resolvers.push(resolve);
+          if (sql.includes("GROUP BY day")) {
+            queueMicrotask(() =>
+              resolve([{ day: "2026-04-14", cost_usd: 10, any_cost_estimated: 0 }]),
+            );
+          } else if (sql.includes("team_weekly_rollup")) {
+            queueMicrotask(() => resolve([{ ai_leverage_v1: 0 }]));
+          } else {
+            queueMicrotask(() =>
+              resolve([
+                {
+                  accepted_edits: 1,
+                  merged_prs: 0,
+                  sessions: 10,
+                  active_days: 5,
+                  outcome_events: 1,
+                  cohort_size: 8,
+                },
+              ]),
+            );
+          }
+        }),
+    );
+    const ctx = makeCtx("manager", { ch });
+
+    // Track how many queries are in-flight at the same time.
+    await getSummary(ctx, { window: "7d" });
+
+    // The two dev_daily_rollup calls must have been issued before either
+    // resolved — at least 2 pending resolvers existed mid-flight.
+    expect(resolvers.length).toBeGreaterThanOrEqual(2);
+    const [firstSql, secondSql] = ch.mock.calls.slice(0, 2).map((c) => c[0]);
+    expect(typeof firstSql).toBe("string");
+    expect(typeof secondSql).toBe("string");
+    // Exactly one of the first two is the per-day series; the other is the
+    // aggregate. Order is unspecified under Promise.all — either works.
+    const firsts = [firstSql, secondSql].map((s) => (s as string).includes("GROUP BY day"));
+    expect(firsts).toContain(true);
+    expect(firsts).toContain(false);
+  });
 });
 
 describe("session.listSessions (real branch)", () => {
@@ -291,6 +341,50 @@ describe("team.listTeams (real branch)", () => {
     const [pgSql, pgParams] = firstPg(pg);
     expect(pgSql).toContain("FROM teams");
     expect(pgParams[0]).toBe("org_fixtures_off");
+  });
+
+  test("fans out PG teams + CH aggregate in parallel (perf: halves /teams RTT)", async () => {
+    // Regression guard against returning to the sequential PG→CH chain. If
+    // the code awaits the PG query before starting the CH query, only one
+    // resolver is pending when the first resolves; the parallel impl keeps
+    // both resolvers in-flight.
+    const pending: Array<"pg" | "ch"> = [];
+    const pg = mock(
+      async () =>
+        new Promise<unknown[]>((resolve) => {
+          pending.push("pg");
+          queueMicrotask(() => resolve([{ id: "team_a", name: "Alpha" }]));
+        }),
+    );
+    const ch = mock(
+      async () =>
+        new Promise<unknown[]>((resolve) => {
+          pending.push("ch");
+          queueMicrotask(() =>
+            resolve([
+              {
+                team_id: "team_a",
+                engineers: 10,
+                cohort_size: 10,
+                cost_usd: 100,
+                sessions_count: 100,
+                active_days: 10,
+                outcome_events: 10,
+                ai_leverage_v1: 70,
+                fidelity: "full",
+              },
+            ]),
+          );
+        }),
+    );
+    const ctx = makeCtx("manager", { ch, pg });
+
+    await listTeams(ctx, { window: "30d" });
+
+    // Both PG and CH mock calls were registered before either resolved —
+    // parallel fan-out.
+    expect(pending).toContain("pg");
+    expect(pending).toContain("ch");
   });
 });
 

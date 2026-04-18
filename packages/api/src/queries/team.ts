@@ -83,48 +83,54 @@ async function listTeamsFixture(ctx: Ctx, input: TeamListInput): Promise<TeamLis
  * Tier-A forbidden columns are NEVER selected — aggregates only.
  */
 async function listTeamsReal(ctx: Ctx, input: TeamListInput): Promise<TeamListOutput> {
-  const teamRows = await ctx.db.pg.query<{
-    id: string;
-    name: string;
-  }>(
-    `SELECT id, name
-       FROM teams
-      WHERE org_id = $1
-      ORDER BY name ASC`,
-    [ctx.tenant_id],
-  );
-
-  if (teamRows.length === 0) return { window: input.window, teams: [] };
-
   const days = WINDOW_DAYS[input.window];
 
-  const aggRows = await ctx.db.ch.query<{
-    team_id: string;
-    engineers: number;
-    cohort_size: number;
-    cost_usd: number;
-    sessions_count: number;
-    active_days: number;
-    outcome_events: number;
-    ai_leverage_v1: number;
-    fidelity: TeamSummary["fidelity"];
-  }>(
-    `SELECT
-       team_id,
-       uniqMerge(engineers_state) AS engineers,
-       uniqMerge(engineers_state) AS cohort_size,
-       sumMerge(cost_usd_state) AS cost_usd,
-       uniqMerge(sessions_state) AS sessions_count,
-       0 AS active_days,
-       0 AS outcome_events,
-       0 AS ai_leverage_v1,
-       'full' AS fidelity
-     FROM team_weekly_rollup
-     WHERE org_id = {tenant_id:String}
-       AND week >= today() - {days:UInt16}
-     GROUP BY team_id`,
-    { tenant_id: ctx.tenant_id, days },
-  );
+  // PG `teams` and CH `team_weekly_rollup` have no dependency on each other;
+  // fan them out concurrently so the manager-2×2 landing page round-trips
+  // once, not twice. The CH aggregate is a no-op when teamRows is empty
+  // (common on fresh tenants) — the cost is one parallel RTT saved on every
+  // request for tenants that DO have teams.
+  const [teamRows, aggRows] = await Promise.all([
+    ctx.db.pg.query<{
+      id: string;
+      name: string;
+    }>(
+      `SELECT id, name
+         FROM teams
+        WHERE org_id = $1
+        ORDER BY name ASC`,
+      [ctx.tenant_id],
+    ),
+    ctx.db.ch.query<{
+      team_id: string;
+      engineers: number;
+      cohort_size: number;
+      cost_usd: number;
+      sessions_count: number;
+      active_days: number;
+      outcome_events: number;
+      ai_leverage_v1: number;
+      fidelity: TeamSummary["fidelity"];
+    }>(
+      `SELECT
+         team_id,
+         uniqMerge(engineers_state) AS engineers,
+         uniqMerge(engineers_state) AS cohort_size,
+         sumMerge(cost_usd_state) AS cost_usd,
+         uniqMerge(sessions_state) AS sessions_count,
+         0 AS active_days,
+         0 AS outcome_events,
+         0 AS ai_leverage_v1,
+         'full' AS fidelity
+       FROM team_weekly_rollup
+       WHERE org_id = {tenant_id:String}
+         AND week >= today() - {days:UInt16}
+       GROUP BY team_id`,
+      { tenant_id: ctx.tenant_id, days },
+    ),
+  ]);
+
+  if (teamRows.length === 0) return { window: input.window, teams: [] };
 
   const aggByTeam = new Map(aggRows.map((r) => [r.team_id, r]));
 
