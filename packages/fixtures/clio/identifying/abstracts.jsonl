@@ -1,0 +1,50 @@
+{"id":"id-001","label":"identifying","category":"email","text":"User wants to send an email to alex.morgan@stripe.com confirming the integration is live."}
+{"id":"id-002","label":"identifying","category":"email","text":"The developer is debugging why ops-team@acme.com is not receiving the daily digest."}
+{"id":"id-003","label":"identifying","category":"phone","text":"User requested a callback at 415-555-0188 about the failing webhook."}
+{"id":"id-004","label":"identifying","category":"phone","text":"The escalation contact is +1 (212) 555-0173 and the on-call rotation needs updating."}
+{"id":"id-005","label":"identifying","category":"ssn","text":"The customer record being queried has SSN 123-45-6789 and the audit log is missing a row."}
+{"id":"id-006","label":"identifying","category":"credit_card","text":"User pasted a transaction snippet that includes credit card 4111 1111 1111 1111 and asked why the charge failed."}
+{"id":"id-007","label":"identifying","category":"ip","text":"The request is coming from IP 10.20.30.40 and the firewall is blocking it intermittently."}
+{"id":"id-008","label":"identifying","category":"ip","text":"User is investigating why server 192.168.1.42 keeps dropping packets during the nightly cron."}
+{"id":"id-009","label":"identifying","category":"home_path","text":"The script is failing when reading from /Users/sgarces/work/secrets.json on launch."}
+{"id":"id-010","label":"identifying","category":"home_path","text":"User wants to symlink /home/jchen/projects/foo into the docker mount and the bind is empty."}
+{"id":"id-011","label":"identifying","category":"url","text":"The webhook target is https://hooks.example-customer.com/v1/notify and it returns 502 under load."}
+{"id":"id-012","label":"identifying","category":"url","text":"Developer needs to scrape data from internal-tool.acme.dev and the rate limiter keeps tripping."}
+{"id":"id-013","label":"identifying","category":"proper_noun_company","text":"The Stripe webhook signature verification is failing intermittently for the production account."}
+{"id":"id-014","label":"identifying","category":"proper_noun_company","text":"User is integrating Plaid Link and the OAuth redirect is bouncing back to localhost unexpectedly."}
+{"id":"id-015","label":"identifying","category":"proper_noun_company","text":"The OpenAI rate limit is causing the embedding worker to back off too aggressively."}
+{"id":"id-016","label":"identifying","category":"proper_noun_company","text":"Anthropic Claude responses are getting truncated and the user wants to bump max_tokens."}
+{"id":"id-017","label":"identifying","category":"proper_noun_person","text":"User is asking about the merge conflict in the branch Sebastian pushed yesterday."}
+{"id":"id-018","label":"identifying","category":"proper_noun_person","text":"Jorge wants the schema migration reviewed before he ships the data-plane refactor."}
+{"id":"id-019","label":"identifying","category":"firstlast_name","text":"The pull request from Alex Morgan needs a second reviewer before it can land in main."}
+{"id":"id-020","label":"identifying","category":"firstlast_name","text":"Sandesh Patel left a comment about the missing index on the events table."}
+{"id":"id-021","label":"identifying","category":"ticket_id","text":"User is unblocking JIRA-1421 which was waiting on a downstream API contract."}
+{"id":"id-022","label":"identifying","category":"ticket_id","text":"The bug labelled BEMA-204 keeps coming back after the latest collector release."}
+{"id":"id-023","label":"identifying","category":"git_sha","text":"The regression was introduced in commit a9f1c43d8b2e07f5c1ab9d3e8f2a7b6c4d5e6f70 and needs reverting."}
+{"id":"id-024","label":"identifying","category":"secret_key","text":"User accidentally pasted AKIAIOSFODNN7EXAMPLE in chat and is rotating credentials now."}
+{"id":"id-025","label":"identifying","category":"secret_key","text":"The CI job is failing because the GitHub token ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX expired."}
+{"id":"id-026","label":"identifying","category":"secret_key","text":"Developer pasted bearer token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c and asks why decode fails."}
+{"id":"id-027","label":"identifying","category":"slack_webhook","text":"The notifier is posting to https://hooks.slack.com/services/TEXAMPLE/BEXAMPLE/exampleexampleexampleabcd instead of the new channel."}
+{"id":"id-028","label":"identifying","category":"openai_key","text":"User has sk-proj-abcdefghijklmnopqrstuvwxyz1234567890 in the .env and the request is still 401."}
+{"id":"id-029","label":"identifying","category":"redacted_marker","text":"The script keeps prompting for <REDACTED:secret:1234567890abcdef> when it should pull from vault."}
+{"id":"id-030","label":"identifying","category":"redacted_marker","text":"Logs still contain <REDACTED:email:fedcba9876543210> entries even after the upgrade."}
+{"id":"id-031","label":"identifying","category":"firstlast_name","text":"Maria Rodriguez asked about the deploy window and whether tonight's release is still on."}
+{"id":"id-032","label":"identifying","category":"home_path","text":"The agent cannot resolve /Users/jorge.diaz/projects/bematist after the rename."}
+{"id":"id-033","label":"identifying","category":"proper_noun_company","text":"The Acme Corp tenant is missing from the org table and onboarding emails bounce."}
+{"id":"id-034","label":"identifying","category":"email","text":"User wants to BCC compliance@contoso.com on every export receipt."}
+{"id":"id-035","label":"identifying","category":"phone","text":"Set the on-call phone to 312.555.0142 in PagerDuty for the next rotation."}
+{"id":"id-036","label":"identifying","category":"url","text":"The new API spec lives at https://docs.internal.example.io/v3/api and the linter chokes on it."}
+{"id":"id-037","label":"identifying","category":"ticket_id","text":"Reopen INFRA-90210 and link it to the parent epic about cost tracking."}
+{"id":"id-038","label":"identifying","category":"firstlast_name","text":"Add Pat O'Brien to the reviewers list on the auth refactor."}
+{"id":"id-039","label":"identifying","category":"home_path","text":"Resolve permissions on /home/build/.cache/pip after switching CI runners."}
+{"id":"id-040","label":"identifying","category":"proper_noun_company","text":"Migrating from Postgres on Heroku to a Supabase project owned by Bematist."}
+{"id":"id-041","label":"identifying","category":"git_sha","text":"Cherry-pick 1234567890abcdef1234567890abcdef12345678 into the release branch."}
+{"id":"id-042","label":"identifying","category":"ip","text":"Developer needs to allowlist 203.0.113.55 in the egress firewall to fetch the manifest."}
+{"id":"id-043","label":"identifying","category":"firstlast_name","text":"Emily Chen asked whether the rollback playbook still works after the etcd upgrade."}
+{"id":"id-044","label":"identifying","category":"email","text":"Notify legal@umbrella.com when the DPA is countersigned."}
+{"id":"id-045","label":"identifying","category":"home_path","text":"The fixtures live under /Users/test-runner/.cache/bematist and CI cannot find them."}
+{"id":"id-046","label":"identifying","category":"slack_webhook","text":"Replace the deprecated https://hooks.slack.com/services/TEXAMPLE2/BEXAMPLE2/exampleexampleexampleefgh webhook url before Friday."}
+{"id":"id-047","label":"identifying","category":"openai_key","text":"The tests require sk-aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789 to be set in env or they skip."}
+{"id":"id-048","label":"identifying","category":"firstlast_name","text":"Walid Hossain proposed a different RLS policy after reviewing the Drizzle migration."}
+{"id":"id-049","label":"identifying","category":"redacted_marker","text":"Output trace shows <REDACTED:phone:abcdef0123456789> in the third tool call response."}
+{"id":"id-050","label":"identifying","category":"email","text":"Forward this to security@globex.com as soon as the patch is verified."}

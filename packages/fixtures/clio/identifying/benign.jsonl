@@ -1,0 +1,10 @@
+{"id":"benign-001","label":"benign","category":"control","text":"User wants to refactor a function so it returns an option type instead of throwing on the empty case."}
+{"id":"benign-002","label":"benign","category":"control","text":"Developer is asking how to model a many-to-many relationship in the ORM with a join table."}
+{"id":"benign-003","label":"benign","category":"control","text":"User is debugging why an asynchronous test is occasionally hanging when the network is mocked."}
+{"id":"benign-004","label":"benign","category":"control","text":"The session is about adding a custom retry policy to a HTTP client wrapper used by background workers."}
+{"id":"benign-005","label":"benign","category":"control","text":"Developer wants to understand the difference between two pooling strategies for the database driver."}
+{"id":"benign-006","label":"benign","category":"control","text":"User is exploring how to memoize a derived value across renders without breaking the suspense boundary."}
+{"id":"benign-007","label":"benign","category":"control","text":"The conversation focuses on migrating a script from synchronous file IO to a streaming reader."}
+{"id":"benign-008","label":"benign","category":"control","text":"User is asking why a particular sort comparator returns inconsistent results on duplicate keys."}
+{"id":"benign-009","label":"benign","category":"control","text":"Developer is benchmarking different cache eviction policies for a request-scoped lookup."}
+{"id":"benign-010","label":"benign","category":"control","text":"The user wants to add a feature flag check around a new code path so it ships dark."}
