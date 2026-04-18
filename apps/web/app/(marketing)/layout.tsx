@@ -1,58 +1,73 @@
+import { Inter, JetBrains_Mono, Space_Mono } from "next/font/google";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import "./marketing.css";
+
+const mkSans = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mk-sans",
+});
+
+const mkMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-mk-mono",
+});
+
+const mkSys = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-mk-sys",
+});
 
 const NAV = [
-  { href: "/home", label: "Product" },
-  { href: "/home#pricing", label: "Pricing" },
-  { href: "/home#docs", label: "Docs" },
+  { href: "/home#adapters", label: "Adapters" },
+  { href: "/home#privacy", label: "Privacy" },
+  { href: "/home#install", label: "Install" },
   { href: "/privacy", label: "Bill of Rights" },
 ];
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-6">
-          <Link href="/home" className="flex items-center gap-2">
-            <span className="inline-block h-6 w-6 rounded-md bg-primary" aria-hidden />
-            <span className="text-sm font-semibold tracking-tight">Bematist</span>
+    <div
+      className={`bematist-marketing ${mkSans.variable} ${mkMono.variable} ${mkSys.variable}`}
+    >
+      <div className="mk-container">
+        <nav className="mk-nav" aria-label="Primary">
+          <Link href="/home" className="mk-wordmark">
+            bematist
           </Link>
-          <nav className="flex items-center gap-6 text-sm">
+          <div className="mk-nav-links">
             {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
-              >
+              <Link key={item.href} href={item.href} className="mk-nav-link">
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="/"
-              className="cursor-pointer rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-            >
+            <Link href="/" className="mk-btn mk-btn-ghost">
               Sign in
-            </Link>
-          </nav>
-        </div>
-      </header>
-      <main className="flex-1">{children}</main>
-      <footer className="border-t border-border/60">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-6 py-8 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>© {new Date().getFullYear()} Bematist · Apache 2.0 + BSL 1.1</span>
-          <div className="flex gap-4">
-            <Link href="/privacy" className="cursor-pointer hover:text-foreground">
-              Bill of Rights
             </Link>
             <a
               href="https://github.com/pella-labs/bematist"
-              className="cursor-pointer hover:text-foreground"
+              className="mk-btn mk-btn-primary"
+              rel="noreferrer"
             >
               GitHub
             </a>
           </div>
-        </div>
-      </footer>
+        </nav>
+        {children}
+        <footer className="mk-footer">
+          <span>bematist is not a performance-management tool.</span>
+          <div>
+            <Link href="/privacy">Bill of Rights</Link>
+            <a href="https://github.com/pella-labs/bematist" rel="noreferrer">
+              GitHub
+            </a>
+            <Link href="/">Dashboard</Link>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }
