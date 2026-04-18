@@ -45,6 +45,8 @@ coverage/
 playwright-report/
 test-results/
 tests/perf/summary.json
+tests/perf/.ingest-bearer
+tests/soak/out/
 
 # Local data (Bematist-specific)
 .bematist/

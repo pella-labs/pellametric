@@ -22,6 +22,7 @@
     "test:privacy": "bun --env-file=.env test tests/privacy/adversarial",
     "test:scoring": "bun run packages/scoring/src/v1/eval/runner.ts",
     "test:perf": "bash tests/perf/run.sh",
+    "test:soak": "bash tests/soak/run.sh",
     "seed:perf": "bun --env-file=.env --filter='@bematist/fixtures' seed:perf",
     "fixtures:write": "bun run packages/scoring/src/v1/eval/write-fixtures.ts",
     "db:migrate:pg": "bun --env-file=.env --filter='@bematist/schema' migrate:pg",
