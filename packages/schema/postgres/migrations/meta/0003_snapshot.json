@@ -1,6 +1,6 @@
 {
-  "id": "3f5e9306-bac4-45b9-970f-52ea47ff859b",
-  "prevId": "e110f7af-0232-4722-8cd2-8b84fc37da07",
+  "id": "5b676819-0135-4026-8d08-73f6b75a388d",
+  "prevId": "3f5e9306-bac4-45b9-970f-52ea47ff859b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -95,6 +95,12 @@
           "notNull": true,
           "default": "now()"
         },
+        "org_id": {
+          "name": "org_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "actor_user_id": {
           "name": "actor_user_id",
           "type": "uuid",
@@ -122,6 +128,15 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "audit_events_org_id_orgs_id_fk": {
+          "name": "audit_events_org_id_orgs_id_fk",
+          "tableFrom": "audit_events",
+          "tableTo": "orgs",
+          "columnsFrom": ["org_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "audit_events_actor_user_id_users_id_fk": {
           "name": "audit_events_actor_user_id_users_id_fk",
           "tableFrom": "audit_events",
@@ -155,6 +170,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "org_id": {
+          "name": "org_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "actor_user_id": {
           "name": "actor_user_id",
@@ -196,6 +217,15 @@
       },
       "indexes": {},
       "foreignKeys": {
+        "audit_log_org_id_orgs_id_fk": {
+          "name": "audit_log_org_id_orgs_id_fk",
+          "tableFrom": "audit_log",
+          "tableTo": "orgs",
+          "columnsFrom": ["org_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "audit_log_actor_user_id_users_id_fk": {
           "name": "audit_log_actor_user_id_users_id_fk",
           "tableFrom": "audit_log",

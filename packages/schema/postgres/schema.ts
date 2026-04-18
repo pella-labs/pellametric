@@ -173,10 +173,15 @@ export const playbooks = pgTable("playbooks", {
 /**
  * Append-only audit trail. Contract 09 invariant 6: NEVER UPDATE, NEVER DELETE.
  * DB-level trigger enforces this; see custom/0001_audit_log_immutable.sql.
+ * `org_id` is denormalized for RLS org-isolation — set at write time from the
+ * actor's user row.
  */
 export const audit_log = pgTable("audit_log", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
+  org_id: uuid("org_id")
+    .notNull()
+    .references(() => orgs.id),
   actor_user_id: uuid("actor_user_id")
     .notNull()
     .references(() => users.id),
@@ -187,10 +192,14 @@ export const audit_log = pgTable("audit_log", {
   metadata_json: jsonb("metadata_json").notNull().default(sql`'{}'::jsonb`),
 });
 
-/** D30 per-manager-view notification source — IC daily digest reads from here. */
+/** D30 per-manager-view notification source — IC daily digest reads from here.
+ *  `org_id` denormalized for RLS org-isolation (same pattern as audit_log). */
 export const audit_events = pgTable("audit_events", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
+  org_id: uuid("org_id")
+    .notNull()
+    .references(() => orgs.id),
   actor_user_id: uuid("actor_user_id")
     .notNull()
     .references(() => users.id),

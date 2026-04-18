@@ -51,6 +51,7 @@ export async function handlePartitionDrop(deps: PartitionDropDeps): Promise<numb
       }
 
       await db.insert(audit_log).values({
+        org_id: req.target_org_id,
         actor_user_id: req.requester_user_id,
         action: "partition_drop",
         target_type: "engineer",
