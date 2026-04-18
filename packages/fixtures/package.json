@@ -12,10 +12,13 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "seed:perf": "bun run seed/run.ts"
   },
   "dependencies": {
-    "@bematist/schema": "workspace:*"
+    "@bematist/schema": "workspace:*",
+    "@clickhouse/client": "^1.18.2",
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
     "@types/bun": "latest",

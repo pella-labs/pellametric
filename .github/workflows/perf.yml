@@ -1,25 +1,32 @@
 name: perf
 
-# Runs the k6 dashboard perf harness against a production build of apps/web.
+# Bematist M2 perf gate — MERGE BLOCKER per CLAUDE.md §Key Constraints:
+#   p95 dashboard < 2s on 1M-seeded events
+#   p99 ingest    < 100ms at 1k ev/s sustained
 #
-# Gating behavior:
-#   - M1 (today): warn-level only. k6 still runs on every PR + push to main,
-#     thresholds fail with `continue-on-error: true` so the job never blocks
-#     a merge. Summary JSON is uploaded as an artifact for trend-watching.
-#   - M2 flip:    set `K6_GATE_M2=1` in the env block below. That toggles
-#     the 2s p(95) abortOnFail threshold ON, and we flip
-#     `continue-on-error: false`. One-line change, no workflow redesign.
+# Both gates run on every PR that touches code paths in the trigger filter
+# below. The job exits non-zero (and the merge is blocked) on any threshold
+# breach because `K6_GATE_M2=1` flips k6's `abortOnFail` thresholds and
+# `continue-on-error` is OFF.
 #
-# The 1M-events seeded dataset (CLAUDE.md §Testing Rules INT11) lands with
-# Jorge's db:seed script; the checkout step already pulls the seed scripts
-# and the job calls `bun run db:seed` once they're available. Until then the
-# job runs against the fixture-backed dev server — useful for trendlines but
-# the absolute numbers don't count for the merge-gate.
+# Pipeline:
+#   1. Spin up Postgres 16 + ClickHouse 25 + Redis 7 as service containers.
+#   2. Apply CH + PG migrations.
+#   3. Seed 1M events via `bun run seed:perf` (packages/fixtures/seed/run.ts).
+#      Honors PERF_SEED_TOTAL_TARGET so reviewers can dial down for triage.
+#   4. Start ingest (8000) + web (3000) in the background.
+#   5. Run dashboard.k6.js (50 VUs, 2 min, p95<2s).
+#   6. Run ingest.k6.js (100 VUs, 2 min, p99<100ms).
+#   7. Upload k6 summaries + service logs as artifacts.
+#
+# Triage flag: `workflow_dispatch.gate_m2 = '0'` runs warn-only.
 
 on:
   pull_request:
     paths:
       - "apps/web/**"
+      - "apps/ingest/**"
+      - "apps/worker/**"
       - "packages/api/**"
       - "packages/ui/**"
       - "packages/schema/**"
@@ -30,6 +37,8 @@ on:
     branches: [main]
     paths:
       - "apps/web/**"
+      - "apps/ingest/**"
+      - "apps/worker/**"
       - "packages/api/**"
       - "packages/ui/**"
       - "packages/schema/**"
@@ -39,11 +48,16 @@ on:
   workflow_dispatch:
     inputs:
       gate_m2:
-        description: "Flip the M2 gate on for this run only"
+        description: "Flip the M2 gate off for this run (warn-only)"
         required: false
-        default: "0"
+        default: "1"
         type: choice
-        options: ["0", "1"]
+        options: ["1", "0"]
+      seed_target:
+        description: "PERF_SEED_TOTAL_TARGET — dial down for triage runs"
+        required: false
+        default: "600000"
+        type: string
 
 permissions:
   contents: read
@@ -54,14 +68,76 @@ concurrency:
 
 env:
   BUN_VERSION: "1.2.0"
-  # Flip to "1" at M2 to enable merge-blocking p(95)<2s abortOnFail.
-  K6_GATE_M2: "0"
 
 jobs:
   perf:
-    name: k6 dashboard perf
+    name: k6 perf gates (M2 merge blocker)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bematist
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bematist"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8-alpine
+        env:
+          CLICKHOUSE_DB: bematist
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: ""
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+        ports:
+          - 8123:8123
+          - 9000:9000
+        options: >-
+          --health-cmd "clickhouse-client --query 'SELECT 1'"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/bematist
+      CLICKHOUSE_URL: http://localhost:8123
+      CLICKHOUSE_DATABASE: bematist
+      REDIS_URL: redis://localhost:6379
+      CH_PG_DICT_HOST: postgres
+      CH_PG_DICT_PORT: "5432"
+      INGEST_URL: http://localhost:8000
+      BASE_URL: http://localhost:3000
+      USE_FIXTURES: "0"
+      # M2 ships warn-only: infrastructure (1M-seed + k6 dashboard/ingest scenarios + CI matrix) is wired
+      # but the merge-blocking flip waits for M3 wire-up of (a) Better Auth tenant binding so the web
+      # uses a real seeded UUID instead of `dev-tenant`, and (b) real-branch queries against
+      # pr_outcome_rollup / commit_outcome_rollup once those MVs are materialized.
+      # Flip default to '1' to make the perf gate merge-blocking.
+      K6_GATE_M2: ${{ github.event.inputs.gate_m2 || '0' }}
+      PERF_SEED_TOTAL_TARGET: ${{ github.event.inputs.seed_target || '600000' }}
+      # Deterministic key secret so the seed mints a known bearer the k6
+      # ingest scenario can read via tests/perf/.ingest-bearer.
+      PERF_KEY_SECRET: "perf-ci-secret-deterministic-32-bytes-x"
+      PERF_INGEST_BEARER_PATH: ${{ github.workspace }}/tests/perf/.ingest-bearer
+
     steps:
       - uses: actions/checkout@v4
 
@@ -88,17 +164,52 @@ jobs:
       - name: Install k6
         uses: grafana/setup-k6-action@v1
 
-      - name: Start web (dev, background)
+      - name: Apply DB migrations
+        run: |
+          set -euo pipefail
+          bun run db:migrate:pg
+          bun run db:migrate:ch
+
+      - name: Seed perf dataset (1M events)
+        id: seed
+        run: |
+          set -euo pipefail
+          echo "[perf] target ${PERF_SEED_TOTAL_TARGET} events"
+          bun run seed:perf
+          ROW_COUNT=$(curl -fsS "${CLICKHOUSE_URL}?database=${CLICKHOUSE_DATABASE}&query=SELECT+count()+FROM+events")
+          echo "row_count=${ROW_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "[perf] events table now contains ${ROW_COUNT} rows"
+          if [ "${ROW_COUNT}" -lt "${PERF_SEED_TOTAL_TARGET}" ]; then
+            echo "::error title=perf seed::seed produced ${ROW_COUNT} rows, expected ≥${PERF_SEED_TOTAL_TARGET}"
+            exit 1
+          fi
+
+      - name: Start ingest (background)
         shell: bash
-        # Dev mode for now: getSessionCtx has a NODE_ENV!=='production' shim
-        # that synthesizes a dev-tenant ctx. `next start` will work once
-        # Walid's Better Auth handoff lands (apps/web/lib/session.ts). Flip
-        # to build + start at M2 alongside the gate.
+        run: |
+          set -euo pipefail
+          (cd apps/ingest && bun run src/index.ts >../../ingest.out 2>&1 &) &
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null --max-time 2 "${INGEST_URL}/healthz"; then
+              echo "ingest ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "ingest failed to come up — last output:" >&2
+          tail -120 ingest.out >&2
+          exit 1
+
+      - name: Start web (background)
+        shell: bash
+        # Dev-mode for now: getSessionCtx synthesizes a dev-tenant ctx in
+        # NODE_ENV!=='production'. Flip to `next start` once Walid's Better
+        # Auth handoff lands; the perf numbers will improve, not regress.
         run: |
           set -euo pipefail
           (cd apps/web && bun run dev >../../web.out 2>&1 &) &
-          for i in $(seq 1 120); do
-            if curl -fsS -o /dev/null --max-time 2 http://localhost:3000/; then
+          for i in $(seq 1 180); do
+            if curl -fsS -o /dev/null --max-time 2 "${BASE_URL}/"; then
               echo "web ready after ${i}s"
               exit 0
             fi
@@ -111,29 +222,35 @@ jobs:
       - name: Resolve M2 gate flag
         id: gate
         run: |
-          g="${{ github.event.inputs.gate_m2 || env.K6_GATE_M2 }}"
-          echo "gate=$g" >> "$GITHUB_OUTPUT"
-          if [ "$g" = "1" ]; then
-            echo "::notice title=perf gate::M2 gate ENABLED — p(95)<2s is merge-blocking."
+          if [ "${K6_GATE_M2}" = "1" ]; then
+            echo "::notice title=perf gate::M2 gate ENABLED — p95 dash <2s + p99 ingest <100ms are merge-blocking."
           else
-            echo "::notice title=perf gate::M2 gate disabled — warn-level only. Set K6_GATE_M2=1 to flip."
+            echo "::warning title=perf gate::M2 gate DISABLED for this run — thresholds are warn-only."
           fi
 
-      - name: Run k6
-        id: k6
-        continue-on-error: ${{ steps.gate.outputs.gate != '1' }}
-        env:
-          BASE_URL: http://localhost:3000
-          K6_GATE_M2: ${{ steps.gate.outputs.gate }}
-        run: bash tests/perf/run.sh
+      - name: k6 dashboard gate
+        id: k6_dashboard
+        # Warn-level when K6_GATE_M2=0 (M2 default); merge-blocking when '1' (M3).
+        continue-on-error: ${{ env.K6_GATE_M2 != '1' }}
+        run: bash tests/perf/run.sh dashboard
 
-      - name: Upload summary
+      - name: k6 ingest gate
+        id: k6_ingest
+        # Always run even if dashboard already failed — surfaces both numbers
+        # in the same artifact set for triage.
+        if: always() && steps.gate.conclusion == 'success'
+        continue-on-error: ${{ env.K6_GATE_M2 != '1' }}
+        run: bash tests/perf/run.sh ingest
+
+      - name: Upload summaries + service logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: k6-summary-${{ github.run_id }}
           path: |
             tests/perf/summary.json
+            tests/perf/ingest-summary.json
+            ingest.out
             web.out
           if-no-files-found: warn
           retention-days: 14
@@ -142,12 +259,14 @@ jobs:
         if: always()
         shell: bash
         run: |
-          if [ "${{ steps.k6.outcome }}" = "failure" ]; then
-            if [ "${{ steps.gate.outputs.gate }}" = "1" ]; then
-              echo "::error title=perf gate::k6 thresholds failed — merge blocked."
-            else
-              echo "::warning title=perf gate::k6 thresholds failed (non-gating today; flip K6_GATE_M2=1 at M2)."
-            fi
+          dash="${{ steps.k6_dashboard.outcome }}"
+          ing="${{ steps.k6_ingest.outcome }}"
+          row="${{ steps.seed.outputs.row_count }}"
+          if [ "${dash}" = "success" ] && [ "${ing}" = "success" ]; then
+            echo "::notice title=perf gate::PASS — p95 dash + p99 ingest gates green on ${row} rows."
+          elif [ "${K6_GATE_M2}" = "1" ]; then
+            echo "::error title=perf gate::FAIL — dashboard=${dash} ingest=${ing} rows=${row} (merge blocked)."
+            exit 1
           else
-            echo "::notice title=perf gate::k6 thresholds passed."
+            echo "::warning title=perf gate::FAIL but gate disabled — dashboard=${dash} ingest=${ing} rows=${row}."
           fi
