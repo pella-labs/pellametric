@@ -73,7 +73,7 @@ export function handleSummary(data) {
   return { "tests/perf/summary.json": JSON.stringify(data, null, 2) };
 }
 
-const WINDOWS = ["7d", "14d", "30d"];
+const WINDOWS = ["7d", "30d", "90d"];
 
 export default function () {
   const window = WINDOWS[Math.floor(Math.random() * WINDOWS.length)];
