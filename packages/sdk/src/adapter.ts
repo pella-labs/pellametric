@@ -82,3 +82,61 @@ export interface Logger {
   fatal(msg: string, ...args: unknown[]): void;
   child(bindings: Record<string, unknown>): Logger;
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// VS Code generic extension seam (A5) — additive.
+//
+// Community authors who want to ship a Bematist adapter for their VS Code
+// extension implement `VSCodeExtensionHandler` and register it via
+// `registerVSCodeExtension()`. The generic adapter walks every discovered VS
+// Code profile (Code / Code - Insiders / VSCodium / Cursor-VSC-lineage) and
+// delegates all per-extension work to the handler.
+//
+// Scope cap: A5 is the seam + one worked example. The Phase-2 "full" VS Code
+// targets (Cline/Roo/Kilo, Copilot IDE, Antigravity) get their own top-level
+// adapters — NOT handler registrations here. See CLAUDE.md §Adapter Matrix.
+// ────────────────────────────────────────────────────────────────────────────
+
+export type VSCodeDistro = "code" | "code-insiders" | "vscodium" | "codium";
+
+export interface VSCodeExtensionContext {
+  /** Absolute path of the discovered VS Code profile root (the `User/` dir). */
+  userDir: string;
+  /** Which distro fork the path belongs to. Handlers may opt in/out per fork. */
+  distro: VSCodeDistro;
+  /** Resolved cursor store for this (adapter, profile, extension) triple. */
+  cursor: CursorStore;
+  log: Logger;
+  tier: "A" | "B" | "C";
+}
+
+export interface VSCodeExtensionHandler {
+  /** Publisher-qualified id, e.g. "rjmacarthy.twinny". Used as cursor key prefix. */
+  readonly extensionId: string;
+  /** Human label for the dashboard `data_fidelity` chip. */
+  readonly label: string;
+  /** Honest fidelity per CLAUDE.md §Adapter Matrix. */
+  readonly fidelity: "full" | "estimated" | "aggregate-only" | "post-migration";
+  /** Handler semver — independent of source extension version. */
+  readonly version: string;
+  /** Optional caveats surfaced in `health()`. */
+  readonly caveats?: readonly string[];
+
+  /**
+   * Return candidate data-file paths for this extension under the given
+   * profile. MUST be pure (read filesystem OK, no writes). Returning an empty
+   * array is a valid "nothing here yet" signal.
+   */
+  discover(ctx: VSCodeExtensionContext): Promise<string[]>;
+
+  /**
+   * Normalize one discovered file to canonical `Event[]`. The handler is
+   * responsible for respecting `ctx.cursor` to support resumable polling.
+   * Implementations MUST be cancellation-safe under `signal.aborted`.
+   */
+  parse(
+    ctx: VSCodeExtensionContext,
+    filePath: string,
+    signal: AbortSignal,
+  ): Promise<import("@bematist/schema").Event[]>;
+}

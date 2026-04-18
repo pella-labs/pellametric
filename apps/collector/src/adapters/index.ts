@@ -4,6 +4,7 @@ import { CodexAdapter } from "./codex";
 import { ContinueDevAdapter } from "./continue-dev";
 import { CursorAdapter } from "./cursor";
 import { OpenCodeAdapter } from "./opencode";
+import { VSCodeGenericAdapter } from "./vscode-generic";
 
 export interface RegistryIdentity {
   tenantId: string;
@@ -22,5 +23,6 @@ export function buildRegistry(id: RegistryIdentity): Adapter[] {
     new ContinueDevAdapter(id),
     new CursorAdapter(id),
     new OpenCodeAdapter(id),
+    new VSCodeGenericAdapter(id),
   ];
 }
