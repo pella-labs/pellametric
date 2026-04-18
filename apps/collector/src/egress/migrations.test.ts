@@ -53,10 +53,7 @@ test("inlined migration bodies match the on-disk .sql files", () => {
   // The inlined strings in migrations.ts exist so `bun build --compile`
   // produces a binary that doesn't need the .sql files at runtime. They
   // MUST stay in lockstep with the on-disk SQL — this test is the lock.
-  const onDisk = readFileSync(
-    join(import.meta.dir, "migrations", "001_initial.sql"),
-    "utf8",
-  );
+  const onDisk = readFileSync(join(import.meta.dir, "migrations", "001_initial.sql"), "utf8");
   // Round-trip: use migrate() against a fresh DB; the schema produced by
   // loadMigrationSql's fallback path (inlined) must equal what the on-disk
   // SQL produces.

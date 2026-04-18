@@ -20,27 +20,26 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "bematist-dryrun-"));
   claudeDir = join(dir, ".claude", "projects", "test-project");
   mkdirSync(claudeDir, { recursive: true });
-  const fixture =
-    `${[
-      {
-        type: "session_start",
-        sessionId: "sess_dryrun_01",
-        timestamp: "2026-04-16T14:00:00.000Z",
+  const fixture = `${[
+    {
+      type: "session_start",
+      sessionId: "sess_dryrun_01",
+      timestamp: "2026-04-16T14:00:00.000Z",
+    },
+    {
+      requestId: "req_1",
+      type: "message",
+      sessionId: "sess_dryrun_01",
+      timestamp: "2026-04-16T14:00:01.000Z",
+      message: {
+        role: "assistant",
+        usage: { input_tokens: 100, output_tokens: 50 },
+        model: "claude-sonnet-4-5",
       },
-      {
-        requestId: "req_1",
-        type: "message",
-        sessionId: "sess_dryrun_01",
-        timestamp: "2026-04-16T14:00:01.000Z",
-        message: {
-          role: "assistant",
-          usage: { input_tokens: 100, output_tokens: 50 },
-          model: "claude-sonnet-4-5",
-        },
-      },
-    ]
-      .map((e) => JSON.stringify(e))
-      .join("\n")}\n`;
+    },
+  ]
+    .map((e) => JSON.stringify(e))
+    .join("\n")}\n`;
   writeFileSync(join(claudeDir, "session.jsonl"), fixture, "utf8");
 
   captured = [];
