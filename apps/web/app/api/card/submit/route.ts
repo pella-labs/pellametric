@@ -77,18 +77,117 @@ const statsSchema = z
               cost: z.number(),
               claudeSessions: z.number(),
               codexSessions: z.number(),
+              cursorSessions: z.number(),
+              gooseSessions: z.number(),
             }),
           )
           .optional(),
       })
       .strict(),
-    // cursor / goose are optional and accepted with an open shape — we only
-    // render claude/codex on the card today, but grammata's readAll() emits
-    // these top-level keys, so we must not 400 on them.
-    cursor: z.record(z.string(), z.unknown()).optional(),
-    goose: z.record(z.string(), z.unknown()).optional(),
-    // highlights is optional and accepts an open shape for forward-compat
-    highlights: z.record(z.string(), z.unknown()).optional(),
+    cursor: z
+      .object({
+        sessions: z.number(),
+        cost: z.number(),
+        inputTokens: z.number(),
+        outputTokens: z.number(),
+        models: numberDict,
+        topTools: toolList,
+        totalToolCalls: z.number(),
+        activeDays: z.number(),
+        projects: z.array(
+          z.object({
+            name: z.string().max(200),
+            sessions: z.number(),
+          }),
+        ),
+        totalMessages: z.number(),
+        totalLinesAdded: z.number(),
+        totalLinesRemoved: z.number(),
+        totalFilesCreated: z.number(),
+        thinkingTimeMs: z.number(),
+        turnTimeMs: z.number(),
+        dailyActivity: z.array(
+          z.object({
+            date: z.string().max(40),
+            messages: z.number(),
+            toolCalls: z.number(),
+          }),
+        ),
+        totalTabSuggestedLines: z.number(),
+        totalTabAcceptedLines: z.number(),
+        totalComposerSuggestedLines: z.number(),
+        totalComposerAcceptedLines: z.number(),
+      })
+      .strict(),
+    goose: z
+      .object({
+        sessions: z.number(),
+        cost: z.number(),
+        inputTokens: z.number(),
+        outputTokens: z.number(),
+        models: numberDict,
+        providers: numberDict,
+        activeDays: z.number(),
+        projects: z.array(
+          z.object({
+            name: z.string().max(200),
+            sessions: z.number(),
+            cost: z.number(),
+          }),
+        ),
+      })
+      .strict(),
+    highlights: z
+      .object({
+        favoriteModel: z.string().max(200),
+        favoriteTool: z.string().max(200),
+        peakHour: z.number(),
+        peakHourLabel: z.string().max(40),
+        personality: z.string().max(200),
+        totalToolCalls: z.number(),
+        cacheHitRate: z.number(),
+        longestStreak: z.number(),
+        mostExpensiveSession: z
+          .object({
+            cost: z.number(),
+            model: z.string().max(200),
+            project: z.string().max(200),
+            date: z.string().max(40),
+          })
+          .strict()
+          .nullable(),
+        avgCostPerSession: z.number(),
+        avgSessionsPerDay: z.number(),
+        mcpServers: z.array(
+          z.object({
+            name: z.string().max(200),
+            totalCalls: z.number(),
+            tools: toolList,
+          }),
+        ),
+        totalMcpCalls: z.number(),
+        skillInvocations: z.number(),
+        builtinTools: toolList,
+        readWriteRatio: z
+          .object({
+            reads: z.number(),
+            writes: z.number(),
+            ratio: z.string().max(40),
+          })
+          .strict(),
+        costWithoutCache: z.number(),
+        activityCategories: z.array(
+          z.object({
+            category: z.string().max(200),
+            description: z.string().max(500),
+            sessions: z.number(),
+            cost: z.number(),
+            sessionPct: z.number(),
+            costPct: z.number(),
+          }),
+        ),
+      })
+      .strict(),
   })
   .strict();
 
