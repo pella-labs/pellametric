@@ -24,21 +24,11 @@ async function loadOwnerName(id: string): Promise<string | null> {
   }
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<Params>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { id } = await params;
   const owner = await loadOwnerName(id);
-  const possessive = owner
-    ? /[sS]$/.test(owner)
-      ? `${owner}'`
-      : `${owner}'s`
-    : null;
-  const title = possessive
-    ? `${possessive} Bematist card`
-    : "Bematist Card";
+  const possessive = owner ? (/[sS]$/.test(owner) ? `${owner}'` : `${owner}'s`) : null;
+  const title = possessive ? `${possessive} Bematist card` : "Bematist Card";
   const description = owner
     ? `${owner}'s coding-agent activity over the last 60 days — captured locally, shared on their terms.`
     : "A shareable snapshot of a developer's coding-agent activity. Captured locally, shared on the developer's terms.";

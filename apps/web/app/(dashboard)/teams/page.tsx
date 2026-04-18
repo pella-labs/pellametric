@@ -4,7 +4,6 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardValue,
   ChartTableToggle,
   FidelityChip,
   type GateReason,

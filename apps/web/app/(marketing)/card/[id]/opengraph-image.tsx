@@ -68,9 +68,7 @@ async function loadCard(id: string): Promise<CardSnapshot> {
 }
 
 const fmtMoney = (n: number) =>
-  n >= 1000
-    ? `$${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`
-    : `$${n.toFixed(n < 10 ? 2 : 0)}`;
+  n >= 1000 ? `$${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k` : `$${n.toFixed(n < 10 ? 2 : 0)}`;
 
 const fmtCount = (n: number) =>
   n >= 1_000_000
@@ -83,57 +81,48 @@ function possessive(name: string) {
   return /[sS]$/.test(name) ? `${name}'` : `${name}'s`;
 }
 
-export default async function CardOg({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function CardOg({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const card = await loadCard(id);
 
   const owner =
-    card.displayName?.trim() ||
-    (card.githubUsername ? `@${card.githubUsername}` : null);
+    card.displayName?.trim() || (card.githubUsername ? `@${card.githubUsername}` : null);
   const headlineOwner = owner ? possessive(owner) : "A";
 
   return new ImageResponse(
-    (
-      <OgFrame eyebrow={`card // ${id.slice(0, 12)}`}>
-        <OgHeadline
-          eyebrow={
-            card.personality
-              ? `personality // ${card.personality.toLowerCase()}`
-              : "shareable card"
-          }
-          title={
-            <span style={{ display: "flex", flexWrap: "wrap" }}>
-              {headlineOwner}&nbsp;
-              <span
-                style={{
-                  color: OG_COLORS.accent,
-                  fontStyle: "italic",
-                  display: "flex",
-                }}
-              >
-                Bematist card.
-              </span>
+    <OgFrame eyebrow={`card // ${id.slice(0, 12)}`}>
+      <OgHeadline
+        eyebrow={
+          card.personality ? `personality // ${card.personality.toLowerCase()}` : "shareable card"
+        }
+        title={
+          <span style={{ display: "flex", flexWrap: "wrap" }}>
+            {headlineOwner}&nbsp;
+            <span
+              style={{
+                color: OG_COLORS.accent,
+                fontStyle: "italic",
+                display: "flex",
+              }}
+            >
+              Bematist card.
             </span>
-          }
-          description={
-            card.favoriteTool
-              ? `Sixty days of coding-agent activity. Favorite tool: ${card.favoriteTool}.`
-              : "Sixty days of coding-agent activity, captured locally and shared on the developer's terms."
-          }
-        />
-        <OgStatRow
-          stats={[
-            { label: "Total spend", value: fmtMoney(card.totalCost) },
-            { label: "Sessions", value: fmtCount(card.totalSessions) },
-            { label: "Active days", value: `${card.activeDays}` },
-          ]}
-        />
-      </OgFrame>
-    ),
+          </span>
+        }
+        description={
+          card.favoriteTool
+            ? `Sixty days of coding-agent activity. Favorite tool: ${card.favoriteTool}.`
+            : "Sixty days of coding-agent activity, captured locally and shared on the developer's terms."
+        }
+      />
+      <OgStatRow
+        stats={[
+          { label: "Total spend", value: fmtMoney(card.totalCost) },
+          { label: "Sessions", value: fmtCount(card.totalSessions) },
+          { label: "Active days", value: `${card.activeDays}` },
+        ]}
+      />
+    </OgFrame>,
     { ...OG_SIZE },
   );
 }

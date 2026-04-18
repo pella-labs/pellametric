@@ -3,9 +3,7 @@ import type { CardData } from "./card-utils";
 /** Build 160 days of plausible activity ending on 2026-04-17. */
 function buildDailyDistribution() {
   const endDate = new Date("2026-04-17T00:00:00Z");
-  const rows: NonNullable<
-    CardData["stats"]["combined"]["dailyDistribution"]
-  > = [];
+  const rows: NonNullable<CardData["stats"]["combined"]["dailyDistribution"]> = [];
   // Deterministic pseudo-random from a per-day seed.
   const seeded = (n: number) => {
     const x = Math.sin(n * 9301 + 49297) * 0.5 + 0.5;
@@ -73,8 +71,7 @@ export const DEMO_CARD: CardData = {
       ],
       totalToolCalls: 14_765,
       hourDistribution: [
-        2, 1, 0, 0, 0, 0, 1, 3, 6, 14, 28, 41,
-        58, 72, 81, 92, 76, 64, 52, 38, 29, 21, 14, 7,
+        2, 1, 0, 0, 0, 0, 1, 3, 6, 14, 28, 41, 58, 72, 81, 92, 76, 64, 52, 38, 29, 21, 14, 7,
       ],
       activeDays: 42,
       projects: [

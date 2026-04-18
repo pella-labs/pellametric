@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * Route `/` based on deployment mode.
@@ -15,13 +15,11 @@ export function middleware(request: NextRequest) {
   if (request.nextUrl.pathname !== "/") return NextResponse.next();
 
   const dashboardEnabled =
-    process.env.DASHBOARD_ENABLED === "1" ||
-    process.env.NEXT_PUBLIC_DASHBOARD_ENABLED === "1";
+    process.env.DASHBOARD_ENABLED === "1" || process.env.NEXT_PUBLIC_DASHBOARD_ENABLED === "1";
 
   if (dashboardEnabled) return NextResponse.next();
 
-  const marketingMode =
-    process.env.NEXT_PUBLIC_IS_CLOUD === "1" || process.env.VERCEL === "1";
+  const marketingMode = process.env.NEXT_PUBLIC_IS_CLOUD === "1" || process.env.VERCEL === "1";
 
   if (marketingMode) {
     const url = request.nextUrl.clone();

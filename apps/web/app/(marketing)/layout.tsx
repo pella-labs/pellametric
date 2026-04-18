@@ -30,9 +30,7 @@ const NAV = [
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <div
-      className={`bematist-marketing ${mkSans.variable} ${mkMono.variable} ${mkSys.variable}`}
-    >
+    <div className={`bematist-marketing ${mkSans.variable} ${mkMono.variable} ${mkSys.variable}`}>
       <div className="mk-container">
         <nav className="mk-nav" aria-label="Primary">
           <Link href="/home" className="mk-wordmark">
@@ -59,12 +57,10 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         {children}
         <footer className="mk-footer">
           <div className="mk-footer-copy">
-            <span className="mk-footer-line">
-              The dashboard for AI-assisted engineering.
-            </span>
+            <span className="mk-footer-line">The dashboard for AI-assisted engineering.</span>
             <span className="mk-footer-sub">
-              The card gets you in. The dashboard keeps you — spend by project,
-              wins by workflow, and patterns worth copying across your team.
+              The card gets you in. The dashboard keeps you — spend by project, wins by workflow,
+              and patterns worth copying across your team.
             </span>
           </div>
           <div>

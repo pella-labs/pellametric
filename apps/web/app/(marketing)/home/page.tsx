@@ -78,10 +78,9 @@ export default function MarketingHome() {
               See what AI is <em>actually shipping</em>.
             </h1>
             <p>
-              Bematist is the dashboard for teams building with coding agents.
-              See where every dollar lands, which workflows compound, and the
-              wins your team should be copying. Start with a personal card in
-              30 seconds — the dashboard is where you stay.
+              Bematist is the dashboard for teams building with coding agents. See where every
+              dollar lands, which workflows compound, and the wins your team should be copying.
+              Start with a personal card in 30 seconds — the dashboard is where you stay.
             </p>
             <div className="mk-hero-actions">
               <Link href="/demo" className="mk-btn mk-btn-primary">
@@ -159,8 +158,8 @@ export default function MarketingHome() {
           <div className="mk-metric-label">
             <strong>accepted_code_edits_per_dollar</strong>
             <br />
-            Joined across session, commit, and merged PR. Reverted hunks
-            subtracted. Pricing version pinned per capture.
+            Joined across session, commit, and merged PR. Reverted hunks subtracted. Pricing version
+            pinned per capture.
           </div>
         </div>
         <div className="mk-metric-details">
@@ -200,24 +199,24 @@ export default function MarketingHome() {
             <span className="mk-tier-label">MINIMAL</span>
             <h3>Counters</h3>
             <p>
-              Tokens, sessions, durations, routing. No payloads. For teams
-              under the strictest policies.
+              Tokens, sessions, durations, routing. No payloads. For teams under the strictest
+              policies.
             </p>
           </div>
           <div className="mk-tier active">
             <span className="mk-tier-label">DEFAULT</span>
             <h3>Envelopes</h3>
             <p>
-              Counters plus secret-scrubbed prompt shape and file context.
-              Enough to cluster work, never enough to read it.
+              Counters plus secret-scrubbed prompt shape and file context. Enough to cluster work,
+              never enough to read it.
             </p>
           </div>
           <div className="mk-tier">
             <span className="mk-tier-label">DIAGNOSTIC</span>
             <h3>Full prompts</h3>
             <p>
-              Opt-in per project by the engineer, or tenant-wide with signed
-              config and cooldown. Off by default.
+              Opt-in per project by the engineer, or tenant-wide with signed config and cooldown.
+              Off by default.
             </p>
           </div>
         </div>
@@ -233,8 +232,7 @@ export default function MarketingHome() {
           <div>
             <span className="mk-term-prompt">$</span>
             <span className="mk-term-cmd">
-              curl -fsSL https://get.bematist.dev/compose.yml {">"}{" "}
-              docker-compose.yml
+              curl -fsSL https://get.bematist.dev/compose.yml {">"} docker-compose.yml
             </span>
           </div>
           <div>
@@ -245,9 +243,7 @@ export default function MarketingHome() {
           <div className="mk-term-comment"># 2. Install the local collector</div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">
-              brew install pella-labs/bematist/bematist
-            </span>
+            <span className="mk-term-cmd">brew install pella-labs/bematist/bematist</span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
@@ -266,11 +262,10 @@ export default function MarketingHome() {
       <section className="mk-license">
         <span className="mk-sys">05 / License</span>
         <div className="mk-license-body">
-          <strong>Apache 2.0</strong> for the collector, dashboard, adapters,
-          schemas, and CLI.
+          <strong>Apache 2.0</strong> for the collector, dashboard, adapters, schemas, and CLI.
           <br />
-          <strong>BSL 1.1</strong> for the managed-cloud gateway and admin
-          surfaces. Converts to Apache 2.0 after four years.
+          <strong>BSL 1.1</strong> for the managed-cloud gateway and admin surfaces. Converts to
+          Apache 2.0 after four years.
         </div>
       </section>
     </>

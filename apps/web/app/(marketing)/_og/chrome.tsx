@@ -16,13 +16,11 @@ export const OG_COLORS = {
 } as const;
 
 const baseFont: CSSProperties = {
-  fontFamily:
-    '"Inter", "Helvetica Neue", "system-ui", -apple-system, sans-serif',
+  fontFamily: '"Inter", "Helvetica Neue", "system-ui", -apple-system, sans-serif',
 };
 
 const monoFont: CSSProperties = {
-  fontFamily:
-    '"JetBrains Mono", "Menlo", "ui-monospace", "SFMono-Regular", monospace',
+  fontFamily: '"JetBrains Mono", "Menlo", "ui-monospace", "SFMono-Regular", monospace',
 };
 
 /**
@@ -51,13 +49,7 @@ const glow: CSSProperties = {
   display: "flex",
 };
 
-export function OgFrame({
-  eyebrow,
-  children,
-}: {
-  eyebrow: string;
-  children: ReactNode;
-}) {
+export function OgFrame({ eyebrow, children }: { eyebrow: string; children: ReactNode }) {
   return (
     <div
       style={{
@@ -113,9 +105,7 @@ export function OgFrame({
           >
             B
           </div>
-          <span style={{ color: OG_COLORS.ink, letterSpacing: "0.22em" }}>
-            bematist
-          </span>
+          <span style={{ color: OG_COLORS.ink, letterSpacing: "0.22em" }}>bematist</span>
         </div>
         <span>{eyebrow}</span>
       </div>
@@ -207,11 +197,7 @@ export function OgHeadline({
   );
 }
 
-export function OgStatRow({
-  stats,
-}: {
-  stats: { label: string; value: string }[];
-}) {
+export function OgStatRow({ stats }: { stats: { label: string; value: string }[] }) {
   return (
     <div
       style={{

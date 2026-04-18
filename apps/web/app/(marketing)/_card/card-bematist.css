@@ -6,15 +6,19 @@
  */
 
 /* ─── Kill internal card grids + splash grid ─────────────────── */
-.card-bg::after { display: none !important; }
-.splash-grid { display: none !important; }
+.card-bg::after {
+  display: none;
+}
+.splash-grid {
+  display: none;
+}
 
 /* ─── Replace card-bg solid with the WrappedCard gradient ────── */
 .card-bg {
   background:
     radial-gradient(140% 90% at 20% 0%, rgba(110, 138, 111, 0.18), transparent 55%),
     radial-gradient(100% 80% at 90% 100%, rgba(176, 123, 62, 0.22), transparent 55%),
-    linear-gradient(160deg, #14161a, #0a0b0d 60%) !important;
+    linear-gradient(160deg, #14161a, #0a0b0d 60%);
 }
 
 /* ─── Zero out the aurora / sheen decoration ─────────────────── */
@@ -22,20 +26,20 @@
 .card__fire,
 .card__cyan,
 .sheen {
-  opacity: 0 !important;
+  opacity: 0;
 }
 
 .card-flipper:is(:hover, .is-hovering) .aurora-blob,
 .card-flipper:is(:hover, .is-hovering) .card__fire,
 .card-flipper:is(:hover, .is-hovering) .card__cyan {
-  opacity: 0 !important;
+  opacity: 0;
 }
 
 /* ─── Card splash (deal-in overlay) toned down ───────────────── */
 .card-splash {
   background:
     radial-gradient(140% 90% at 20% 0%, rgba(110, 138, 111, 0.12), transparent 55%),
-    linear-gradient(160deg, #14161a, #0a0b0d 60%) !important;
+    linear-gradient(160deg, #14161a, #0a0b0d 60%);
 }
 .splash-glow {
   background: radial-gradient(
@@ -43,104 +47,118 @@
     rgba(110, 138, 111, 0.2),
     rgba(176, 123, 62, 0.08) 40%,
     transparent 70%
-  ) !important;
+  );
 }
 .splash-brand {
-  background: linear-gradient(135deg, #ede8de, #6e8a6f) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
+  background: linear-gradient(135deg, #ede8de, #6e8a6f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 /* ─── Brand + tier pill ──────────────────────────────────────── */
 .brand {
-  color: rgba(237, 232, 222, 0.85) !important;
-  letter-spacing: 4px !important;
-  font-family: "Space Mono", monospace !important;
+  color: rgba(237, 232, 222, 0.85);
+  letter-spacing: 4px;
+  font-family: "Space Mono", monospace;
 }
 .tier {
-  color: #b07b3e !important;
-  background: rgba(176, 123, 62, 0.08) !important;
-  border: 1px solid rgba(176, 123, 62, 0.35) !important;
-  font-family: "Space Mono", monospace !important;
+  color: #b07b3e;
+  background: rgba(176, 123, 62, 0.08);
+  border: 1px solid rgba(176, 123, 62, 0.35);
+  font-family: "Space Mono", monospace;
 }
 
 /* ─── User name + sub ────────────────────────────────────────── */
 .user-name {
-  color: #ede8de !important;
-  font-family: "Space Mono", monospace !important;
-  font-weight: 500 !important;
-  letter-spacing: -0.02em !important;
+  color: #ede8de;
+  font-family: "Space Mono", monospace;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 .user-sub {
-  color: rgba(237, 232, 222, 0.5) !important;
-  font-family: "JetBrains Mono", monospace !important;
+  color: rgba(237, 232, 222, 0.5);
+  font-family: "JetBrains Mono", monospace;
 }
 
 /* ─── Hero number: drop the purple→blue gradient ─────────────── */
 .hero-num {
-  background: none !important;
-  -webkit-text-fill-color: #ede8de !important;
-  color: #ede8de !important;
-  font-family: "Space Mono", monospace !important;
-  font-weight: 500 !important;
+  background: none;
+  -webkit-text-fill-color: #ede8de;
+  color: #ede8de;
+  font-family: "Space Mono", monospace;
+  font-weight: 500;
 }
 .hero-unit {
-  -webkit-text-fill-color: rgba(237, 232, 222, 0.45) !important;
-  color: rgba(237, 232, 222, 0.45) !important;
+  -webkit-text-fill-color: rgba(237, 232, 222, 0.45);
+  color: rgba(237, 232, 222, 0.45);
 }
 .hero-label {
-  color: rgba(237, 232, 222, 0.45) !important;
-  font-family: "JetBrains Mono", monospace !important;
+  color: rgba(237, 232, 222, 0.45);
+  font-family: "JetBrains Mono", monospace;
 }
 
 /* ─── Streak + level: amber + green, no rainbow gradient ─────── */
-.streak { color: #b07b3e !important; }
-.lvl-fill {
-  background: linear-gradient(90deg, #6e8a6f, #b07b3e) !important;
-  box-shadow: 0 0 12px rgba(110, 138, 111, 0.3) !important;
+.streak {
+  color: #b07b3e;
 }
-.lvl-t { color: rgba(237, 232, 222, 0.55) !important; }
+.lvl-fill {
+  background: linear-gradient(90deg, #6e8a6f, #b07b3e);
+  box-shadow: 0 0 12px rgba(110, 138, 111, 0.3);
+}
+.lvl-t {
+  color: rgba(237, 232, 222, 0.55);
+}
 
 /* ─── Stat cards ─────────────────────────────────────────────── */
 .sc {
-  background: rgba(237, 232, 222, 0.03) !important;
-  border-color: rgba(237, 232, 222, 0.1) !important;
+  background: rgba(237, 232, 222, 0.03);
+  border-color: rgba(237, 232, 222, 0.1);
 }
 .sc:hover {
-  border-color: rgba(110, 138, 111, 0.35) !important;
-  background: rgba(237, 232, 222, 0.05) !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
+  border-color: rgba(110, 138, 111, 0.35);
+  background: rgba(237, 232, 222, 0.05);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 }
 .sc-l {
-  color: rgba(237, 232, 222, 0.5) !important;
-  font-family: "JetBrains Mono", monospace !important;
+  color: rgba(237, 232, 222, 0.5);
+  font-family: "JetBrains Mono", monospace;
 }
 .sc-v {
-  color: #ede8de !important;
-  font-family: "Space Mono", monospace !important;
+  color: #ede8de;
+  font-family: "Space Mono", monospace;
 }
 
 /* ─── Accent color swaps for status text ─────────────────────── */
-.purple { color: #6e8a6f !important; }
-.blue { color: #ede8de !important; }
-.green { color: #6e8a6f !important; }
-.orange { color: #b07b3e !important; }
-.gold { color: #b07b3e !important; }
+.purple {
+  color: #6e8a6f;
+}
+.blue {
+  color: #ede8de;
+}
+.green {
+  color: #6e8a6f;
+}
+.orange {
+  color: #b07b3e;
+}
+.gold {
+  color: #b07b3e;
+}
 
 /* ─── Model chips ────────────────────────────────────────────── */
 .mp {
-  background: rgba(237, 232, 222, 0.04) !important;
-  border-color: rgba(237, 232, 222, 0.1) !important;
-  color: rgba(237, 232, 222, 0.65) !important;
-  font-family: "JetBrains Mono", monospace !important;
+  background: rgba(237, 232, 222, 0.04);
+  border-color: rgba(237, 232, 222, 0.1);
+  color: rgba(237, 232, 222, 0.65);
+  font-family: "JetBrains Mono", monospace;
 }
 
 /* ─── Progress bars + tool bar segments ──────────────────────── */
 .hour-bar,
 .tb div {
-  background: var(--mk-accent-override, #6e8a6f) !important;
+  background: var(--mk-accent-override, #6e8a6f);
 }
 
 /* ─── Card-front border + hover border ───────────────────────── */
@@ -151,7 +169,7 @@
     rgba(237, 232, 222, 0.04) 30%,
     rgba(237, 232, 222, 0.08) 60%,
     rgba(237, 232, 222, 0.04)
-  ) !important;
+  );
 }
 .card-flipper:is(:hover, .is-hovering) .card-front::after {
   background: linear-gradient(
@@ -160,62 +178,81 @@
     rgba(176, 123, 62, 0.15) 30%,
     rgba(237, 232, 222, 0.06) 60%,
     rgba(110, 138, 111, 0.15)
-  ) !important;
+  );
 }
 .card-flipper:is(:hover, .is-hovering) .card-front {
   box-shadow:
     0 0 0 1px rgba(110, 138, 111, 0.2),
     0 4px 24px rgba(110, 138, 111, 0.08),
     0 20px 60px rgba(0, 0, 0, 0.4),
-    0 0 80px rgba(110, 138, 111, 0.05) !important;
+    0 0 80px rgba(110, 138, 111, 0.05);
 }
 
 /* ─── Summary page styling ───────────────────────────────────── */
 .sum-card {
-  background: rgba(237, 232, 222, 0.03) !important;
-  border-color: rgba(237, 232, 222, 0.08) !important;
+  background: rgba(237, 232, 222, 0.03);
+  border-color: rgba(237, 232, 222, 0.08);
 }
-.sum-val { color: #ede8de !important; font-family: "Space Mono", monospace !important; }
-.sum-label { color: rgba(237, 232, 222, 0.45) !important; }
+.sum-val {
+  color: #ede8de;
+  font-family: "Space Mono", monospace;
+}
+.sum-label {
+  color: rgba(237, 232, 222, 0.45);
+}
 .sum-callout {
-  background: rgba(237, 232, 222, 0.03) !important;
-  border-color: rgba(237, 232, 222, 0.08) !important;
+  background: rgba(237, 232, 222, 0.03);
+  border-color: rgba(237, 232, 222, 0.08);
 }
-.sum-callout-val { color: #b07b3e !important; font-family: "Space Mono", monospace !important; }
-.sum-callout-project { color: rgba(237, 232, 222, 0.5) !important; }
-.sum-brand { color: rgba(237, 232, 222, 0.2) !important; letter-spacing: 6px !important; }
-.sum-tagline { color: rgba(237, 232, 222, 0.35) !important; }
+.sum-callout-val {
+  color: #b07b3e;
+  font-family: "Space Mono", monospace;
+}
+.sum-callout-project {
+  color: rgba(237, 232, 222, 0.5);
+}
+.sum-brand {
+  color: rgba(237, 232, 222, 0.2);
+  letter-spacing: 6px;
+}
+.sum-tagline {
+  color: rgba(237, 232, 222, 0.35);
+}
 
 /* ─── Page titles (Identity / Activity / Tools / …) ──────────── */
 .page-title {
-  color: rgba(237, 232, 222, 0.55) !important;
-  font-family: "Space Mono", monospace !important;
+  color: rgba(237, 232, 222, 0.55);
+  font-family: "Space Mono", monospace;
 }
 
 /* ─── Stepper dots — bematist green ─────────────────────────── */
-.card-page-dot { background: rgba(237, 232, 222, 0.2) !important; }
-.card-page-dot.active {
-  background: #6e8a6f !important;
-  box-shadow: 0 0 8px rgba(110, 138, 111, 0.35) !important;
+.card-page-dot {
+  background: rgba(237, 232, 222, 0.2);
 }
-.page-dot.active { background: #6e8a6f !important; }
+.card-page-dot.active {
+  background: #6e8a6f;
+  box-shadow: 0 0 8px rgba(110, 138, 111, 0.35);
+}
+.page-dot.active {
+  background: #6e8a6f;
+}
 
 /* ─── Nav arrow + share button hover: green, not purple ───── */
 .card-nav-side:hover,
 .sb:hover {
-  background: rgba(110, 138, 111, 0.2) !important;
-  border-color: rgba(110, 138, 111, 0.45) !important;
-  color: #ede8de !important;
-  box-shadow: 0 4px 16px rgba(110, 138, 111, 0.18) !important;
+  background: rgba(110, 138, 111, 0.2);
+  border-color: rgba(110, 138, 111, 0.45);
+  color: #ede8de;
+  box-shadow: 0 4px 16px rgba(110, 138, 111, 0.18);
 }
 
 /* Activity category bar + analytics hover = green accent */
 .act-cat-bar {
-  background: linear-gradient(90deg, #6e8a6f, #b07b3e) !important;
+  background: linear-gradient(90deg, #6e8a6f, #b07b3e);
 }
 .an-stat:hover {
-  border-color: rgba(110, 138, 111, 0.25) !important;
-  background: rgba(237, 232, 222, 0.05) !important;
+  border-color: rgba(110, 138, 111, 0.25);
+  background: rgba(237, 232, 222, 0.05);
 }
 
 /* ─── Tool hero + grid: replace sky-blue counters ────────────── */
@@ -223,57 +260,51 @@
 .tool-hero-count,
 .tool-card-rank,
 .tool-card-count {
-  color: #8fb078 !important;
+  color: #8fb078;
 }
 
 /* ─── Wrapped insight (Models, Projects, Identity) ──────────── */
 .wrap-sub {
-  color: #b07b3e !important;
+  color: #b07b3e;
 }
 .wrap-other-val {
-  color: #8fb078 !important;
+  color: #8fb078;
 }
 
 /* ─── Summary callout val: amber replaces #f59e0b ───────────── */
 .sum-callout-val {
-  color: #b07b3e !important;
+  color: #b07b3e;
 }
 
 /* ─── Fun-fact highlight classes ─────────────────────────────── */
 .highlight {
-  color: #b07b3e !important;
+  color: #b07b3e;
 }
 .green-hl {
-  color: #6e8a6f !important;
+  color: #6e8a6f;
 }
 .blue-hl {
-  color: #8fb078 !important;
+  color: #8fb078;
 }
 
 /* ─── Analytics SVG line + gradient stops ────────────────────── */
 .an-line path[stroke="#8fb078"],
 .an-line path[stroke="#6e8a6f"] {
-  stroke: #8fb078 !important;
+  stroke: #8fb078;
 }
 
 /* ─── Analytics bar fill ─────────────────────────────────────── */
 .an-bar-fill {
-  background: linear-gradient(90deg, #6e8a6f, #8fb078) !important;
-  box-shadow: 0 0 8px rgba(110, 138, 111, 0.3) !important;
+  background: linear-gradient(90deg, #6e8a6f, #8fb078);
+  box-shadow: 0 0 8px rgba(110, 138, 111, 0.3);
 }
 
 /* ─── P2 banner + divider tint ───────────────────────────────── */
 .p2-banner-bg {
-  background: linear-gradient(
-    145deg,
-    #52715a 0%,
-    #3a5a45 40%,
-    #2f4439 70%,
-    #1b2a21 100%
-  ) !important;
+  background: linear-gradient(145deg, #52715a 0%, #3a5a45 40%, #2f4439 70%, #1b2a21 100%);
 }
 
 /* ─── Personality hero (Twilight/Dawn/etc.) emoji ring ───────── */
 .wrap-emoji {
-  color: #8fb078 !important;
+  color: #8fb078;
 }

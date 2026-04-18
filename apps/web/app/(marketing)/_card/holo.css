@@ -42,7 +42,9 @@
   transition: opacity 0.3s ease;
 }
 
-.card-flipper:is(:hover, .is-hovering) .card-holo { --card-opacity: 1; }
+.card-flipper:is(:hover, .is-hovering) .card-holo {
+  --card-opacity: 1;
+}
 
 /* SHINE — verbatim radiant-holo.css */
 .card-holo-shine {
@@ -54,62 +56,68 @@
 
   background-image:
     radial-gradient(
-      farthest-corner ellipse
-      at var(--pointer-x) var(--pointer-y),
+      farthest-corner ellipse at var(--pointer-x) var(--pointer-y),
       hsl(0, 0%, 95%) 10%,
       var(--card-glow) 90%
     ),
-    repeating-linear-gradient(45deg,
-      hsl(0,0%,10%) 0%, hsl(0,0%,10%) 1%,
-      hsl(0,0%,10%) var(--barwidth),
-      hsl(0,0%,20%) calc(var(--barwidth) + 0.01%),
-      hsl(0,0%,20%) calc(var(--barwidth) * 2),
-      hsl(0,0%,35%) calc(var(--barwidth) * 2 + 0.01%),
-      hsl(0,0%,35%) calc(var(--barwidth) * 3),
-      hsl(0,0%,42.5%) calc(var(--barwidth) * 3 + 0.01%),
-      hsl(0,0%,42.5%) calc(var(--barwidth) * 4),
-      hsl(0,0%,50%) calc(var(--barwidth) * 4 + 0.01%),
-      hsl(0,0%,50%) calc(var(--barwidth) * 5),
-      hsl(0,0%,42.5%) calc(var(--barwidth) * 5 + 0.01%),
-      hsl(0,0%,42.5%) calc(var(--barwidth) * 6),
-      hsl(0,0%,35%) calc(var(--barwidth) * 6 + 0.01%),
-      hsl(0,0%,35%) calc(var(--barwidth) * 7),
-      hsl(0,0%,20%) calc(var(--barwidth) * 7 + 0.01%),
-      hsl(0,0%,20%) calc(var(--barwidth) * 8),
-      hsl(0,0%,10%) calc(var(--barwidth) * 8 + 0.01%),
-      hsl(0,0%,10%) calc(var(--barwidth) * 9),
-      hsl(0,0%,0%)  calc(var(--barwidth) * 9 + 0.01%),
-      hsl(0,0%,0%)  calc(var(--barwidth) * 10)
+    repeating-linear-gradient(
+      45deg,
+      hsl(0, 0%, 10%) 0%,
+      hsl(0, 0%, 10%) 1%,
+      hsl(0, 0%, 10%) var(--barwidth),
+      hsl(0, 0%, 20%) calc(var(--barwidth) + 0.01%),
+      hsl(0, 0%, 20%) calc(var(--barwidth) * 2),
+      hsl(0, 0%, 35%) calc(var(--barwidth) * 2 + 0.01%),
+      hsl(0, 0%, 35%) calc(var(--barwidth) * 3),
+      hsl(0, 0%, 42.5%) calc(var(--barwidth) * 3 + 0.01%),
+      hsl(0, 0%, 42.5%) calc(var(--barwidth) * 4),
+      hsl(0, 0%, 50%) calc(var(--barwidth) * 4 + 0.01%),
+      hsl(0, 0%, 50%) calc(var(--barwidth) * 5),
+      hsl(0, 0%, 42.5%) calc(var(--barwidth) * 5 + 0.01%),
+      hsl(0, 0%, 42.5%) calc(var(--barwidth) * 6),
+      hsl(0, 0%, 35%) calc(var(--barwidth) * 6 + 0.01%),
+      hsl(0, 0%, 35%) calc(var(--barwidth) * 7),
+      hsl(0, 0%, 20%) calc(var(--barwidth) * 7 + 0.01%),
+      hsl(0, 0%, 20%) calc(var(--barwidth) * 8),
+      hsl(0, 0%, 10%) calc(var(--barwidth) * 8 + 0.01%),
+      hsl(0, 0%, 10%) calc(var(--barwidth) * 9),
+      hsl(0, 0%, 0%) calc(var(--barwidth) * 9 + 0.01%),
+      hsl(0, 0%, 0%) calc(var(--barwidth) * 10)
     ),
-    repeating-linear-gradient(-45deg,
-      hsl(0,0%,10%) 0%, hsl(0,0%,10%) 1%,
-      hsl(0,0%,10%) var(--barwidth),
-      hsl(0,0%,20%) calc(var(--barwidth) + 0.01%),
-      hsl(0,0%,20%) calc(var(--barwidth) * 2),
-      hsl(0,0%,35%) calc(var(--barwidth) * 2 + 0.01%),
-      hsl(0,0%,35%) calc(var(--barwidth) * 3),
-      hsl(0,0%,42.5%) calc(var(--barwidth) * 3 + 0.01%),
-      hsl(0,0%,42.5%) calc(var(--barwidth) * 4),
-      hsl(0,0%,50%) calc(var(--barwidth) * 4 + 0.01%),
-      hsl(0,0%,50%) calc(var(--barwidth) * 5),
-      hsl(0,0%,42.5%) calc(var(--barwidth) * 5 + 0.01%),
-      hsl(0,0%,42.5%) calc(var(--barwidth) * 6),
-      hsl(0,0%,35%) calc(var(--barwidth) * 6 + 0.01%),
-      hsl(0,0%,35%) calc(var(--barwidth) * 7),
-      hsl(0,0%,20%) calc(var(--barwidth) * 7 + 0.01%),
-      hsl(0,0%,20%) calc(var(--barwidth) * 8),
-      hsl(0,0%,10%) calc(var(--barwidth) * 8 + 0.01%),
-      hsl(0,0%,10%) calc(var(--barwidth) * 9),
-      hsl(0,0%,0%)  calc(var(--barwidth) * 9 + 0.01%),
-      hsl(0,0%,0%)  calc(var(--barwidth) * 10)
+    repeating-linear-gradient(
+      -45deg,
+      hsl(0, 0%, 10%) 0%,
+      hsl(0, 0%, 10%) 1%,
+      hsl(0, 0%, 10%) var(--barwidth),
+      hsl(0, 0%, 20%) calc(var(--barwidth) + 0.01%),
+      hsl(0, 0%, 20%) calc(var(--barwidth) * 2),
+      hsl(0, 0%, 35%) calc(var(--barwidth) * 2 + 0.01%),
+      hsl(0, 0%, 35%) calc(var(--barwidth) * 3),
+      hsl(0, 0%, 42.5%) calc(var(--barwidth) * 3 + 0.01%),
+      hsl(0, 0%, 42.5%) calc(var(--barwidth) * 4),
+      hsl(0, 0%, 50%) calc(var(--barwidth) * 4 + 0.01%),
+      hsl(0, 0%, 50%) calc(var(--barwidth) * 5),
+      hsl(0, 0%, 42.5%) calc(var(--barwidth) * 5 + 0.01%),
+      hsl(0, 0%, 42.5%) calc(var(--barwidth) * 6),
+      hsl(0, 0%, 35%) calc(var(--barwidth) * 6 + 0.01%),
+      hsl(0, 0%, 35%) calc(var(--barwidth) * 7),
+      hsl(0, 0%, 20%) calc(var(--barwidth) * 7 + 0.01%),
+      hsl(0, 0%, 20%) calc(var(--barwidth) * 8),
+      hsl(0, 0%, 10%) calc(var(--barwidth) * 8 + 0.01%),
+      hsl(0, 0%, 10%) calc(var(--barwidth) * 9),
+      hsl(0, 0%, 0%) calc(var(--barwidth) * 9 + 0.01%),
+      hsl(0, 0%, 0%) calc(var(--barwidth) * 10)
     );
-  background-size: cover, 210% 210%, 210% 210%;
+  background-size:
+    cover,
+    210% 210%,
+    210% 210%;
   background-position:
     center,
     calc(((var(--background-x) - 50%) * 1.5) + 50%) calc(((var(--background-y) - 50%) * 1.5) + 50%),
     calc(((var(--background-x) - 50%) * 1.5) + 50%) calc(((var(--background-y) - 50%) * 1.5) + 50%);
   background-blend-mode: exclusion, darken, color-dodge;
-  filter: brightness(.5) contrast(2) saturate(1.75);
+  filter: brightness(0.5) contrast(2) saturate(1.75);
   mix-blend-mode: color-dodge;
 }
 
@@ -127,7 +135,8 @@
   -webkit-clip-path: var(--clip);
   background-image:
     var(--foil),
-    repeating-linear-gradient(55deg,
+    repeating-linear-gradient(
+      55deg,
       hsl(3, 95%, 85%) calc(var(--space) * 1),
       hsl(207, 100%, 84%) calc(var(--space) * 2),
       hsl(29, 100%, 85%) calc(var(--space) * 3),
@@ -136,11 +145,14 @@
       hsl(188, 95%, 85%) calc(var(--space) * 6),
       hsl(3, 95%, 85%) calc(var(--space) * 7)
     );
-  background-size: var(--imgsize), 400% 100%;
+  background-size:
+    var(--imgsize),
+    400% 100%;
   background-position:
     center,
-    calc(((var(--background-x) - 50%) * -2.5) + 50%) calc(((var(--background-y) - 50%) * -2.5) + 50%);
-  filter: brightness(.6) contrast(3) saturate(2);
+    calc(((var(--background-x) - 50%) * -2.5) + 50%)
+    calc(((var(--background-y) - 50%) * -2.5) + 50%);
+  filter: brightness(0.6) contrast(3) saturate(2);
   mix-blend-mode: color-dodge;
   background-blend-mode: difference;
 }
@@ -157,10 +169,12 @@
       hsla(0, 0%, 20%, 0.5) 50%
     );
   background-position: center;
-  background-size: 15% 15%, 350% 350%;
+  background-size:
+    15% 15%,
+    350% 350%;
   background-blend-mode: color-dodge;
   mix-blend-mode: overlay;
-  filter: brightness(.66) contrast(2) saturate(.5);
+  filter: brightness(0.66) contrast(2) saturate(0.5);
 }
 
 /* glare — simey's hard-light radial */
@@ -182,8 +196,18 @@
    Firefox renders color-dodge / hard-light blends much brighter than WebKit/Blink.
    Damp the shine + glare intensity so the card doesn't turn into a white flashlight. */
 @supports (-moz-appearance: none) {
-  .card-holo-shine { filter: brightness(.35) contrast(1.5) saturate(1.3); opacity: calc(var(--card-opacity) * 0.55); }
-  .card-holo-shine::after { filter: brightness(.4) contrast(2) saturate(1.4); }
-  .card-holo-shine::before { filter: brightness(.5) contrast(1.4) saturate(.4); }
-  .card-holo-glare { opacity: calc(var(--card-opacity) * 0.6); filter: brightness(.85) contrast(1.2); }
+  .card-holo-shine {
+    filter: brightness(0.35) contrast(1.5) saturate(1.3);
+    opacity: calc(var(--card-opacity) * 0.55);
+  }
+  .card-holo-shine::after {
+    filter: brightness(0.4) contrast(2) saturate(1.4);
+  }
+  .card-holo-shine::before {
+    filter: brightness(0.5) contrast(1.4) saturate(0.4);
+  }
+  .card-holo-glare {
+    opacity: calc(var(--card-opacity) * 0.6);
+    filter: brightness(0.85) contrast(1.2);
+  }
 }

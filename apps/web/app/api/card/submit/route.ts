@@ -8,10 +8,7 @@ import { hashToken } from "../token/route";
 // apps/web/app/(marketing)/_card/card-utils.ts. Unknown fields at the top
 // level are rejected. Leaves of the tree are numbers/strings/enums so there's
 // no path for scripty payloads to reach the dashboard.
-const numberDict = z.record(
-  z.string(),
-  z.object({ sessions: z.number(), cost: z.number() }),
-);
+const numberDict = z.record(z.string(), z.object({ sessions: z.number(), cost: z.number() }));
 const toolList = z.array(z.object({ name: z.string().max(120), count: z.number() }));
 
 const statsSchema = z
@@ -92,20 +89,17 @@ const statsSchema = z
 
 export async function POST(req: Request) {
   if (!firebaseConfigured) {
-    return NextResponse.json(
-      { error: "Firebase service account not configured" },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Firebase service account not configured" }, { status: 503 });
   }
 
   const header = req.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) {
-    return NextResponse.json(
-      { error: "Missing or invalid Authorization header" },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
   }
   const token = header.split("Bearer ")[1];
+  if (!token) {
+    return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
+  }
   const tokenHash = hashToken(token);
 
   const tokenDoc = await db.collection("api_tokens").doc(tokenHash).get();
@@ -157,7 +151,9 @@ export async function POST(req: Request) {
     .get();
   if (!oldTokens.empty) {
     const batch = db.batch();
-    oldTokens.docs.forEach((d) => batch.delete(d.ref));
+    for (const d of oldTokens.docs) {
+      batch.delete(d.ref);
+    }
     await batch.commit();
   }
 

@@ -84,5 +84,6 @@ STUDY_GUIDE.md
 
 # Git worktrees (isolated feature branches)
 .worktrees/
+.claude/worktrees/
 
 docs/superpowers/

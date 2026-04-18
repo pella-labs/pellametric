@@ -16,9 +16,7 @@ const REPO_NAME = "bematist";
 const PER_PAGE = 100;
 const MAX_PAGES = 50; // 5000 stars max before we give up and return false
 
-type Result =
-  | { ok: true; starred: boolean }
-  | { ok: false; error: string; status: number };
+type Result = { ok: true; starred: boolean } | { ok: false; error: string; status: number };
 
 export async function hasStarred(username: string): Promise<Result> {
   const needle = username.toLowerCase();

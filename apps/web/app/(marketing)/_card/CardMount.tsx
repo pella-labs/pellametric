@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CardData } from "./card-utils";
 import { CardPage } from "./CardPage";
+import type { CardData } from "./card-utils";
 
 /**
  * Client-only mount wrapper for CardPage. CardPage reads navigator.share,
@@ -33,5 +33,5 @@ export function CardMount({ demoData }: { demoData?: CardData } = {}) {
       </div>
     );
   }
-  return <CardPage demoData={demoData} />;
+  return demoData ? <CardPage demoData={demoData} /> : <CardPage />;
 }
