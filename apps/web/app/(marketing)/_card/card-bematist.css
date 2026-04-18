@@ -198,3 +198,22 @@
   background: #6e8a6f !important;
   box-shadow: 0 0 8px rgba(110, 138, 111, 0.35) !important;
 }
+.page-dot.active { background: #6e8a6f !important; }
+
+/* ─── Nav arrow + share button hover: green, not purple ───── */
+.card-nav-side:hover,
+.sb:hover {
+  background: rgba(110, 138, 111, 0.2) !important;
+  border-color: rgba(110, 138, 111, 0.45) !important;
+  color: #ede8de !important;
+  box-shadow: 0 4px 16px rgba(110, 138, 111, 0.18) !important;
+}
+
+/* Activity category bar + analytics hover = green accent */
+.act-cat-bar {
+  background: linear-gradient(90deg, #6e8a6f, #b07b3e) !important;
+}
+.an-stat:hover {
+  border-color: rgba(110, 138, 111, 0.25) !important;
+  background: rgba(237, 232, 222, 0.05) !important;
+}
