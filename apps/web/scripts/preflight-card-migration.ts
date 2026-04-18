@@ -1,15 +1,13 @@
 #!/usr/bin/env bun
 /*
- * Preflight for the Firebase → Better Auth /card migration.
+ * Preflight for the /card flow's Better Auth + Postgres surface.
  *
  * Verifies:
  *   1. Required env vars are present (DATABASE_URL, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET).
  *   2. We can open a Postgres connection with DATABASE_URL.
- *   3. The control-plane tables the migration depends on already exist
- *      (better_auth_user/session/account/verification + users).
- *   4. The target tables (card_tokens, cards) do NOT yet exist — if they do,
- *      a prior migration ran or a name collision needs resolving.
- *   5. The current Postgres role has CREATE/DROP privileges on the schema.
+ *   3. The control-plane tables the routes depend on exist — Better Auth
+ *      identity tables + the migration-0005 `card_tokens` / `cards` tables.
+ *   4. The current Postgres role has CREATE/DROP privileges on the schema.
  *
  * Never prints secret values. Prints host/dbname/role so the operator can
  * confirm the connection points at the expected database.
@@ -20,7 +18,7 @@
 
 import postgres from "postgres";
 
-type CheckResult = { name: string; ok: boolean; detail?: string };
+type CheckResult = { name: string; ok: boolean; detail?: string | undefined };
 
 const results: CheckResult[] = [];
 let hardFail = false;
@@ -69,26 +67,34 @@ const sql = postgres(databaseUrl, { max: 1, idle_timeout: 5, connect_timeout: 5 
 try {
   // 2. Connectivity — also pulls identity metadata so the operator can
   // eyeball that they're pointing at the right DB instance.
-  const [meta] = await sql<{ db: string; host: string; role: string; version: string }[]>`
+  const metaRows = await sql<{ db: string; host: string; role: string; version: string }[]>`
     SELECT
       current_database() AS db,
       inet_server_addr()::text AS host,
       current_user         AS role,
       current_setting('server_version') AS version
   `;
+  const meta = metaRows[0];
+  if (!meta) {
+    record("db:connect", false, "no rows returned from identity query");
+    throw new Error("identity query returned no rows");
+  }
   record(
     "db:connect",
     true,
     `db=${meta.db} host=${meta.host ?? "local-socket"} role=${meta.role} pg=${meta.version}`,
   );
 
-  // 3. Required existing tables.
+  // 3. Required tables. Better Auth (signin + session) + the /card tables
+  // (card_tokens + cards) added in migration 0005_card_flow.
   const requiredTables = [
     "users",
     "better_auth_user",
     "better_auth_session",
     "better_auth_account",
     "better_auth_verification",
+    "card_tokens",
+    "cards",
   ];
   const existing = await sql<{ tablename: string }[]>`
     SELECT tablename FROM pg_tables
@@ -97,22 +103,6 @@ try {
   const have = new Set(existing.map((r) => r.tablename));
   for (const t of requiredTables) {
     record(`table:${t}`, have.has(t), have.has(t) ? "present" : "MISSING — run db:migrate:pg first");
-  }
-
-  // 4. Target tables must not exist yet. If they do, bail loudly — something
-  // is out of phase with the plan.
-  const targetTables = ["card_tokens", "cards"];
-  const clashes = await sql<{ tablename: string }[]>`
-    SELECT tablename FROM pg_tables
-    WHERE schemaname = 'public' AND tablename = ANY(${targetTables})
-  `;
-  for (const t of targetTables) {
-    const present = clashes.some((r) => r.tablename === t);
-    record(
-      `target-unused:${t}`,
-      !present,
-      present ? "ALREADY EXISTS — investigate before migrating" : "clear",
-    );
   }
 
   // 5. DDL privilege — create a throwaway table, then drop it. Unique suffix
