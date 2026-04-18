@@ -3,6 +3,7 @@ import { Badge } from "@bematist/ui";
 import type { Metadata } from "next";
 import { getSessionCtx } from "@/lib/session";
 import { SessionsTable } from "./_table";
+import { WindowPicker } from "./_window-picker";
 
 export const metadata: Metadata = {
   title: "Sessions",
@@ -44,7 +45,7 @@ export default async function SessionsPage({
       </header>
 
       <div className="flex flex-wrap items-center gap-3 text-xs">
-        <Badge tone="neutral">{window} window</Badge>
+        <WindowPicker value={window} />
         <Badge tone="accent">{result.total} sessions</Badge>
         <Badge tone="neutral">{USD.format(totalCost)} total</Badge>
         {estimatedRows > 0 ? (
