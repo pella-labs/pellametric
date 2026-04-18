@@ -1,0 +1,5 @@
+{"eventName":"toolUsage","timestamp":"2026-04-16T10:00:04.000Z","sessionId":"sess_cont_01","interactionId":"int_1","toolCallId":"tc_1","toolName":"readFile","status":"ok","durationMs":84}
+{"eventName":"toolUsage","timestamp":"2026-04-16T10:01:08.100Z","sessionId":"sess_cont_01","interactionId":"int_2","toolCallId":"tc_2","toolName":"editFile","status":"ok","durationMs":240}
+{"eventName":"toolUsage","timestamp":"2026-04-16T10:02:10.000Z","sessionId":"sess_cont_01","interactionId":"int_2","toolCallId":"tc_3","toolName":"runShellCommand","status":"error","durationMs":1610,"errorKind":"non_zero_exit"}
+{"eventName":"toolUsage","timestamp":"2026-04-16T10:05:02.000Z","sessionId":"sess_cont_02","interactionId":"int_3","toolCallId":"tc_4","toolName":"searchCodebase","status":"ok","durationMs":302}
+{"eventName":"toolUsage","timestamp":"2026-04-16T10:06:45.000Z","sessionId":"sess_cont_02","interactionId":"int_4","toolCallId":"tc_5","toolName":"writeFile","status":"denied","durationMs":12,"errorKind":"policy_block"}

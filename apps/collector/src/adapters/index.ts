@@ -1,6 +1,7 @@
 import type { Adapter } from "@bematist/sdk";
 import { ClaudeCodeAdapter } from "./claude-code";
 import { CodexAdapter } from "./codex";
+import { ContinueDevAdapter } from "./continue-dev";
 import { CursorAdapter } from "./cursor";
 import { OpenCodeAdapter } from "./opencode";
 
@@ -18,6 +19,7 @@ export function buildRegistry(id: RegistryIdentity): Adapter[] {
   return [
     new ClaudeCodeAdapter(id),
     new CodexAdapter(id),
+    new ContinueDevAdapter(id),
     new CursorAdapter(id),
     new OpenCodeAdapter(id),
   ];
