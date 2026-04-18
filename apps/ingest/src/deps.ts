@@ -1,19 +1,25 @@
 // Module-level dependency injection seam for the ingest server.
 // Sprint 1 Phase 2 defaults: empty key store (safe-fail), permissive rate
 // limiter, empty in-memory OrgPolicyStore (every org → 500 ORG_POLICY_MISSING
-// until seeded), and noopRedactStage (real pipeline lands Sprint 2).
+// until seeded), and noopRedactStage for tests (the real defaultRedactionStage
+// from @bematist/redact is wired below).
 // Phase 4 adds `wal` (Redis Streams appender) and `clickhouseWriter` (lazy
 // CH client). Both default to in-memory test doubles so unit tests don't
 // need network.
+// M3 follow-up #2: `redactAuditSink` wires the redaction_audit side-table
+// writer (contract 08 §Invariant #4 / contract 09 §Side tables). Default is
+// `noopAuditSink`; boot in index.ts swaps for a ClickHouse-backed sink.
 // Tests call setDeps({ ... }) in beforeAll to stub.
 
-import { noopRedactStage, type RedactStage } from "@bematist/redact";
+import { defaultRedactionStage, type RedactStage } from "@bematist/redact";
 import { permissiveRateLimiter, type RateLimiter } from "./auth/rateLimit";
 import type { IngestKeyStore } from "./auth/verifyIngestKey";
 import { LRUCache } from "./auth/verifyIngestKey";
 import { type ClickHouseWriter, createInMemoryClickHouseWriter } from "./clickhouse";
 import { type DedupStore, InMemoryDedupStore } from "./dedup/checkDedup";
 import { type Flags, parseFlags } from "./flags";
+import { noopAuditSink } from "./redact/auditSink";
+import type { RedactionAuditSink } from "./redact/hotpath";
 import { InMemoryOrgPolicyStore, type OrgPolicyStore } from "./tier/enforceTier";
 import { createInMemoryWalAppender, type WalAppender } from "./wal/append";
 import { createInMemoryGitEventsStore, type GitEventsStore } from "./webhooks/gitEventsStore";
@@ -42,6 +48,7 @@ export interface Deps {
   clock: () => number;
   orgPolicyStore: OrgPolicyStore;
   redactStage: RedactStage;
+  redactAuditSink: RedactionAuditSink;
   dedupStore: DedupStore;
   wal: WalAppender;
   clickhouseWriter: ClickHouseWriter;
@@ -73,7 +80,10 @@ function makeDefaultDeps(): Deps {
     // Empty policy store — get() returns null for every org until seeded.
     // Tests seed via setDeps({ orgPolicyStore: store }).
     orgPolicyStore: new InMemoryOrgPolicyStore(),
-    redactStage: noopRedactStage,
+    // Real TruffleHog + Gitleaks + Presidio pipeline per contract 08. Tests
+    // that want to bypass server-side redaction inject `noopRedactStage`.
+    redactStage: defaultRedactionStage,
+    redactAuditSink: noopAuditSink,
     // InMemoryDedupStore satisfies /readyz preflight (returns "noeviction")
     // and is swapped for a real Redis-backed impl at boot on managed stacks.
     dedupStore: new InMemoryDedupStore(),

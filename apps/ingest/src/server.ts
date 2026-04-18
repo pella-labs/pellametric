@@ -1,8 +1,9 @@
-import { EventSchema, FORBIDDEN_FIELDS } from "@bematist/schema";
+import { type Event, EventSchema, FORBIDDEN_FIELDS } from "@bematist/schema";
 import { type AuthContext, verifyBearer } from "./auth";
 import { checkDedup } from "./dedup/checkDedup";
 import { getDeps } from "./deps";
 import { logger } from "./logger";
+import { redactEventInPlace } from "./redact/hotpath";
 import { applyTierAAllowlist, enforceTier } from "./tier/enforceTier";
 import { canonicalize } from "./wal/append";
 import { handleWebhook } from "./webhooks/router";
@@ -385,6 +386,34 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
     }
   }
 
+  // M3 follow-up #2: server-side redaction (contract 08). Runs synchronously on
+  // every first-sight event BEFORE canonicalize + WAL append. Three things
+  // happen here per event:
+  //   1. `<REDACTED:type:hash>` markers substituted into `prompt_text`,
+  //      `tool_input`, `tool_output`, `raw_attrs` string values.
+  //   2. `redaction_count` bumped by the number of markers emitted.
+  //   3. One `redaction_audit` row per marker handed to the injected sink.
+  // `raw_attrs_allowlist_extra` flows from the already-fetched org policy.
+  // The sink is called best-effort; failures log but do not reject the batch
+  // because the event itself is already safe at this point.
+  const redactedFirstSight: Event[] = [];
+  if (firstSightEvents.length > 0) {
+    const { redactStage, redactAuditSink } = getDeps();
+    const allowlistExtra = policy.raw_attrs_allowlist_extra ?? [];
+    const opts =
+      allowlistExtra.length > 0
+        ? {
+            stage: redactStage,
+            auditSink: redactAuditSink,
+            raw_attrs_allowlist_extra: allowlistExtra,
+          }
+        : { stage: redactStage, auditSink: redactAuditSink };
+    for (const ev of firstSightEvents) {
+      const r = await redactEventInPlace(ev, opts);
+      redactedFirstSight.push(r.event);
+    }
+  }
+
   // Phase-4: append first-sight events to the WAL. This is the ingest-internal
   // durability seam — the WAL consumer drains the stream and writes to CH.
   // If WAL is unavailable, fail the batch with 503 WAL_UNAVAILABLE (clients
@@ -394,9 +423,9 @@ async function handleEvents(req: Request, auth: AuthContext, requestId: string):
   // governs draining, not appending; an incoherent combination
   // (APPEND=0 + CONSUMER=1) is now rejected at boot by assertFlagCoherence.
   const walEnabled = flags.WAL_APPEND_ENABLED;
-  if (walEnabled && firstSightEvents.length > 0) {
+  if (walEnabled && redactedFirstSight.length > 0) {
     try {
-      const canonical = firstSightEvents.map((ev) =>
+      const canonical = redactedFirstSight.map((ev) =>
         canonicalize(ev, { tenantId: auth.tenantId, engineerId: auth.engineerId }),
       );
       await wal.append(canonical);
