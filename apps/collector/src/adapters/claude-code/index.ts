@@ -40,23 +40,26 @@ export class ClaudeCodeAdapter implements Adapter {
     const files = await findSessionFiles(s.jsonlDir);
     const out: Event[] = [];
     for (const path of files) {
-      // Skip-unchanged gate — `~/.claude/projects/` holds thousands of JSONL
-      // files; without this, every poll re-parses and re-emits every file,
-      // which wedges the poll-timeout race AND inflates the
-      // `dev_daily_rollup` MV because duplicate INSERTs fire `sumState`
-      // before ReplacingMergeTree collapses the raw rows (seen in the M4
-      // rehearsal: 2-3× cost drift per engineer).
+      // Two-stage dedup:
       //
-      // Signature = `size:mtimeMs`. If both are unchanged since last emit,
-      // the file hasn't been touched — nothing to do. Historical sessions
-      // (the 99%) stay frozen and get skipped entirely.
+      // 1. Signature skip — if (size, mtime) hasn't changed since last
+      //    poll, the file is untouched; don't even open it. This handles
+      //    the 99% of historical JSONL files that never change.
       //
-      // Active sessions still get re-parsed when they grow. That's
-      // expected — `deterministicId(session_id, seq, kind, line)` in
-      // `normalize.ts` is content-addressed, so re-emits collapse
-      // idempotently at ingest (Redis SETNX) and in the events table
-      // (ReplacingMergeTree). The re-emit window is just "one poll per
-      // session that actually grew," not "every file every poll."
+      // 2. Max-seq filter — when a file HAS grown (active session), we
+      //    still have to re-parse the whole thing (normalizeSession's
+      //    event_seq is a position-index, we can't parse just new lines
+      //    and get the same seq numbering). But we only emit events whose
+      //    seq exceeds the last-emitted max. Since Claude Code JSONL is
+      //    append-only, new lines → new events at higher seq indices;
+      //    everything ≤ prevMax has already been shipped.
+      //
+      // Before both stages landed, the M4 rehearsal saw 3× MV drift for
+      // actively-coding teammates — every poll re-emitted every event in
+      // every growing session file. deterministicId + Redis SETNX caught
+      // most duplicates, but enough leaked through to double-count
+      // `sumState(cost_usd)` in `dev_daily_rollup` before
+      // ReplacingMergeTree collapsed the raw rows.
       const signatureKey = `signature:${path}`;
       let sigNow: string;
       try {
@@ -69,13 +72,28 @@ export class ClaudeCodeAdapter implements Adapter {
       const sigPrev = await ctx.cursor.get(signatureKey);
       if (sigPrev === sigNow) continue;
 
+      const maxSeqKey = `max_seq:${path}`;
+      const prevMaxStr = await ctx.cursor.get(maxSeqKey);
+      const prevMax = prevMaxStr === null ? -1 : Number.parseInt(prevMaxStr, 10);
+
       const parsed = await parseSessionFile(path);
       const events = normalizeSession(
         parsed,
         { ...this.identity, tier: ctx.tier },
         SOURCE_VERSION_DEFAULT,
       );
-      out.push(...events);
+
+      let newHighWatermark = prevMax;
+      for (const e of events) {
+        if (e.event_seq > prevMax) {
+          out.push(e);
+          if (e.event_seq > newHighWatermark) newHighWatermark = e.event_seq;
+        }
+      }
+
+      if (newHighWatermark > prevMax) {
+        await ctx.cursor.set(maxSeqKey, String(newHighWatermark));
+      }
       await ctx.cursor.set(signatureKey, sigNow);
     }
     return out;

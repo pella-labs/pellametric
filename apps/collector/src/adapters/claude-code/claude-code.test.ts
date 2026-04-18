@@ -131,16 +131,121 @@ test("poll() skips files whose (size, mtime) signature is unchanged since last e
     const second = await a.poll(ctx, new AbortController().signal);
     expect(second).toEqual([]);
 
-    // Third poll after mutating mtime forward — must re-emit.
+    // Third poll after bumping mtime (file same size/content, just touched) —
+    // re-parses but max_seq filter should still emit zero.
     const filePath = require("node:path").join(sub, "s1.jsonl");
     const future = new Date(Date.now() + 60_000);
     require("node:fs").utimesSync(filePath, future, future);
     const third = await a.poll(ctx, new AbortController().signal);
-    expect(third.length).toBeGreaterThan(0);
+    expect(third).toEqual([]);
   } finally {
     if (prev === undefined) delete process.env.CLAUDE_CONFIG_DIR;
     else process.env.CLAUDE_CONFIG_DIR = prev;
     require("node:fs").rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("poll() emits ONLY new events when a session file grows (active-session case)", async () => {
+  // Regression test for M4 rehearsal drift: Sandesh's MV grew 3× faster
+  // than raw events because an actively-coding session file kept passing
+  // the (size, mtime) gate but normalizeSession re-emitted every event in
+  // it, leaking duplicates through Redis SETNX into `dev_daily_rollup`.
+  // Adapter now also tracks per-file `max_seq:<path>` and filters events
+  // with seq ≤ prevMax.
+  const fs = require("node:fs") as typeof import("node:fs");
+  const path = require("node:path") as typeof import("node:path");
+  const os = require("node:os") as typeof import("node:os");
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bematist-cc-grow-"));
+  const sub = path.join(dir, "projects", "proj-grow", "sessions");
+  fs.mkdirSync(sub, { recursive: true });
+  const sessionFile = path.join(sub, "s1.jsonl");
+
+  // First write: two user turns + two assistant turns.
+  const baseLines = [
+    JSON.stringify({
+      type: "user",
+      sessionId: "s1",
+      timestamp: "2026-04-18T10:00:00.000Z",
+      message: { role: "user", content: "hello" },
+    }),
+    JSON.stringify({
+      type: "assistant",
+      sessionId: "s1",
+      timestamp: "2026-04-18T10:00:01.000Z",
+      requestId: "r1",
+      message: {
+        role: "assistant",
+        model: "claude-sonnet-4-6",
+        content: [{ type: "text", text: "hi" }],
+        usage: { input_tokens: 10, output_tokens: 5 },
+      },
+    }),
+  ];
+  fs.writeFileSync(sessionFile, `${baseLines.join("\n")}\n`);
+
+  const prev = process.env.CLAUDE_CONFIG_DIR;
+  try {
+    process.env.CLAUDE_CONFIG_DIR = dir;
+    const a = new ClaudeCodeAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
+    const store = new Map<string, string>();
+    const ctx: AdapterContext = {
+      ...mkCtx(),
+      cursor: {
+        get: async (k: string) => store.get(k) ?? null,
+        set: async (k: string, v: string) => {
+          store.set(k, v);
+        },
+      },
+    };
+    await a.init(ctx);
+
+    const first = await a.poll(ctx, new AbortController().signal);
+    const firstSeqs = first.map((e) => e.event_seq).sort((a, b) => a - b);
+    expect(firstSeqs.length).toBeGreaterThan(0);
+    const maxSeqAfterFirst = Math.max(...firstSeqs);
+
+    // Append another turn — file grows, mtime changes.
+    fs.appendFileSync(
+      sessionFile,
+      `${JSON.stringify({
+        type: "user",
+        sessionId: "s1",
+        timestamp: "2026-04-18T10:00:02.000Z",
+        message: { role: "user", content: "again" },
+      })}\n`,
+    );
+    fs.appendFileSync(
+      sessionFile,
+      `${JSON.stringify({
+        type: "assistant",
+        sessionId: "s1",
+        timestamp: "2026-04-18T10:00:03.000Z",
+        requestId: "r2",
+        message: {
+          role: "assistant",
+          model: "claude-sonnet-4-6",
+          content: [{ type: "text", text: "hey" }],
+          usage: { input_tokens: 7, output_tokens: 3 },
+        },
+      })}\n`,
+    );
+    const future = new Date(Date.now() + 120_000);
+    fs.utimesSync(sessionFile, future, future);
+
+    const second = await a.poll(ctx, new AbortController().signal);
+
+    // Every event emitted in the second poll must have a seq strictly
+    // greater than the high-water mark from the first poll. This is the
+    // invariant that stops MV double-counting.
+    expect(second.length).toBeGreaterThan(0);
+    for (const e of second) {
+      expect(e.event_seq).toBeGreaterThan(maxSeqAfterFirst);
+    }
+  } finally {
+    if (prev === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+    else process.env.CLAUDE_CONFIG_DIR = prev;
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
