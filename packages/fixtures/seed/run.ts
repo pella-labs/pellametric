@@ -41,6 +41,19 @@ async function seedControlPlane(devs: SeedDev[], orgs: ReturnType<typeof buildPl
         VALUES (${o.id}, ${o.slug}, ${o.name})
         ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
       `;
+      // Default Tier-B policy per CLAUDE.md D7. The
+      // `orgs_insert_default_policy` trigger (migration 0002_sprint1_policies.sql)
+      // *should* auto-create this row on the orgs insert, but that migration
+      // isn't wired into drizzle's journal — CI currently applies only the
+      // auto-generated `0002_daffy_richard_fisk.sql` which creates the table
+      // without the trigger. Belt-and-suspenders explicit insert here so the
+      // ingest hot path's `enforceTier` step finds the row instead of 500ing
+      // with `ORG_POLICY_MISSING` on every k6 request.
+      await sql`
+        INSERT INTO policies (org_id, tier_c_managed_cloud_optin, tier_default)
+        VALUES (${o.id}, FALSE, ${"B"})
+        ON CONFLICT (org_id) DO NOTHING
+      `;
     }
     for (const d of devs) {
       await sql`
@@ -64,11 +77,20 @@ async function seedControlPlane(devs: SeedDev[], orgs: ReturnType<typeof buildPl
  * ingest scenario can post real bearers (`bm_<orgId>_<keyId>_<secret>`).
  * Writes the bearer to PERF_INGEST_BEARER_PATH so the CI workflow can export
  * INGEST_BEARER without echoing the secret into command lines / artifacts.
+ *
+ * Bearer shape — the `<orgId>` and `<keyId>` bearer segments are locked to
+ * `[A-Za-z0-9]+` by `apps/ingest/src/auth/verifyIngestKey.ts`. Two consequences:
+ *
+ *  - `<orgId>` uses `org.slug` (alphanumeric since PR #60), not `org.id`
+ *    (UUID with hyphens). The PG-backed IngestKeyStore joins on `orgs.slug`
+ *    to recover the UUID row id for downstream tenant-scoped queries.
+ *  - `<keyId>` drops the `perf_<slug>` form (underscore breaks the three-
+ *    segment parse) in favor of `perfkey`.
  */
 async function mintIngestKey(org: { id: string; slug: string }): Promise<string> {
   const sql = postgres(PG_URL, { max: 1 });
   try {
-    const keyId = `perf_${org.slug}`;
+    const keyId = "perfkey";
     // Deterministic when PERF_KEY_SECRET is set (CI), random otherwise (local).
     const secret = process.env.PERF_KEY_SECRET ?? randomBytes(32).toString("hex");
     const sha256 = createHash("sha256").update(secret).digest("hex");
@@ -78,7 +100,7 @@ async function mintIngestKey(org: { id: string; slug: string }): Promise<string>
       ON CONFLICT (id) DO UPDATE
       SET key_sha256 = EXCLUDED.key_sha256, revoked_at = NULL
     `;
-    const bearer = `bm_${org.id}_${keyId}_${secret}`;
+    const bearer = `bm_${org.slug}_${keyId}_${secret}`;
     const outPath = process.env.PERF_INGEST_BEARER_PATH ?? "tests/perf/.ingest-bearer";
     writeFileSync(outPath, bearer, { mode: 0o600 });
     console.log(`[seed:perf] wrote ingest bearer to ${outPath} (org=${org.slug} keyId=${keyId})`);

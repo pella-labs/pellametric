@@ -242,6 +242,29 @@ jobs:
         continue-on-error: ${{ env.K6_GATE_M2 != '1' }}
         run: bash tests/perf/run.sh ingest
 
+      - name: Tail ingest + web logs on failure
+        # Surface the last ~120 lines of each service log inline in the Actions
+        # console when either k6 gate failed — saves a round-trip to the
+        # artifact tarball when triaging a red PR. The full logs still upload
+        # below.
+        if: always() && (steps.k6_dashboard.outcome == 'failure' || steps.k6_ingest.outcome == 'failure')
+        shell: bash
+        run: |
+          if [ -f ingest.out ]; then
+            echo "::group::ingest.out (last 120 lines)"
+            tail -120 ingest.out || true
+            echo "::endgroup::"
+          else
+            echo "::notice::ingest.out not found"
+          fi
+          if [ -f web.out ]; then
+            echo "::group::web.out (last 120 lines)"
+            tail -120 web.out || true
+            echo "::endgroup::"
+          else
+            echo "::notice::web.out not found"
+          fi
+
       - name: Upload summaries + service logs
         if: always()
         uses: actions/upload-artifact@v4

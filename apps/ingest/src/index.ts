@@ -5,6 +5,7 @@ import {
   createSharedNodeRedisClient,
   type NodeRedisClient,
 } from "./auth/nodeRedisLua";
+import { createPgIngestKeyStore } from "./auth/pgIngestKeyStore";
 import { createLuaRateLimiter } from "./auth/rateLimit";
 import { createRealClickHouseWriter } from "./clickhouse/realWriter";
 import { createBunRedisDedupStore } from "./dedup/bunRedisDedupStore";
@@ -19,6 +20,7 @@ import { DrizzlePolicyFlipStore } from "./policy-flip/drizzleStore";
 import type { PolicyFlipDeps } from "./policy-flip/handler";
 import { applyCoreRlimit } from "./rlimit";
 import { startServer } from "./server";
+import { createPgOrgPolicyStore } from "./tier/pgOrgPolicyStore";
 import { createRedisStreamsWalAppender } from "./wal/append";
 import { createWalConsumer } from "./wal/consumer";
 import { createRedisStreamsWal } from "./wal/redisStreamsWal";
@@ -72,11 +74,29 @@ if (process.env.NODE_ENV !== "test") {
       "runtime adapters wired (bun.redis dedup, node-redis lua+streams, @clickhouse/client)",
     );
 
-    // D20 policy-flip deps — pinned Ed25519 keys from env, Drizzle-backed
-    // store/audit/alert writing to the control-plane DB. Left unwired when
-    // SIGNED_CONFIG_PUBLIC_KEYS is absent so the HTTP route 500s loudly
-    // instead of silently ignoring misconfiguration.
+    // M3 follow-up: wire Postgres-backed IngestKeyStore + OrgPolicyStore so
+    // /v1/events authenticates against real `ingest_keys` rows and enforceTier
+    // resolves real `policies` rows (trigger-seeded per D7). Without this, the
+    // in-memory defaults make every ingest request 401 or 500 against a live
+    // stack — which is what tripped the perf gate's `http_req_failed` threshold
+    // on PR #56. Shares the same postgres-js pool with policy-flip to avoid a
+    // per-subsystem connection explosion.
     try {
+      const handle = createPolicyFlipDbHandle();
+      policyFlipDbHandle = handle;
+      setDeps({
+        store: createPgIngestKeyStore({ db: handle.db }),
+        orgPolicyStore: createPgOrgPolicyStore({ db: handle.db }),
+      });
+      logger.info(
+        { pool_max: 3 },
+        "pg-backed ingest-key + org-policy stores wired (drizzle over postgres-js)",
+      );
+
+      // D20 policy-flip deps — pinned Ed25519 keys from env, Drizzle-backed
+      // store/audit/alert writing to the control-plane DB. Left unwired when
+      // SIGNED_CONFIG_PUBLIC_KEYS is absent so the HTTP route 500s loudly
+      // instead of silently ignoring misconfiguration.
       const publicKeysRaw = parsePublicKeysEnv(process.env.SIGNED_CONFIG_PUBLIC_KEYS);
       if (publicKeysRaw.length === 0) {
         logger.warn(
@@ -84,8 +104,6 @@ if (process.env.NODE_ENV !== "test") {
           "SIGNED_CONFIG_PUBLIC_KEYS absent; /v1/admin/policy-flip will 500 until configured",
         );
       } else {
-        const handle = createPolicyFlipDbHandle();
-        policyFlipDbHandle = handle;
         const policyFlip: PolicyFlipDeps = {
           store: new DrizzlePolicyFlipStore({ db: handle.db }),
           audit: new DrizzleAuditWriter({ db: handle.db }),
@@ -103,9 +121,9 @@ if (process.env.NODE_ENV !== "test") {
       logger.error(
         {
           err: err instanceof Error ? err.message : String(err),
-          code: "POLICY_FLIP_WIRING_FAILED",
+          code: "PG_STORE_WIRING_FAILED",
         },
-        "policy-flip wiring failed; /v1/admin/policy-flip will 500 until fixed",
+        "pg-backed store wiring failed; ingest will 401/500 on /v1/events until fixed",
       );
     }
   } catch (err) {
