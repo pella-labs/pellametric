@@ -250,8 +250,8 @@ describe("session.getSession (real branch)", () => {
 describe("team.listTeams (real branch)", () => {
   test("joins Postgres teams with CH team_weekly_rollup, enforces k≥5 gate", async () => {
     const pg = mock(async () => [
-      { id: "team_a", slug: "alpha", label: "Alpha" },
-      { id: "team_b", slug: "beta", label: "Beta" },
+      { id: "team_a", name: "Alpha" },
+      { id: "team_b", name: "Beta" },
     ]);
     const ch = mock(async () => [
       {

@@ -85,13 +85,12 @@ async function listTeamsFixture(ctx: Ctx, input: TeamListInput): Promise<TeamLis
 async function listTeamsReal(ctx: Ctx, input: TeamListInput): Promise<TeamListOutput> {
   const teamRows = await ctx.db.pg.query<{
     id: string;
-    slug: string;
-    label: string;
+    name: string;
   }>(
-    `SELECT id, slug, label
+    `SELECT id, name
        FROM teams
       WHERE org_id = $1
-      ORDER BY label ASC`,
+      ORDER BY name ASC`,
     [ctx.tenant_id],
   );
 
@@ -155,8 +154,8 @@ async function listTeamsReal(ctx: Ctx, input: TeamListInput): Promise<TeamListOu
 
     return {
       id: t.id,
-      slug: t.slug,
-      label: t.label,
+      slug: t.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      label: t.name,
       engineers: Math.max(1, engineers),
       cohort_size: cohortSize,
       cost_usd: round2(Number(agg?.cost_usd ?? 0)),
