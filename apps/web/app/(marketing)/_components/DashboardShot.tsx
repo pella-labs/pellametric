@@ -11,7 +11,7 @@ const KPIS = [
   { label: "Per-dollar edits", value: "14.2x" },
 ] as const;
 
-const NAV = ["Summary", "Teams", "Sessions", "Clusters", "Insights", "Adapters"] as const;
+const NAV = ["Summary", "Teams", "Sessions", "Outcomes", "Clusters", "Insights"] as const;
 
 export function DashboardShot() {
   const bars = [42, 48, 61, 55, 72, 78, 82, 74, 88, 95, 82, 90, 76, 86];

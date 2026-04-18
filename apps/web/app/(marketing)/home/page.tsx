@@ -32,35 +32,78 @@ const ADAPTERS = [
   {
     name: "Claude Code",
     iface: "CLI",
-    notes: "Tokens, sessions, tool calls, accepted edits.",
+    captures: "Sessions · input/output/cache tokens · models · tool calls · accepted edits",
   },
   {
     name: "Cursor",
     iface: "IDE",
-    notes: "Edits, diff sizes, model routing, acceptance decisions.",
+    captures: "Generations · accept/reject · mode (auto/manual) · estimated cost",
   },
   {
     name: "Codex CLI",
     iface: "CLI",
-    notes: "JSONL session tail with cumulative token diffs.",
+    captures: "Sessions · per-turn token diffs · tool executions · cost",
+  },
+  {
+    name: "Continue.dev",
+    iface: "IDE",
+    captures: "Chat turns · token generation · edit outcomes · tool usage (four streams)",
+  },
+  {
+    name: "OpenCode",
+    iface: "CLI",
+    captures: "Sessions · tokens · model routing (SQLite, post-v1.2)",
+  },
+  {
+    name: "VS Code extensions",
+    iface: "IDE",
+    captures: "Pluggable handlers via SDK — Twinny shipped, community adapters supported",
   },
 ] as const;
 
 const FEATURES = [
   {
     eyebrow: "01",
-    title: "See where the money goes",
-    body: "One lightweight agent per machine detects the AI coding tools your engineers already use. Tokens, cost, sessions, actions — unified across every agent, in one company-owned backend.",
+    title: "One binary, every coding agent",
+    body: "The collector auto-detects six agents on the machine — Claude Code, Cursor, Codex, Continue.dev, OpenCode, VS Code — and reads their native session files. No API keys to proxy, no plugins to install, no dev workflow to change.",
   },
   {
     eyebrow: "02",
-    title: "Tie spend to shipped code",
-    body: "Every accepted edit joins a commit. Every commit joins a merged PR. You see cost per shipped change, not cost per token — and which tools are creating real leverage.",
+    title: "A personal card that actually means something",
+    body: "Sessions, input tokens, output tokens, cache read + create tokens, dollar-value cache savings, models used, tools called, repos touched, hourly + 160-day daily distributions. All pulled from your real local sessions.",
   },
   {
     eyebrow: "03",
-    title: "Learn the patterns worth copying",
-    body: "Spot inefficient loops, expensive model routing, and workflows that burn tokens without results. Surface the prompts and patterns your strongest engineers use that the rest of the team could adopt.",
+    title: "Seven dashboard surfaces, end-to-end wired",
+    body: "Summary · Sessions · Outcomes · Clusters · Insights · Teams · Me. Every page's read path is written and tested; fixture data today, ClickHouse MVs as your pipeline lands.",
+  },
+] as const;
+
+const SCORE_DIMENSIONS = [
+  {
+    tag: "35%",
+    name: "Outcome quality",
+    body: "Sessions that end in a merged change vs sessions that burn tokens with nothing to show.",
+  },
+  {
+    tag: "25%",
+    name: "Efficiency",
+    body: "Accepted edits per dollar of model spend, cohort-normalized against peers doing similar work.",
+  },
+  {
+    tag: "20%",
+    name: "Autonomy",
+    body: "One minus the intervention rate — how often a session needs a hand-hold vs ships on its own.",
+  },
+  {
+    tag: "10%",
+    name: "Adoption depth",
+    body: "How many agents and workflows the engineer actually uses, not just the one that opened last.",
+  },
+  {
+    tag: "10%",
+    name: "Team impact",
+    body: "Playbooks this engineer promoted that other engineers adopted — capped, verifiable, opt-in.",
   },
 ] as const;
 
@@ -128,15 +171,14 @@ export default function MarketingHome() {
       {/* Adapters */}
       <section>
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">02 / Supported agents</span>
+          <span className="mk-mono mk-xs">02 / Six agents, parsing real session files today</span>
         </div>
         <table className="mk-table">
           <thead>
             <tr>
               <th>Target</th>
               <th>Interface</th>
-              <th>Status</th>
-              <th>Notes</th>
+              <th>What it captures</th>
             </tr>
           </thead>
           <tbody>
@@ -144,10 +186,7 @@ export default function MarketingHome() {
               <tr key={row.name}>
                 <td style={{ color: "var(--mk-ink)" }}>{row.name}</td>
                 <td className="mk-muted">{row.iface}</td>
-                <td>
-                  <span className="mk-badge full">Shipped</span>
-                </td>
-                <td className="mk-muted">{row.notes}</td>
+                <td className="mk-muted">{row.captures}</td>
               </tr>
             ))}
           </tbody>
@@ -162,32 +201,33 @@ export default function MarketingHome() {
           <div className="mk-metric-label">
             <strong>accepted edits per dollar</strong>
             <br />
-            The conversation shifts from "people are using AI" to "here is where AI is helping us
-            ship." Spend per merged PR, wins by workflow, wasted tokens by session.
+            Dedup unit is (session_id, hunk_sha256). Denominator window is the session. Reverts
+            within 24h subtract. Pricing pinned at capture time, so model-price shifts don't
+            silently rewrite history.
           </div>
         </div>
         <div className="mk-metric-details">
-          <span className="mk-sys">HOW IT JOINS</span>
+          <span className="mk-sys">WHAT THE DASHBOARD SHOWS</span>
           <ul className="mk-kv">
             <li>
-              <span>Session event</span>
-              <span>accepted-edit decision</span>
+              <span>/summary</span>
+              <span>spend, accepted edits, merged PRs, $/edit</span>
             </li>
             <li>
-              <span>Commit marker</span>
-              <span>opt-in AI-assisted trailer</span>
+              <span>/sessions</span>
+              <span>every session, tokens, tools, cost</span>
             </li>
             <li>
-              <span>Merge validation</span>
-              <span>GitHub webhook</span>
+              <span>/outcomes</span>
+              <span>cost per merged PR, commit join</span>
             </li>
             <li>
-              <span>Revert window</span>
-              <span>24h</span>
+              <span>/clusters</span>
+              <span>similar prompts + twin finder</span>
             </li>
             <li>
-              <span>Dedup unit</span>
-              <span>session + hunk hash</span>
+              <span>/insights</span>
+              <span>anomalies + weekly digest</span>
             </li>
           </ul>
         </div>
@@ -196,31 +236,23 @@ export default function MarketingHome() {
       {/* AI Leverage Score */}
       <section aria-label="AI Leverage Score">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">03 / AI Leverage Score</span>
+          <span className="mk-mono mk-xs">03 / AI Leverage Score v1 · ai_leverage_v1</span>
         </div>
-        <div className="mk-features">
-          <div className="mk-feature">
-            <span className="mk-feature-index">EFFECTIVENESS</span>
-            <h3>Outcomes, not activity</h3>
+        <div className="mk-score-grid">
+          {SCORE_DIMENSIONS.map((d) => (
+            <div key={d.name} className="mk-score-cell">
+              <span className="mk-score-weight">{d.tag}</span>
+              <h3>{d.name}</h3>
+              <p>{d.body}</p>
+            </div>
+          ))}
+          <div className="mk-score-cell mk-score-gate">
+            <span className="mk-score-weight">GATES</span>
+            <h3>No number, no gate</h3>
             <p>
-              Sessions that end in shipped code counted one way. Sessions that burn tokens without a
-              result counted another. The score rewards results, not keystrokes.
-            </p>
-          </div>
-          <div className="mk-feature">
-            <span className="mk-feature-index">EFFICIENCY</span>
-            <h3>Token economy</h3>
-            <p>
-              How much an engineer ships per dollar of model spend, normalized against peers doing
-              similar work. Not a leaderboard — a signal for where workflows compound.
-            </p>
-          </div>
-          <div className="mk-feature">
-            <span className="mk-feature-index">ADOPTION</span>
-            <h3>Depth of use</h3>
-            <p>
-              Which agents, which workflows, which repos. Shows leaders where AI is actually part of
-              how the team works, and where it's still a tab that gets closed.
+              A score renders only when all four hold: ≥10 sessions, ≥5 active days, ≥3 outcome
+              events, cohort ≥8 peers. Below any of them, the tile says "insufficient data" and
+              names the gate that failed — never interpolated, never estimated.
             </p>
           </div>
         </div>

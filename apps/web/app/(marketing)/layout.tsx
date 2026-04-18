@@ -1,32 +1,13 @@
-import { Inter, JetBrains_Mono, Space_Mono } from "next/font/google";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import "./marketing.css";
-
-const mkSans = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-mk-sans",
-});
-
-const mkMono = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-mk-mono",
-});
-
-const mkSys = Space_Mono({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-mk-sys",
-});
 
 const TWITTER_URL = "https://x.com/bematist_dev";
 const GITHUB_URL = "https://github.com/pella-labs/bematist";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className={`bematist-marketing ${mkSans.variable} ${mkMono.variable} ${mkSys.variable}`}>
+    <div className="bematist-marketing">
       <div className="mk-container">
         <nav className="mk-nav" aria-label="Primary">
           <Link href="/home" className="mk-wordmark">

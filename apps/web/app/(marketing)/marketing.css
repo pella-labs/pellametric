@@ -552,6 +552,72 @@
   color: #5c6370;
 }
 
+/* ─── AI Leverage Score grid ───────────────────────────────────── */
+.bematist-marketing .mk-score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.bematist-marketing .mk-score-cell {
+  padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
+  border-right: 1px solid var(--mk-border);
+  border-bottom: 1px solid var(--mk-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 200px;
+}
+
+.bematist-marketing .mk-score-cell:nth-child(3n) {
+  border-right: none;
+}
+
+.bematist-marketing .mk-score-cell h3 {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--mk-ink);
+}
+
+.bematist-marketing .mk-score-cell p {
+  color: var(--mk-ink-muted);
+  font-size: 14px;
+  line-height: 1.55;
+  flex: 1;
+}
+
+.bematist-marketing .mk-score-weight {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  color: var(--mk-accent);
+  letter-spacing: 0.06em;
+}
+
+.bematist-marketing .mk-score-gate {
+  background: var(--mk-bg-elevated);
+  grid-column: 1 / -1;
+  border-right: none;
+  border-bottom: none;
+}
+
+.bematist-marketing .mk-score-gate .mk-score-weight {
+  color: var(--mk-warm);
+}
+
+@media (max-width: 860px) {
+  .bematist-marketing .mk-score-grid {
+    grid-template-columns: 1fr;
+  }
+  .bematist-marketing .mk-score-cell {
+    border-right: none;
+    border-bottom: 1px solid var(--mk-border);
+  }
+  .bematist-marketing .mk-score-cell:last-child {
+    border-bottom: none;
+  }
+}
+
 /* ─── Closing quote ────────────────────────────────────────────── */
 .bematist-marketing .mk-closing {
   padding: calc(var(--mk-grid-size) * 3) var(--mk-grid-size);
