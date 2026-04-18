@@ -174,8 +174,7 @@ const RULES: ReadonlyArray<Rule> = [
 function findSpans(text: string, rule: Rule): Find[] {
   const out: Find[] = [];
   const re = new RegExp(rule.pattern.source, rule.pattern.flags);
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
+  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
     let start = m.index;
     let end = start + m[0].length;
     let value = m[0];
