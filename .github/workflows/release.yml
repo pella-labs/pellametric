@@ -153,6 +153,63 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  verify:
+    # Prove the cosign keyless signatures produced by `build` actually verify
+    # against the expected OIDC identity — same check downstream consumers run
+    # via `cosign verify-blob`. If this fails, no release is cut (gated via
+    # `release.needs`). This is the in-CI counterpart to the install-time
+    # verify documented in packaging/install.sh.
+    name: verify cosign signatures
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: ${{ env.BINARY_NAME }}-*
+          merge-multiple: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Verify every binary signature
+        shell: bash
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          failed=0
+          cd dist
+          for bin in ${BINARY_NAME}-*; do
+            case "$bin" in
+              *.sha256|*.sig|*.pem) continue ;;
+            esac
+            sig="${bin}.sig"
+            cert="${bin}.pem"
+            if [[ ! -f "$sig" || ! -f "$cert" ]]; then
+              echo "verify: missing signature/certificate for $bin" >&2
+              failed=1
+              continue
+            fi
+            echo "verify: $bin"
+            if ! cosign verify-blob \
+                --certificate-identity-regexp "^https://github.com/${REPO}/\\.github/workflows/release\\.yml@refs/tags/v" \
+                --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+                --certificate "$cert" \
+                --signature "$sig" \
+                "$bin"; then
+              echo "verify: FAILED for $bin" >&2
+              failed=1
+            fi
+          done
+          if [[ $failed -ne 0 ]]; then
+            echo "verify: one or more signatures did not validate" >&2
+            exit 1
+          fi
+          echo "verify: all signatures OK"
+
   collect-hashes:
     name: assemble SHA-256 manifest
     needs: [meta, build]
@@ -308,7 +365,7 @@ jobs:
 
   release:
     name: publish GH release
-    needs: [meta, build, collect-hashes, provenance, package, sbom]
+    needs: [meta, build, verify, collect-hashes, provenance, package, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -403,11 +460,27 @@ jobs:
             release/*.intoto.jsonl
             release/*.cdx.json
 
+  # ---------------------------------------------------------------------------
+  # Registry-publish jobs.
+  #
+  # Per PRD §11 / CLAUDE.md §Security Rules, distro packages are the PRIMARY
+  # install path — Homebrew, apt/deb, AUR, Chocolatey. Each channel below is
+  # fully scaffolded (template + render + artifact) but gated `if: false`
+  # pending owner-side provisioning. See dev-docs/release-audit-m3.md for the
+  # exact follow-up checklist per channel.
+  #
+  # Flipping any single channel on is a one-line guard change once its
+  # secrets + upstream repo/account exist.
+  # ---------------------------------------------------------------------------
+
   publish-homebrew:
     name: publish Homebrew formula
     needs: [meta, release]
     runs-on: ubuntu-latest
-    # First real release fills in the HOMEBREW_TAP_TOKEN + tap repo name.
+    # TODO(distro): flip guard once bematist-org/homebrew-tap exists and
+    # HOMEBREW_TAP_TOKEN (PAT with push rights to that tap) is set.
+    # See dev-docs/release-audit-m3.md §Homebrew.
+    # When ready: `if: ${{ !contains(needs.meta.outputs.tag, '-') }}`.
     if: ${{ false && !contains(needs.meta.outputs.tag, '-') }}
     steps:
       - name: Checkout tap
@@ -434,3 +507,83 @@ jobs:
           git add Formula/bematist.rb
           git commit -m "bematist ${{ needs.meta.outputs.tag }}"
           git push
+
+  publish-deb:
+    name: publish apt repository
+    needs: [meta, release]
+    runs-on: ubuntu-latest
+    # TODO(distro): requires apt-repo host decision (OpenSUSE OBS vs
+    # self-hosted freight on S3+CloudFront vs launchpad) + GPG signing key
+    # provisioning. Until then the .deb files are attached to the GH release
+    # and installed via `curl -L … && dpkg -i`. See
+    # dev-docs/release-audit-m3.md §Debian / Ubuntu.
+    if: ${{ false && !contains(needs.meta.outputs.tag, '-') }}
+    steps:
+      - name: Download distro-packages artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: distro-packages
+          path: pkg
+
+      - name: TODO — sign + push to apt repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          # TODO: import APT_SIGNING_KEY (GPG private key) via --batch.
+          # TODO: run apt-ftparchive packages dists/stable/main/binary-amd64/
+          #   and binary-arm64/; generate Release + InRelease via gpg --sign.
+          # TODO: aws s3 sync to the repo bucket; purge CDN edges.
+          # Reference: https://wiki.debian.org/DebianRepository/SetupWithReprepro
+          echo "publish-deb: stub — see TODO above" >&2
+          exit 1
+
+  publish-aur:
+    name: publish AUR package
+    needs: [meta, release]
+    runs-on: ubuntu-latest
+    # TODO(distro): requires AUR account SSH key + `.SRCINFO` regeneration via
+    # `makepkg --printsrcinfo > .SRCINFO`. AUR accepts pushes over
+    # ssh://aur@aur.archlinux.org/bematist-bin.git. Until then, v0.1.0 is
+    # hand-pushed. See dev-docs/release-audit-m3.md §AUR.
+    if: ${{ false && !contains(needs.meta.outputs.tag, '-') }}
+    steps:
+      - name: Download distro-packages artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: distro-packages
+          path: pkg
+
+      - name: TODO — push PKGBUILD to AUR
+        shell: bash
+        run: |
+          set -euo pipefail
+          # TODO: load AUR_SSH_KEY (ed25519 private key) into ssh-agent.
+          # TODO: git clone ssh://aur@aur.archlinux.org/bematist-bin.git aur-pkg.
+          # TODO: cp pkg/PKGBUILD aur-pkg/; (cd aur-pkg && makepkg --printsrcinfo > .SRCINFO).
+          # TODO: cd aur-pkg && git add -A && git commit -m "bematist $TAG" && git push.
+          echo "publish-aur: stub — see TODO above" >&2
+          exit 1
+
+  publish-choco:
+    name: publish Chocolatey package
+    needs: [meta, release]
+    runs-on: windows-latest
+    # TODO(distro): requires Chocolatey community-feed account + CHOCO_API_KEY
+    # secret + first-package moderation (~1 week). Until then the .nuspec is
+    # attached to the GH release. See dev-docs/release-audit-m3.md §Chocolatey.
+    if: ${{ false && !contains(needs.meta.outputs.tag, '-') }}
+    steps:
+      - name: Download distro-packages artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: distro-packages
+          path: pkg
+
+      - name: TODO — choco pack + push
+        shell: pwsh
+        run: |
+          # TODO: Copy-Item pkg/bematist.nuspec . ; Copy-Item -Recurse pkg/tools .
+          # TODO: choco pack bematist.nuspec
+          # TODO: choco push bematist.$env:VERSION.nupkg --api-key $env:CHOCO_API_KEY --source https://push.chocolatey.org/
+          Write-Error "publish-choco: stub — see TODO above"
+          exit 1
