@@ -126,17 +126,18 @@ jobs:
       INGEST_URL: http://localhost:8000
       BASE_URL: http://localhost:3000
       USE_FIXTURES: "0"
-      # M2 ships warn-only: infrastructure (1M-seed + k6 dashboard/ingest scenarios + CI matrix) is wired
-      # but the merge-blocking flip waits for M3 wire-up of (a) Better Auth tenant binding so the web
-      # uses a real seeded UUID instead of `dev-tenant`, and (b) real-branch queries against
-      # pr_outcome_rollup / commit_outcome_rollup once those MVs are materialized.
-      # Flip default to '1' to make the perf gate merge-blocking.
-      K6_GATE_M2: ${{ github.event.inputs.gate_m2 || '0' }}
+      # M3 item 1 — Better Auth tenant binding landed, so the perf gate flips
+      # to merge-blocking by default. `workflow_dispatch.gate_m2='0'` still
+      # allows warn-only triage runs. The web reads BEMATIST_DEV_TENANT_ID
+      # (seed writes it to tests/perf/.dev-tenant-id below) so `teams.org_id`
+      # queries resolve a real seeded UUID instead of the literal `"dev-tenant"`.
+      K6_GATE_M2: ${{ github.event.inputs.gate_m2 || '1' }}
       PERF_SEED_TOTAL_TARGET: ${{ github.event.inputs.seed_target || '600000' }}
       # Deterministic key secret so the seed mints a known bearer the k6
       # ingest scenario can read via tests/perf/.ingest-bearer.
       PERF_KEY_SECRET: "perf-ci-secret-deterministic-32-bytes-x"
       PERF_INGEST_BEARER_PATH: ${{ github.workspace }}/tests/perf/.ingest-bearer
+      PERF_DEV_TENANT_PATH: ${{ github.workspace }}/tests/perf/.dev-tenant-id
 
     steps:
       - uses: actions/checkout@v4
@@ -200,14 +201,30 @@ jobs:
           tail -120 ingest.out >&2
           exit 1
 
-      - name: Start web (background)
+      - name: Build web (production bundle)
         shell: bash
-        # Dev-mode for now: getSessionCtx synthesizes a dev-tenant ctx in
-        # NODE_ENV!=='production'. Flip to `next start` once Walid's Better
-        # Auth handoff lands; the perf numbers will improve, not regress.
+        # `next start` requires a prior `next build`. Running the production
+        # bundle (not `next dev`) is what brings p95 under the 2s gate; dev
+        # mode compiles on demand and is 5–20× slower.
         run: |
           set -euo pipefail
-          (cd apps/web && bun run dev >../../web.out 2>&1 &) &
+          (cd apps/web && bun run build)
+
+      - name: Start web (background)
+        shell: bash
+        # Production mode (`next start`) + `BEMATIST_DEV_TENANT_ID` pin:
+        # getSessionCtx's prod branch requires either a Better Auth cookie or
+        # the env pin to resolve a real tenant UUID — the seed writes the UUID
+        # to ${PERF_DEV_TENANT_PATH} a step earlier and we export it here.
+        run: |
+          set -euo pipefail
+          if [ ! -s "${PERF_DEV_TENANT_PATH}" ]; then
+            echo "::error title=perf web::${PERF_DEV_TENANT_PATH} missing — seed step must run first."
+            exit 1
+          fi
+          export BEMATIST_DEV_TENANT_ID="$(cat "${PERF_DEV_TENANT_PATH}")"
+          echo "[perf] web pinned to tenant ${BEMATIST_DEV_TENANT_ID}"
+          (cd apps/web && BEMATIST_DEV_TENANT_ID="${BEMATIST_DEV_TENANT_ID}" bun run start >../../web.out 2>&1 &) &
           for i in $(seq 1 180); do
             if curl -fsS -o /dev/null --max-time 2 "${BASE_URL}/"; then
               echo "web ready after ${i}s"

@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { createClient } from "@clickhouse/client";
 import postgres from "postgres";
 import { buildPlan, type EventRow, generateDayForDev, type SeedDev } from "./generate";
@@ -114,6 +115,13 @@ function fmtRate(n: number, ms: number): string {
   return ms > 0 ? `${Math.round((n / ms) * 1000).toLocaleString()} ev/s` : "—";
 }
 
+function writeDevTenantId(orgId: string): void {
+  const outPath = process.env.PERF_DEV_TENANT_PATH ?? "tests/perf/.dev-tenant-id";
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, orgId, { mode: 0o600 });
+  console.log(`[seed:perf] wrote dev tenant uuid to ${outPath} (${orgId})`);
+}
+
 async function main() {
   const rng = new Rng();
   const plan = buildPlan(rng);
@@ -132,6 +140,15 @@ async function main() {
   if ((process.env.PERF_SEED_MINT_KEY ?? "1") === "1") {
     const target = plan.orgs[plan.orgs.length - 1]!;
     await mintIngestKey(target);
+  }
+
+  // Emit the largest org's UUID so the dashboard's dev-mode `getSessionCtx`
+  // (apps/web/lib/session.ts) can resolve a real seeded tenant instead of
+  // `"dev-tenant"` — lets the perf workflow flip K6_GATE_M2=1 without standing
+  // up a real Better Auth handshake. See dev-docs/m3-gate-followups.md item 1.
+  if ((process.env.PERF_SEED_WRITE_DEV_TENANT ?? "1") === "1") {
+    const target = plan.orgs[plan.orgs.length - 1]!;
+    writeDevTenantId(target.id);
   }
 
   const ch = createClient({ url: CH_URL, database: CH_DB });
