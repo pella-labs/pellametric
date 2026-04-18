@@ -598,7 +598,7 @@ export default function InstallPage() {
           </span>
         </div>
 
-        <h3 style={{ fontSize: 16, marginTop: 32, marginBottom: 12, color: "var(--mk-ink)" }}>
+        <h3 className="mk-h3">
           Agents supported in v1
         </h3>
         <table className="mk-table">
@@ -626,7 +626,7 @@ export default function InstallPage() {
           </tbody>
         </table>
 
-        <h3 style={{ fontSize: 16, marginTop: 32, marginBottom: 12, color: "var(--mk-ink)" }}>
+        <h3 className="mk-h3">
           Collector commands
         </h3>
         <ul className="mk-kv">
@@ -635,62 +635,62 @@ export default function InstallPage() {
               <span style={{ color: "var(--mk-ink)", fontFamily: "var(--font-mk-mono)" }}>
                 {c.cmd}
               </span>
-              <span className="mk-muted" style={{ textAlign: "right", maxWidth: "60%" }}>
+              <span className="mk-muted">
                 {c.body}
               </span>
             </li>
           ))}
         </ul>
 
-        <h3 style={{ fontSize: 16, marginTop: 32, marginBottom: 12, color: "var(--mk-ink)" }}>
+        <h3 className="mk-h3">
           Platform capabilities
         </h3>
         <ul className="mk-kv">
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Self-host on your infra</span>
-            <span className="mk-muted" style={{ textAlign: "right", maxWidth: "60%" }}>
+            <span className="mk-muted">
               Docker compose stack — Postgres, ClickHouse, Redis — behind Bematist's web and ingest.
             </span>
           </li>
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Embedded single-binary mode</span>
-            <span className="mk-muted" style={{ textAlign: "right", maxWidth: "60%" }}>
+            <span className="mk-muted">
               One process with an embedded database for individuals and teams of five or fewer.
             </span>
           </li>
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Signed releases with provenance</span>
-            <span className="mk-muted" style={{ textAlign: "right", maxWidth: "60%" }}>
+            <span className="mk-muted">
               Sigstore-signed binaries with SLSA Level 3 build attestation. Verify before you run.
             </span>
           </li>
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Egress allowlist with cert pinning</span>
-            <span className="mk-muted" style={{ textAlign: "right", maxWidth: "60%" }}>
+            <span className="mk-muted">
               Collector can only talk to the hostname you configure. Rogue builds cannot exfiltrate.
             </span>
           </li>
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Local egress journal</span>
-            <span className="mk-muted" style={{ textAlign: "right", maxWidth: "60%" }}>
+            <span className="mk-muted">
               Every byte that leaves the machine is logged on the machine. Tailed with `bematist audit`.
             </span>
           </li>
           <li>
             <span style={{ color: "var(--mk-ink)" }}>On-device redaction of prompt content</span>
-            <span className="mk-muted" style={{ textAlign: "right", maxWidth: "60%" }}>
+            <span className="mk-muted">
               Secrets and PII are stripped before anything is sent. Full-prompt mode is opt-in, never default.
             </span>
           </li>
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Dashboard with seven read surfaces</span>
-            <span className="mk-muted" style={{ textAlign: "right", maxWidth: "60%" }}>
+            <span className="mk-muted">
               Summary, Sessions, Outcomes, Clusters, Insights, Teams, and a private `/me` view.
             </span>
           </li>
           <li>
             <span style={{ color: "var(--mk-ink)" }}>Outcome attribution to merged PRs</span>
-            <span className="mk-muted" style={{ textAlign: "right", maxWidth: "60%" }}>
+            <span className="mk-muted">
               GitHub App joins accepted edits to merged commits. Revert-within-24h subtracts.
             </span>
           </li>
@@ -711,7 +711,7 @@ export default function InstallPage() {
           </span>
         </div>
 
-        <h3 style={{ fontSize: 16, marginTop: 32, marginBottom: 12, color: "var(--mk-ink)" }}>
+        <h3 className="mk-h3">
           Agents on the roadmap
         </h3>
         <table className="mk-table">
@@ -737,7 +737,7 @@ export default function InstallPage() {
           </tbody>
         </table>
 
-        <h3 style={{ fontSize: 16, marginTop: 32, marginBottom: 12, color: "var(--mk-ink)" }}>
+        <h3 className="mk-h3">
           Features on the roadmap
         </h3>
         <div className="mk-features">
