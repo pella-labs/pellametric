@@ -121,7 +121,7 @@ jobs:
       CLICKHOUSE_URL: http://localhost:8123
       CLICKHOUSE_DATABASE: bematist
       REDIS_URL: redis://localhost:6379
-      CH_PG_DICT_HOST: localhost
+      CH_PG_DICT_HOST: postgres
       CH_PG_DICT_PORT: "5432"
       INGEST_URL: http://localhost:8000
       BASE_URL: http://localhost:3000
