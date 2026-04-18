@@ -356,7 +356,11 @@ export function CardPage({
       flipper.removeEventListener("pointermove", onMove);
       flipper.removeEventListener("pointerleave", onLeave);
     };
-  }, []);
+    // Depend on `data` so listeners re-attach after the async fetch on
+    // /card/:id mounts the flipper — the first pass runs with data=null,
+    // `if (!data) return null` skips rendering, and flipperRef.current
+    // is null. Without this, the holo hover never wires up on shared cards.
+  }, [data]);
 
   useEffect(() => {
     if (!data) return;
