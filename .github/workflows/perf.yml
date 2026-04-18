@@ -67,7 +67,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  BUN_VERSION: "1.2.0"
+  # 1.2.9 added `Bun.redis`, which the ingest uses for the SETNX dedup store
+  # (CLAUDE.md §Architecture Rules D14). 1.2.0 logs `BUN_REDIS_UNAVAILABLE` on
+  # every POST /v1/events, and k6's `http_req_failed` threshold trips in 2s.
+  BUN_VERSION: "1.3.9"
 
 jobs:
   perf:
