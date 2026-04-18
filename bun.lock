@@ -37,6 +37,7 @@
       "name": "@bematist/ingest",
       "version": "0.0.0",
       "dependencies": {
+        "@bematist/config": "workspace:*",
         "@bematist/otel": "workspace:*",
         "@bematist/redact": "workspace:*",
         "@bematist/schema": "workspace:*",
