@@ -93,6 +93,57 @@ test("golden claude-code fixture loads and every line is a valid Event", () => {
   expect(events.every((e) => e.tier === "B")).toBe(true);
 });
 
+test("poll() skips files whose (size, mtime) signature is unchanged since last emit", async () => {
+  // Regression test for the M4 rehearsal drift bug: previously every poll
+  // re-parsed and re-emitted every JSONL file, causing duplicate INSERTs
+  // that inflated `dev_daily_rollup` MV state even though ReplacingMergeTree
+  // deduped the raw events. Adapter now records `signature:<path>` and
+  // returns [] for unchanged files.
+  const dir = require("node:fs").mkdtempSync(
+    require("node:path").join(require("node:os").tmpdir(), "bematist-cc-skip-"),
+  );
+  const sub = require("node:path").join(dir, "projects", "proj-a", "sessions");
+  require("node:fs").mkdirSync(sub, { recursive: true });
+  const srcFix = require("node:path").join(__dirname, "fixtures", "real-session.jsonl");
+  require("node:fs").copyFileSync(srcFix, require("node:path").join(sub, "s1.jsonl"));
+
+  const prev = process.env.CLAUDE_CONFIG_DIR;
+  try {
+    process.env.CLAUDE_CONFIG_DIR = dir;
+    const a = new ClaudeCodeAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
+    // In-memory cursor store so poll N+1 sees poll N's writes.
+    const store = new Map<string, string>();
+    const ctx: AdapterContext = {
+      ...mkCtx(),
+      cursor: {
+        get: async (k: string) => store.get(k) ?? null,
+        set: async (k: string, v: string) => {
+          store.set(k, v);
+        },
+      },
+    };
+    await a.init(ctx);
+
+    const first = await a.poll(ctx, new AbortController().signal);
+    expect(first.length).toBeGreaterThan(0);
+
+    // Second poll, file unchanged — must emit zero events.
+    const second = await a.poll(ctx, new AbortController().signal);
+    expect(second).toEqual([]);
+
+    // Third poll after mutating mtime forward — must re-emit.
+    const filePath = require("node:path").join(sub, "s1.jsonl");
+    const future = new Date(Date.now() + 60_000);
+    require("node:fs").utimesSync(filePath, future, future);
+    const third = await a.poll(ctx, new AbortController().signal);
+    expect(third.length).toBeGreaterThan(0);
+  } finally {
+    if (prev === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+    else process.env.CLAUDE_CONFIG_DIR = prev;
+    require("node:fs").rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("poll() reads real-session fixture and emits canonical Events", async () => {
   const dir = require("node:fs").mkdtempSync(
     require("node:path").join(require("node:os").tmpdir(), "bematist-cc-poll-"),

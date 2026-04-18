@@ -1,3 +1,4 @@
+import { statSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Event } from "@bematist/schema";
@@ -39,9 +40,35 @@ export class ClaudeCodeAdapter implements Adapter {
     const files = await findSessionFiles(s.jsonlDir);
     const out: Event[] = [];
     for (const path of files) {
-      const offsetKey = `offset:${path}`;
-      const prevStr = await ctx.cursor.get(offsetKey);
-      const prev = prevStr ? Number.parseInt(prevStr, 10) : 0;
+      // Skip-unchanged gate — `~/.claude/projects/` holds thousands of JSONL
+      // files; without this, every poll re-parses and re-emits every file,
+      // which wedges the poll-timeout race AND inflates the
+      // `dev_daily_rollup` MV because duplicate INSERTs fire `sumState`
+      // before ReplacingMergeTree collapses the raw rows (seen in the M4
+      // rehearsal: 2-3× cost drift per engineer).
+      //
+      // Signature = `size:mtimeMs`. If both are unchanged since last emit,
+      // the file hasn't been touched — nothing to do. Historical sessions
+      // (the 99%) stay frozen and get skipped entirely.
+      //
+      // Active sessions still get re-parsed when they grow. That's
+      // expected — `deterministicId(session_id, seq, kind, line)` in
+      // `normalize.ts` is content-addressed, so re-emits collapse
+      // idempotently at ingest (Redis SETNX) and in the events table
+      // (ReplacingMergeTree). The re-emit window is just "one poll per
+      // session that actually grew," not "every file every poll."
+      const signatureKey = `signature:${path}`;
+      let sigNow: string;
+      try {
+        const stat = statSync(path);
+        sigNow = `${stat.size}:${stat.mtimeMs}`;
+      } catch {
+        // File disappeared between the walk and the stat — skip it.
+        continue;
+      }
+      const sigPrev = await ctx.cursor.get(signatureKey);
+      if (sigPrev === sigNow) continue;
+
       const parsed = await parseSessionFile(path);
       const events = normalizeSession(
         parsed,
@@ -49,7 +76,7 @@ export class ClaudeCodeAdapter implements Adapter {
         SOURCE_VERSION_DEFAULT,
       );
       out.push(...events);
-      await ctx.cursor.set(offsetKey, String(prev));
+      await ctx.cursor.set(signatureKey, sigNow);
     }
     return out;
   }
