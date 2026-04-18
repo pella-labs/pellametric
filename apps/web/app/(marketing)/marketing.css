@@ -1,0 +1,1330 @@
+/*
+ * Marketing-only design tokens + primitives.
+ * Scoped under .bematist-marketing so the dashboard theme is untouched.
+ */
+
+.bematist-marketing {
+  --mk-bg: #0a0b0d;
+  --mk-bg-elevated: #111316;
+  --mk-bg-terminal: #050506;
+  --mk-ink: #ede8de;
+  --mk-ink-muted: rgba(237, 232, 222, 0.6);
+  --mk-ink-faint: rgba(237, 232, 222, 0.3);
+  --mk-border: rgba(237, 232, 222, 0.12);
+  --mk-border-hover: rgba(237, 232, 222, 0.3);
+  --mk-accent: #6e8a6f;
+  --mk-accent-muted: rgba(110, 138, 111, 0.15);
+  --mk-warm: #b07b3e;
+  --mk-grid-size: 24px;
+
+  background-color: var(--mk-bg);
+  color: var(--mk-ink);
+  font-family: var(--font-mk-sans, "Inter", -apple-system, sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.bematist-marketing h1,
+.bematist-marketing h2,
+.bematist-marketing h3,
+.bematist-marketing h4 {
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.bematist-marketing .mk-mono {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+}
+
+.bematist-marketing .mk-sys {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mk-ink-muted);
+}
+
+.bematist-marketing .mk-xs {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bematist-marketing .mk-muted { color: var(--mk-ink-muted); }
+.bematist-marketing .mk-accent { color: var(--mk-accent); }
+.bematist-marketing .mk-warm { color: var(--mk-warm); }
+
+/* ─── Container + section scaffolding ───────────────────────────── */
+.bematist-marketing .mk-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  border-left: 1px solid var(--mk-border);
+  border-right: 1px solid var(--mk-border);
+  background: var(--mk-bg);
+  position: relative;
+  z-index: 10;
+}
+
+.bematist-marketing .mk-section-header {
+  padding: var(--mk-grid-size);
+  border-bottom: 1px solid var(--mk-border);
+}
+
+.bematist-marketing .mk-section-header .mk-mono {
+  color: var(--mk-ink-muted);
+}
+
+.bematist-marketing section {
+  border-bottom: 1px solid var(--mk-border);
+}
+
+/* ─── Nav ───────────────────────────────────────────────────────── */
+.bematist-marketing .mk-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px var(--mk-grid-size);
+  border-bottom: 1px solid var(--mk-border);
+  background: rgba(10, 11, 13, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.bematist-marketing .mk-wordmark {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.05em;
+  color: var(--mk-ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bematist-marketing .mk-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.bematist-marketing .mk-nav-link {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  color: var(--mk-ink-muted);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.bematist-marketing .mk-nav-link:hover { color: var(--mk-ink); }
+
+/* ─── Buttons ──────────────────────────────────────────────────── */
+.bematist-marketing .mk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 18px;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: all 0.18s;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.bematist-marketing .mk-btn-primary {
+  background: var(--mk-accent);
+  color: var(--mk-bg);
+}
+
+.bematist-marketing .mk-btn-primary:hover { background: var(--mk-ink); }
+
+.bematist-marketing .mk-btn-ghost {
+  background: transparent;
+  color: var(--mk-ink);
+  border-color: var(--mk-border);
+}
+
+.bematist-marketing .mk-btn-ghost:hover {
+  border-color: var(--mk-border-hover);
+  background: var(--mk-bg-elevated);
+}
+
+/* ─── Hero ─────────────────────────────────────────────────────── */
+.bematist-marketing .mk-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 120px var(--mk-grid-size) 96px;
+  border-bottom: 1px solid var(--mk-border);
+  isolation: isolate;
+}
+
+.bematist-marketing .mk-hero-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.bematist-marketing .mk-hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 640px;
+}
+
+.bematist-marketing .mk-hero h1 {
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  margin-bottom: 28px;
+}
+
+.bematist-marketing .mk-hero p {
+  font-size: 18px;
+  color: var(--mk-ink-muted);
+  margin-bottom: 40px;
+  max-width: 620px;
+  line-height: 1.55;
+}
+
+.bematist-marketing .mk-hero-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.bematist-marketing .mk-hero-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.7;
+  mask-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 1) 40%,
+    rgba(0, 0, 0, 1) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 1) 40%,
+    rgba(0, 0, 0, 1) 100%
+  );
+}
+
+/* ─── Adapters table ───────────────────────────────────────────── */
+.bematist-marketing .mk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+}
+
+.bematist-marketing .mk-table th,
+.bematist-marketing .mk-table td {
+  padding: 16px var(--mk-grid-size);
+  text-align: left;
+  border-bottom: 1px solid var(--mk-border);
+}
+
+.bematist-marketing .mk-table th {
+  color: var(--mk-ink-muted);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+
+.bematist-marketing .mk-table tbody tr:hover td { background: var(--mk-bg-elevated); }
+
+.bematist-marketing .mk-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--mk-border);
+  font-size: 11px;
+  background: var(--mk-bg);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bematist-marketing .mk-badge.full { border-color: var(--mk-accent); color: var(--mk-accent); }
+.bematist-marketing .mk-badge.est { border-color: var(--mk-ink-muted); color: var(--mk-ink-muted); }
+
+/* ─── Metric block ─────────────────────────────────────────────── */
+.bematist-marketing .mk-metric {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--mk-border);
+}
+
+.bematist-marketing .mk-metric-visual {
+  padding: calc(var(--mk-grid-size) * 2) var(--mk-grid-size);
+  border-right: 1px solid var(--mk-border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+
+.bematist-marketing .mk-metric-value {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: clamp(56px, 7vw, 96px);
+  line-height: 1;
+  color: var(--mk-accent);
+  letter-spacing: -0.04em;
+}
+
+.bematist-marketing .mk-metric-label {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  color: var(--mk-ink-muted);
+  word-break: break-word;
+  letter-spacing: 0;
+}
+
+.bematist-marketing .mk-metric-label strong {
+  color: var(--mk-ink);
+  font-weight: 500;
+}
+
+.bematist-marketing .mk-metric-details {
+  padding: calc(var(--mk-grid-size) * 2) var(--mk-grid-size);
+  background: var(--mk-bg-elevated);
+}
+
+.bematist-marketing .mk-kv {
+  list-style: none;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  margin-top: 16px;
+  padding: 0;
+}
+
+.bematist-marketing .mk-kv li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--mk-border);
+}
+
+.bematist-marketing .mk-kv li:last-child { border-bottom: none; }
+.bematist-marketing .mk-kv li span:first-child { color: var(--mk-ink-muted); }
+
+/* ─── Privacy tiers ────────────────────────────────────────────── */
+.bematist-marketing .mk-tiers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.bematist-marketing .mk-tier {
+  padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
+  border-right: 1px solid var(--mk-border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 220px;
+}
+
+.bematist-marketing .mk-tier:last-child { border-right: none; }
+
+.bematist-marketing .mk-tier.active {
+  background: var(--mk-accent-muted);
+  box-shadow: inset 0 0 0 1px var(--mk-accent);
+}
+
+.bematist-marketing .mk-tier h3 {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.bematist-marketing .mk-tier-label { font-size: 12px; color: var(--mk-ink-muted); font-family: var(--font-mk-mono, "JetBrains Mono", monospace); }
+.bematist-marketing .mk-tier.active .mk-tier-label { color: var(--mk-accent); }
+
+.bematist-marketing .mk-tier p {
+  color: var(--mk-ink-muted);
+  font-size: 13px;
+  flex: 1;
+}
+
+/* ─── Brand monolith (ring + monogram) ─────────────────────────── */
+.bematist-marketing .mk-monolith {
+  position: relative;
+  padding: 120px var(--mk-grid-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 720px;
+}
+
+.bematist-marketing .mk-monolith-stage {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bematist-marketing .mk-monogram-frame {
+  position: absolute;
+  inset: 18%;
+  z-index: 2;
+}
+
+.bematist-marketing .mk-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  animation: mk-ring-spin 120s linear infinite;
+}
+
+.bematist-marketing .mk-ring-outer {
+  animation-direction: reverse;
+  animation-duration: 180s;
+  opacity: 0.35;
+  inset: -8%;
+}
+
+@keyframes mk-ring-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.bematist-marketing .mk-monolith-copy {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  max-width: 520px;
+  padding: 0 24px;
+  z-index: 3;
+}
+
+/* ─── Split lists (bill of rights / not) ───────────────────────── */
+.bematist-marketing .mk-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.bematist-marketing .mk-split-col {
+  padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
+}
+
+.bematist-marketing .mk-split-col.right {
+  border-left: 1px solid var(--mk-border);
+  background: var(--mk-bg-elevated);
+}
+
+.bematist-marketing .mk-numbered {
+  list-style: none;
+  counter-reset: mk-counter;
+  margin: 24px 0 0;
+  padding: 0;
+}
+
+.bematist-marketing .mk-numbered li {
+  position: relative;
+  padding-left: 40px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.bematist-marketing .mk-numbered li::before {
+  counter-increment: mk-counter;
+  content: "0" counter(mk-counter);
+  position: absolute;
+  left: 0;
+  top: 2px;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  color: var(--mk-ink-muted);
+}
+
+.bematist-marketing .mk-numbered.mk-not li {
+  color: var(--mk-ink-muted);
+  text-decoration: line-through;
+}
+
+.bematist-marketing .mk-numbered.mk-not li::before {
+  color: var(--mk-ink-faint);
+  text-decoration: none;
+}
+
+/* ─── Terminal block ───────────────────────────────────────────── */
+.bematist-marketing .mk-terminal-wrap {
+  padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
+  background: var(--mk-bg-terminal);
+}
+
+.bematist-marketing .mk-terminal {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  color: var(--mk-ink-muted);
+  line-height: 1.9;
+}
+
+.bematist-marketing .mk-term-prompt { color: var(--mk-accent); margin-right: 10px; }
+.bematist-marketing .mk-term-cmd { color: var(--mk-ink); }
+.bematist-marketing .mk-term-comment { color: #5c6370; }
+
+/* ─── License + footer ─────────────────────────────────────────── */
+.bematist-marketing .mk-license {
+  padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
+}
+
+.bematist-marketing .mk-license-body {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  margin-top: 12px;
+  line-height: 1.8;
+  color: var(--mk-ink-muted);
+}
+
+.bematist-marketing .mk-license-body strong {
+  color: var(--mk-ink);
+  font-weight: 500;
+}
+
+.bematist-marketing footer.mk-footer {
+  padding: var(--mk-grid-size);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  color: var(--mk-ink-muted);
+  border-bottom: none;
+  border-top: 1px solid var(--mk-border);
+}
+
+.bematist-marketing footer.mk-footer .mk-footer-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 540px;
+}
+
+.bematist-marketing footer.mk-footer .mk-footer-line {
+  color: var(--mk-ink);
+  font-size: 13px;
+}
+
+.bematist-marketing footer.mk-footer .mk-footer-sub {
+  color: var(--mk-ink-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+
+.bematist-marketing footer.mk-footer a {
+  color: var(--mk-ink-muted);
+  text-decoration: none;
+  margin-left: 18px;
+  cursor: pointer;
+}
+
+.bematist-marketing footer.mk-footer a:hover { color: var(--mk-ink); }
+
+/* ─── Features grid ────────────────────────────────────────────── */
+.bematist-marketing .mk-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.bematist-marketing .mk-feature {
+  padding: calc(var(--mk-grid-size) * 1.75) var(--mk-grid-size);
+  border-right: 1px solid var(--mk-border);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 240px;
+}
+
+.bematist-marketing .mk-feature:last-child { border-right: none; }
+
+.bematist-marketing .mk-feature h3 {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.bematist-marketing .mk-feature p {
+  color: var(--mk-ink-muted);
+  font-size: 14px;
+  line-height: 1.55;
+  flex: 1;
+}
+
+.bematist-marketing .mk-feature-index {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  color: var(--mk-ink-faint);
+  letter-spacing: 0.08em;
+}
+
+/* ─── WrappedCard (hero right) ────────────────────────────────── */
+.bematist-marketing .wrapped-card-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  perspective: 1400px;
+  justify-self: end;
+  width: 100%;
+  max-width: 440px;
+}
+
+.bematist-marketing .wrapped-card {
+  --mx: 50%;
+  --my: 50%;
+  --tx: 0deg;
+  --ty: 0deg;
+  position: relative;
+  aspect-ratio: 5 / 7;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(140% 90% at 20% 0%, rgba(110, 138, 111, 0.18), transparent 55%),
+    radial-gradient(100% 80% at 90% 100%, rgba(176, 123, 62, 0.22), transparent 55%),
+    linear-gradient(160deg, #14161a, #0a0b0d 60%);
+  box-shadow:
+    0 40px 80px -40px rgba(0, 0, 0, 0.8),
+    inset 0 0 0 1px rgba(237, 232, 222, 0.08);
+  transform: rotateX(var(--ty)) rotateY(var(--tx));
+  transform-style: preserve-3d;
+  transition: transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  cursor: crosshair;
+}
+
+.bematist-marketing .wrapped-card-shine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    420px circle at var(--mx) var(--my),
+    rgba(237, 232, 222, 0.14),
+    transparent 45%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.9;
+}
+
+.bematist-marketing .wrapped-card-inner {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 28px;
+  gap: 24px;
+  color: var(--mk-ink);
+}
+
+.bematist-marketing .wrapped-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+}
+
+.bematist-marketing .wrapped-card-brand { color: var(--mk-ink); font-weight: 700; }
+.bematist-marketing .wrapped-card-tier {
+  color: var(--mk-warm);
+  border: 1px solid rgba(176, 123, 62, 0.4);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+}
+
+.bematist-marketing .wrapped-card-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bematist-marketing .wrapped-card-label {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--mk-ink-muted);
+  text-transform: uppercase;
+}
+
+.bematist-marketing .wrapped-card-title {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.bematist-marketing .wrapped-card-sub {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  color: var(--mk-ink-muted);
+}
+
+.bematist-marketing .wrapped-card-sub strong { color: var(--mk-ink); font-weight: 500; }
+
+.bematist-marketing .wrapped-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.bematist-marketing .wrapped-stat {
+  padding: 12px;
+  border: 1px solid rgba(237, 232, 222, 0.08);
+  background: rgba(237, 232, 222, 0.02);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bematist-marketing .wrapped-stat-label {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--mk-ink-muted);
+  text-transform: uppercase;
+}
+
+.bematist-marketing .wrapped-stat-value {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.bematist-marketing .wrapped-card-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 40px;
+}
+
+.bematist-marketing .wrapped-card-bar {
+  flex: 1;
+  background: linear-gradient(180deg, var(--mk-accent), rgba(110, 138, 111, 0.3));
+  border-radius: 2px 2px 0 0;
+  min-height: 4px;
+}
+
+.bematist-marketing .wrapped-card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  color: var(--mk-ink-muted);
+  padding-top: 12px;
+  border-top: 1px dashed rgba(237, 232, 222, 0.1);
+}
+
+.bematist-marketing .wrapped-card-link {
+  color: var(--mk-accent);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.bematist-marketing .wrapped-card-link:hover { color: var(--mk-ink); }
+
+.bematist-marketing .wrapped-card-caption p {
+  font-size: 13px;
+  color: var(--mk-ink-muted);
+  line-height: 1.55;
+  margin-top: 6px;
+}
+
+/* ─── GetStarted flow ──────────────────────────────────────────── */
+.bematist-marketing .mk-getstarted {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 520px;
+  width: 100%;
+}
+
+.bematist-marketing .mk-getstarted-note {
+  padding: 14px 18px;
+  border: 1px dashed var(--mk-border);
+  border-radius: 8px;
+  background: rgba(176, 123, 62, 0.06);
+}
+
+.bematist-marketing .mk-getstarted-note p {
+  font-size: 12px;
+  color: var(--mk-ink-muted);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.bematist-marketing .mk-getstarted-panel {
+  padding: 32px;
+  border: 1px solid var(--mk-border);
+  border-radius: 10px;
+  background: var(--mk-bg-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bematist-marketing .mk-getstarted-panel h3 {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.bematist-marketing .mk-getstarted-panel p {
+  color: var(--mk-ink-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.bematist-marketing .mk-getstarted-btn {
+  align-self: flex-start;
+  height: 44px;
+  gap: 10px;
+  padding: 0 22px;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.bematist-marketing .mk-getstarted-star-wrap {
+  position: relative;
+  padding: 20px 0;
+}
+
+.bematist-marketing .mk-getstarted-username {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.bematist-marketing .mk-getstarted-username-input {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: 44px;
+  padding: 0 14px;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  color: var(--mk-ink);
+  background: var(--mk-bg-terminal);
+  border: 1px solid var(--mk-border);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.bematist-marketing .mk-getstarted-username-input::placeholder {
+  color: var(--mk-ink-faint);
+}
+
+.bematist-marketing .mk-getstarted-username-input:focus {
+  border-color: var(--mk-accent);
+}
+
+.bematist-marketing .mk-getstarted-username-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bematist-marketing .mk-getstarted-username .mk-getstarted-btn {
+  margin-top: 0;
+  align-self: stretch;
+}
+
+.bematist-marketing .mk-getstarted-cmd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid var(--mk-border);
+  border-radius: 8px;
+  background: var(--mk-bg-terminal);
+  min-width: 0;
+}
+
+.bematist-marketing .mk-getstarted-cmd pre {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 13px;
+  color: var(--mk-ink);
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow: hidden;
+  user-select: all;
+}
+
+.bematist-marketing .mk-getstarted-finefoot {
+  font-size: 11px;
+  color: var(--mk-ink-faint);
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+}
+
+.bematist-marketing .mk-getstarted-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bematist-marketing .mk-getstarted-entry-card {
+  text-align: left;
+  padding: 18px 20px;
+  border: 1px solid var(--mk-border);
+  border-radius: 10px;
+  background: var(--mk-bg-elevated);
+  color: var(--mk-ink);
+  cursor: pointer;
+  transition:
+    border-color 0.18s,
+    background 0.18s,
+    transform 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: inherit;
+}
+
+.bematist-marketing .mk-getstarted-entry-card > svg {
+  flex-shrink: 0;
+}
+
+.bematist-marketing .mk-getstarted-entry-card > div:not(.mk-getstarted-entry-chevron) {
+  flex: 1;
+  min-width: 0;
+}
+
+.bematist-marketing .mk-getstarted-entry-card:hover {
+  border-color: rgba(110, 138, 111, 0.45);
+  background: var(--mk-bg);
+  transform: translateY(-1px);
+}
+
+.bematist-marketing .mk-getstarted-entry-primary {
+  border-color: rgba(110, 138, 111, 0.55);
+  background: linear-gradient(
+    135deg,
+    rgba(110, 138, 111, 0.14),
+    rgba(110, 138, 111, 0.04) 60%,
+    var(--mk-bg-elevated)
+  );
+}
+
+.bematist-marketing .mk-getstarted-entry-primary:hover {
+  border-color: rgba(110, 138, 111, 0.8);
+  background: linear-gradient(
+    135deg,
+    rgba(110, 138, 111, 0.22),
+    rgba(110, 138, 111, 0.06) 60%,
+    var(--mk-bg)
+  );
+}
+
+.bematist-marketing .mk-getstarted-entry-primary > svg {
+  color: var(--mk-accent);
+}
+
+.bematist-marketing .mk-getstarted-entry-alt {
+  padding: 14px 18px;
+  background: transparent;
+}
+
+.bematist-marketing .mk-getstarted-entry-alt .mk-getstarted-entry-title {
+  font-size: 14px;
+  color: var(--mk-ink-muted);
+}
+
+.bematist-marketing .mk-getstarted-entry-alt:hover .mk-getstarted-entry-title {
+  color: var(--mk-ink);
+}
+
+.bematist-marketing .mk-getstarted-entry-alt > svg {
+  color: var(--mk-ink-faint);
+  width: 16px;
+  height: 16px;
+}
+
+.bematist-marketing .mk-getstarted-entry-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  color: var(--mk-ink-faint);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 2px 0;
+}
+
+.bematist-marketing .mk-getstarted-entry-divider::before,
+.bematist-marketing .mk-getstarted-entry-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--mk-border);
+}
+
+.bematist-marketing .mk-getstarted-entry-chevron {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 18px;
+  color: var(--mk-accent);
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.18s;
+}
+
+.bematist-marketing .mk-getstarted-entry-primary:hover .mk-getstarted-entry-chevron {
+  transform: translateX(2px);
+}
+
+.bematist-marketing .mk-getstarted-entry-title {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.bematist-marketing .mk-getstarted-entry-sub {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  color: var(--mk-ink-muted);
+  line-height: 1.45;
+}
+
+.bematist-marketing .mk-getstarted-link {
+  color: var(--mk-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bematist-marketing .mk-getstarted-link:hover { color: var(--mk-ink); }
+
+.bematist-marketing .mk-getstarted-error {
+  font-size: 12px;
+  color: #e07b7b;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  margin-top: 4px;
+}
+
+@media (max-width: 600px) {
+  .bematist-marketing .mk-getstarted-entry-card { padding: 14px 16px; gap: 12px; }
+  .bematist-marketing .mk-getstarted-entry-title { font-size: 14px; }
+  .bematist-marketing .mk-getstarted-entry-sub { font-size: 11px; }
+}
+
+/* ─── Demo page ────────────────────────────────────────────────── */
+.bematist-marketing .mk-demo {
+  padding: 80px var(--mk-grid-size);
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 64px;
+  align-items: start;
+}
+
+.bematist-marketing .mk-demo-card-host {
+  position: relative;
+  min-height: 720px;
+  aspect-ratio: 5 / 7;
+  max-height: 820px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Embed the shareable card inside the demo column (originally position:fixed) */
+.bematist-marketing .mk-demo-card-host .card-scene {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(380px, calc(100% - 40px));
+  height: min(540px, calc(100% - 120px));
+  z-index: 1;
+}
+
+.bematist-marketing .mk-demo-card-host .card-nav-side {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.bematist-marketing .mk-demo-card-host .card-nav-left { left: 12px; }
+.bematist-marketing .mk-demo-card-host .card-nav-right { right: 12px; }
+
+.bematist-marketing .mk-demo-card-host .card-page-dots {
+  position: absolute;
+  bottom: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.bematist-marketing .mk-demo-card-host .share-bar {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.bematist-marketing .mk-demo-card-host .flip-hint,
+.bematist-marketing .mk-demo-card-host .global-toggle {
+  display: none;
+}
+
+/* Tone down the holo shimmer to fit the Bematist aesthetic */
+.bematist-marketing .mk-demo-card-host .card-holo {
+  --card-opacity: 0.35;
+}
+.bematist-marketing .mk-demo-card-host .card-holo-shine { opacity: 0.35; }
+.bematist-marketing .mk-demo-card-host .card-holo-glare { opacity: 0.35; }
+
+.bematist-marketing .mk-demo h1 {
+  font-size: clamp(28px, 3.4vw, 40px);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.bematist-marketing .mk-demo > div:first-child > p {
+  color: var(--mk-ink-muted);
+  font-size: 15px;
+  line-height: 1.55;
+  margin-top: 14px;
+  margin-bottom: 28px;
+  max-width: 420px;
+}
+
+/* ─── Dashboard screenshot section ─────────────────────────────── */
+.bematist-marketing .mk-dashboard-shot {
+  position: relative;
+  padding: 96px var(--mk-grid-size);
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  align-items: center;
+}
+
+.bematist-marketing .mk-dashboard-shot-frame {
+  width: 100%;
+  max-width: 1080px;
+  border: 1px solid var(--mk-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--mk-bg-elevated);
+  box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.9);
+}
+
+.bematist-marketing .mk-dashboard-shot-chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--mk-border);
+  background: #0d0f12;
+}
+
+.bematist-marketing .mk-dashboard-shot-chrome span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(237, 232, 222, 0.18);
+}
+
+.bematist-marketing .mk-dashboard-shot-chrome .dot-url {
+  width: auto;
+  flex: 1;
+  height: 22px;
+  border-radius: 4px;
+  background: rgba(237, 232, 222, 0.04);
+  margin-left: 10px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  color: var(--mk-ink-muted);
+  letter-spacing: 0.02em;
+}
+
+.bematist-marketing .mk-dashboard-shot-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 520px;
+}
+
+.bematist-marketing .mk-dashboard-shot-side {
+  border-right: 1px solid var(--mk-border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bematist-marketing .mk-dashboard-shot-side-item {
+  padding: 6px 10px;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  color: var(--mk-ink-muted);
+  border-radius: 4px;
+}
+
+.bematist-marketing .mk-dashboard-shot-side-item.active {
+  background: rgba(110, 138, 111, 0.12);
+  color: var(--mk-ink);
+}
+
+.bematist-marketing .mk-dashboard-shot-main {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.bematist-marketing .mk-dashboard-shot-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.bematist-marketing .mk-dashboard-shot-kpi {
+  padding: 16px;
+  border: 1px solid var(--mk-border);
+  border-radius: 6px;
+  background: var(--mk-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bematist-marketing .mk-dashboard-shot-kpi-label {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--mk-ink-muted);
+  text-transform: uppercase;
+}
+
+.bematist-marketing .mk-dashboard-shot-kpi-value {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.bematist-marketing .mk-dashboard-shot-chart {
+  flex: 1;
+  border: 1px solid var(--mk-border);
+  border-radius: 6px;
+  padding: 20px;
+  background: var(--mk-bg);
+  min-height: 260px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.bematist-marketing .mk-dashboard-shot-chart-bar {
+  flex: 1;
+  background: linear-gradient(180deg, var(--mk-accent), rgba(110, 138, 111, 0.2));
+  border-radius: 3px 3px 0 0;
+}
+
+/* ─── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .bematist-marketing .mk-metric,
+  .bematist-marketing .mk-tiers,
+  .bematist-marketing .mk-split,
+  .bematist-marketing .mk-features {
+    grid-template-columns: 1fr;
+  }
+  .bematist-marketing .mk-metric-visual,
+  .bematist-marketing .mk-tier,
+  .bematist-marketing .mk-feature,
+  .bematist-marketing .mk-split-col.right {
+    border-right: none;
+    border-bottom: 1px solid var(--mk-border);
+    border-left: none;
+  }
+  .bematist-marketing .mk-hero { padding: 100px var(--mk-grid-size) 80px; }
+  .bematist-marketing .mk-hero-grid,
+  .bematist-marketing .mk-demo { grid-template-columns: 1fr; gap: 64px; }
+  .bematist-marketing .wrapped-card-wrap { justify-self: center; max-width: 360px; }
+  .bematist-marketing .mk-dashboard-shot-body { grid-template-columns: 1fr; }
+  .bematist-marketing .mk-dashboard-shot-side { display: none; }
+  .bematist-marketing .mk-dashboard-shot-kpis { grid-template-columns: 1fr 1fr; }
+  .bematist-marketing .mk-monolith { min-height: 560px; padding: 80px var(--mk-grid-size); }
+}
+
+@media (max-width: 640px) {
+  /* Nav: drop middle links, tighten buttons */
+  .bematist-marketing .mk-nav { padding: 12px 16px; }
+  .bematist-marketing .mk-nav-link { display: none; }
+  .bematist-marketing .mk-nav-links { gap: 8px; }
+  .bematist-marketing .mk-btn {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  /* Hero + demo column center-align on small viewports */
+  .bematist-marketing .mk-hero { padding: 64px 20px 48px; text-align: center; }
+  .bematist-marketing .mk-hero h1,
+  .bematist-marketing .mk-hero p { margin-left: auto; margin-right: auto; }
+  .bematist-marketing .mk-hero-eyebrow { justify-content: center; }
+  .bematist-marketing .mk-getstarted { align-items: stretch; }
+  .bematist-marketing .mk-getstarted-note,
+  .bematist-marketing .mk-getstarted-panel,
+  .bematist-marketing .mk-getstarted-entry-card {
+    text-align: left;
+  }
+  .bematist-marketing .mk-getstarted-entry-card { justify-content: flex-start; }
+
+  /* Footer stacks vertically, centered */
+  .bematist-marketing .mk-footer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+    padding: 32px 20px;
+  }
+  .bematist-marketing .mk-footer > div { justify-content: center; flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bematist-marketing .mk-ring { animation: none; }
+}
