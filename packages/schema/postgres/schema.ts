@@ -27,8 +27,105 @@ export const users = pgTable("users", {
     .references(() => orgs.id),
   sso_subject: text("sso_subject").notNull().unique(),
   email: text("email").notNull(),
+  /**
+   * Better Auth identity link per migration 0004_better_auth_tables.sql.
+   * Nullable so pre-Better-Auth seeded rows still resolve; Better Auth
+   * `databaseHooks.user.create.after` back-fills on first OAuth callback.
+   */
+  better_auth_user_id: text("better_auth_user_id")
+    .unique()
+    .references(() => betterAuthUser.id, { onDelete: "set null" }),
+  /**
+   * Dashboard RBAC role. Defaults to 'ic'; first user in an org is promoted
+   * to 'admin' by the Better Auth sign-up hook. See apps/web/lib/auth.ts.
+   */
+  role: text("role").notNull().default("ic"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Better Auth identity tables (migration 0004_better_auth_tables.sql).
+ *
+ * Shape matches Better Auth's default `drizzleAdapter` schema (snake_case,
+ * singular table names, text PKs). Do NOT rename columns — the adapter uses
+ * the names below verbatim unless the config passes a field mapping.
+ *
+ * Decision record (M4 PR 1): option (a) — Better Auth owns its own tables;
+ * our `users` table links via `users.better_auth_user_id`. Rollback = drop
+ * these four tables and the two `users` columns added by migration 0004.
+ */
+export const betterAuthUser = pgTable("better_auth_user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  email_verified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const betterAuthSession = pgTable(
+  "better_auth_session",
+  {
+    id: text("id").primaryKey(),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => betterAuthUser.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ip_address: text("ip_address"),
+    user_agent: text("user_agent"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdx: index("better_auth_session_user_id_idx").on(table.user_id),
+    tokenIdx: index("better_auth_session_token_idx").on(table.token),
+  }),
+);
+
+export const betterAuthAccount = pgTable(
+  "better_auth_account",
+  {
+    id: text("id").primaryKey(),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => betterAuthUser.id, { onDelete: "cascade" }),
+    account_id: text("account_id").notNull(),
+    provider_id: text("provider_id").notNull(),
+    access_token: text("access_token"),
+    refresh_token: text("refresh_token"),
+    id_token: text("id_token"),
+    access_token_expires_at: timestamp("access_token_expires_at", { withTimezone: true }),
+    refresh_token_expires_at: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    password: text("password"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    providerAccountUniq: uniqueIndex("better_auth_account_provider_account_uniq").on(
+      table.provider_id,
+      table.account_id,
+    ),
+    userIdx: index("better_auth_account_user_id_idx").on(table.user_id),
+  }),
+);
+
+export const betterAuthVerification = pgTable(
+  "better_auth_verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    identifierIdx: index("better_auth_verification_identifier_idx").on(table.identifier),
+  }),
+);
 
 /** Teams added in D1-05 scope bump — required by team_weekly_rollup's dev_team_dict CH dictionary. */
 export const teams = pgTable("teams", {

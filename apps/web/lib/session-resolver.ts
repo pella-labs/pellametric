@@ -4,13 +4,20 @@
 // the Next-specific request-extraction layer.
 
 import { createHash } from "node:crypto";
-import { AuthError, type Ctx, type RedisClient, type Role } from "@bematist/api";
+import { AuthError, type Ctx, type PgClient, type RedisClient, type Role } from "@bematist/api";
 
 export const DEV_TENANT_ID_FALLBACK = deterministicUuid("bematist:dev-tenant");
 export const DEV_ACTOR_ID_FALLBACK = deterministicUuid("bematist:dev-actor");
 export const SESSION_COOKIE_NAME = "bematist-session";
 export const SESSION_REDIS_PREFIX = "auth:session:";
 export const REVEAL_REDIS_PREFIX = "reveal:";
+/**
+ * Better Auth's default Next.js cookie name. Added in M4 PR 1 so the prod
+ * path can also resolve sessions written by `better-auth` without going
+ * through our legacy Redis shim. Name is stable for Better Auth 1.6.x; if
+ * the upstream ever renames it, bump this pin.
+ */
+export const BETTER_AUTH_COOKIE_NAME = "better-auth.session_token";
 
 interface SessionPayload {
   user_id: string;
@@ -24,16 +31,30 @@ export interface ResolverDeps {
   env: Readonly<Record<string, string | undefined>>;
   redis: RedisClient;
   db: Ctx["db"];
+  /**
+   * Optional: Better Auth session-cookie value pulled from
+   * `better-auth.session_token`. When present, we look up the session row
+   * via `pg` (Better Auth stores sessions server-side). Separate from
+   * `sessionCookie` (the legacy `bematist-session` → Redis shim) so the
+   * cookie-based tests stay stable.
+   */
+  betterAuthCookie?: string | null;
 }
 
 /**
- * Resolve a request-scoped `Ctx` from pre-extracted inputs. Three paths, in
+ * Resolve a request-scoped `Ctx` from pre-extracted inputs. Four paths, in
  * priority order:
  *
- *   1. `bematist-session` cookie → Redis `auth:session:<token>` JSON
- *      `{ user_id, org_id, role }`. Better Auth-compatible shape.
- *   2. `BEMATIST_DEV_TENANT_ID` env → pin dashboard to a seeded org UUID.
- *   3. NODE_ENV !== "production" fallback → deterministic UUID derived from
+ *   1. Better Auth cookie (`better-auth.session_token`) → PG lookup joins
+ *      `better_auth_session` → `better_auth_user` → `users` to surface our
+ *      tenant-scoped `org_id` + `role`. Added in M4 PR 1 when real signup
+ *      landed; this is the prod path going forward.
+ *   2. `bematist-session` cookie → Redis `auth:session:<token>` JSON
+ *      `{ user_id, org_id, role }`. Legacy shim pre-dating Better Auth;
+ *      retained so existing perf / integration harnesses that pre-seed
+ *      Redis keep working.
+ *   3. `BEMATIST_DEV_TENANT_ID` env → pin dashboard to a seeded org UUID.
+ *   4. NODE_ENV !== "production" fallback → deterministic UUID derived from
  *      the literal `"dev-tenant"` so Postgres UUID casts succeed.
  *
  * Prod with no cookie and no env → throws `UNAUTHORIZED`.
@@ -46,6 +67,21 @@ export interface ResolverDeps {
 export async function resolveSessionCtx(deps: ResolverDeps): Promise<Ctx> {
   const reveal = await resolveRevealToken(deps.revealHeader, deps.redis);
 
+  // Path 1 — Better Auth's own cookie + Postgres session row (prod).
+  const fromBetterAuth = await resolveBetterAuthFromPg(deps.betterAuthCookie ?? null, deps.db.pg);
+  if (fromBetterAuth) {
+    return withReveal(
+      {
+        tenant_id: fromBetterAuth.org_id,
+        actor_id: fromBetterAuth.user_id,
+        role: fromBetterAuth.role,
+        db: deps.db,
+      },
+      reveal,
+    );
+  }
+
+  // Path 2 — legacy Redis-backed session cookie (pre-M4 perf harness).
   const fromCookie = await resolveBetterAuthSession(deps.sessionCookie, deps.redis);
   if (fromCookie) {
     return withReveal(
@@ -103,6 +139,76 @@ async function resolveBetterAuthSession(
     return parsed;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Look up a Better Auth session straight from Postgres.
+ *
+ * Better Auth stores session rows in `better_auth_session` keyed on the
+ * cookie value's `token` column; the Next.js cookie ships the token in its
+ * signed form `<id>.<signature>`. Better Auth's own `auth.api.getSession`
+ * handles the signature verification; here we re-query to join to our
+ * internal `users` row (which has the org/role our dashboard cares about).
+ *
+ * Since the cookie value is signed and includes the base token as the prefix
+ * before the dot, we split on `.` and take the first segment. If there is no
+ * dot, we use the raw value (covers older/newer cookie formats). The session
+ * row lookup then validates the token and we return null if it's absent or
+ * expired — callers fall through to the next resolver path.
+ *
+ * Note: `users.better_auth_user_id` is nullable (so pre-Better-Auth seeded
+ * rows keep working); if a session is live but no `users` row exists yet,
+ * the `INNER JOIN` below omits the session and we fall through to UNAUTHORIZED
+ * in prod. The Better Auth `databaseHooks.user.create.after` hook
+ * back-fills `users` on first OAuth, so this null-join only happens for the
+ * brief window between Better Auth user create and the hook firing.
+ */
+async function resolveBetterAuthFromPg(
+  cookieValue: string | null,
+  pg: PgClient,
+): Promise<SessionPayload | null> {
+  if (!cookieValue) return null;
+  const token = cookieValue.includes(".") ? cookieValue.split(".")[0] : cookieValue;
+  if (!token || token.length === 0) return null;
+  const rows = await pg.query<{ id: string; org_id: string; role: string }>(
+    `
+      SELECT u.id, u.org_id, u.role
+      FROM better_auth_session s
+      JOIN users u ON u.better_auth_user_id = s.user_id
+      WHERE s.token = $1
+        AND s.expires_at > now()
+      LIMIT 1
+    `,
+    [token],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  const role = normalizePgRole(row.role);
+  if (!role) return null;
+  return { user_id: row.id, org_id: row.org_id, role };
+}
+
+/**
+ * `users.role` is a free-text column; the dashboard's `Role` union is
+ * tighter. Map the two common values explicitly and fall back to null so
+ * the caller skips the session (safer than coercing to an unexpected role).
+ */
+function normalizePgRole(role: string): Role | null {
+  switch (role) {
+    case "admin":
+      return "admin";
+    case "manager":
+      return "manager";
+    case "engineer":
+    case "ic":
+      return "engineer";
+    case "auditor":
+      return "auditor";
+    case "viewer":
+      return "viewer";
+    default:
+      return null;
   }
 }
 

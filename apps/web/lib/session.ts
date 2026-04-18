@@ -2,7 +2,11 @@ import "server-only";
 import type { Ctx } from "@bematist/api";
 import { cookies, headers } from "next/headers";
 import { getDbClients } from "./db";
-import { resolveSessionCtx, SESSION_COOKIE_NAME } from "./session-resolver";
+import {
+  BETTER_AUTH_COOKIE_NAME,
+  resolveSessionCtx,
+  SESSION_COOKIE_NAME,
+} from "./session-resolver";
 
 /**
  * Resolve the current-request `Ctx` from the Better Auth session cookie,
@@ -20,8 +24,13 @@ export async function getSessionCtx(): Promise<Ctx> {
   const ck = await cookies();
   const db = getDbClients();
 
+  // Better Auth sets `better-auth.session_token` on successful OAuth.
+  // Separate from the legacy `bematist-session` Redis shim so the M4 path
+  // (PG-backed session row) and the pre-M4 path (Redis-backed) can coexist
+  // without interfering with each other's tests.
   return resolveSessionCtx({
     sessionCookie: ck.get(SESSION_COOKIE_NAME)?.value ?? null,
+    betterAuthCookie: ck.get(BETTER_AUTH_COOKIE_NAME)?.value ?? null,
     revealHeader: hs.get("x-reveal-token"),
     env: process.env,
     redis: db.redis,

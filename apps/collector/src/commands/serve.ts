@@ -2,103 +2,49 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { egressSqlite } from "@bematist/config";
-import { buildRegistry } from "../adapters";
-import { SqliteCursorStore } from "../cursor/store";
+import { loadConfig } from "../config";
+import { EgressLog } from "../egress/egressLog";
 import { Journal } from "../egress/journal";
 import { migrate } from "../egress/migrations";
-import { flushOnce } from "../egress/worker";
 import { log } from "../logger";
-import { runOnce } from "../orchestrator";
-
-const POLL_INTERVAL_MS = 5000;
-const FLUSH_INTERVAL_MS = 1000;
+import { startLoop } from "../loop";
 
 export async function runServe(): Promise<void> {
+  const config = loadConfig();
+  if (!config.token && !config.dryRun) {
+    console.error("bematist: BEMATIST_TOKEN is required (or set BEMATIST_DRY_RUN=1 to log-only)");
+    process.exit(2);
+  }
+
   const dbPath = egressSqlite();
   const dbDir = dirname(dbPath);
-  if (!existsSync(dbDir)) {
-    mkdirSync(dbDir, { recursive: true });
-  }
+  if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
   const db = new Database(dbPath);
   migrate(db);
-  const j = new Journal(db);
+  const journal = new Journal(db);
+  const egressLog = new EgressLog(config.dataDir);
 
-  const registry = buildRegistry({
-    tenantId: process.env.DEVMETRICS_ORG ?? "solo",
-    engineerId: process.env.DEVMETRICS_ENGINEER ?? "me",
-    deviceId: process.env.DEVMETRICS_DEVICE ?? "localhost",
-  });
+  const handle = startLoop({ db, journal, egressLog, config });
 
-  for (const a of registry) {
-    await a.init({
-      dataDir: egressSqlite(),
-      policy: { enabled: true, tier: "B", pollIntervalMs: POLL_INTERVAL_MS },
-      log: {
-        trace: () => {},
-        debug: () => {},
-        info: () => {},
-        warn: () => {},
-        error: () => {},
-        fatal: () => {},
-        child: function () {
-          return this;
-        },
-      },
-      tier: "B",
-      cursor: new SqliteCursorStore(db, a.id),
-    });
-  }
+  log.info(
+    {
+      endpoint: config.endpoint,
+      adapters: handle.adapters.map((a) => a.id),
+      dryRun: config.dryRun,
+      dataDir: config.dataDir,
+    },
+    "bematist serve: starting",
+  );
 
-  let running = true;
-  const shutdown = () => {
-    log.info("bematist serve: graceful shutdown");
-    running = false;
+  const stop = async () => {
+    log.info("bematist serve: shutdown signal received");
+    await handle.stop();
+    db.close();
+    process.exit(0);
   };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
 
-  const endpoint = process.env.DEVMETRICS_INGEST_HOST ?? "http://localhost:8000";
-  const token = process.env.DEVMETRICS_TOKEN ?? "dm_solo_dev";
-
-  log.info({ endpoint, adapters: registry.map((a) => a.id) }, "bematist serve: starting");
-
-  while (running) {
-    try {
-      const events = await runOnce(
-        registry,
-        (a) => ({
-          dataDir: egressSqlite(),
-          policy: { enabled: true, tier: "B", pollIntervalMs: POLL_INTERVAL_MS },
-          log: {
-            trace: () => {},
-            debug: () => {},
-            info: () => {},
-            warn: () => {},
-            error: () => {},
-            fatal: () => {},
-            child: function () {
-              return this;
-            },
-          },
-          tier: "B",
-          cursor: new SqliteCursorStore(db, a.id),
-        }),
-        { concurrency: 4, perPollTimeoutMs: 30_000 },
-      );
-      for (const e of events) j.enqueue(e);
-
-      const flush = await flushOnce(j, { endpoint, token, fetch, dryRun: false });
-      if (flush.fatal) {
-        log.fatal("egress fatal — halting");
-        running = false;
-        break;
-      }
-      const sleep = flush.retryAfterSeconds ?? 0;
-      await new Promise((r) => setTimeout(r, Math.max(FLUSH_INTERVAL_MS, sleep * 1000)));
-    } catch (e) {
-      log.warn({ err: String(e) }, "serve loop error");
-      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-    }
-  }
+  await handle.done;
   db.close();
 }

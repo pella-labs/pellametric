@@ -10,7 +10,10 @@
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "bun src/index.ts",
-    "build": "bun build --compile --minify --sourcemap --target=bun src/cli.ts --outfile dist/bematist",
+    "build": "bun build --compile --minify --sourcemap --target=bun src/index.ts --outfile dist/bematist",
+    "build:darwin-arm64": "bun build --compile --minify --sourcemap --target=bun-darwin-arm64 src/index.ts --outfile bin/bematist-darwin-arm64",
+    "build:darwin-x64": "bun build --compile --minify --sourcemap --target=bun-darwin-x64 src/index.ts --outfile bin/bematist-darwin-x64",
+    "build:linux-x64": "bun build --compile --minify --sourcemap --target=bun-linux-x64 src/index.ts --outfile bin/bematist-linux-x64",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

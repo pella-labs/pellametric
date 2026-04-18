@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import {
+  type CardData,
   formatCost,
   formatTokens,
   getPersonality,
   getTier,
-  type CardData,
 } from "../_card/card-utils";
 
 /**
@@ -49,8 +49,7 @@ export function WrappedCard({ data }: { data: CardData }) {
     : getPersonality(data.stats.claude.hourDistribution);
 
   const tier = getTier(data.stats.combined.totalSessions);
-  const totalTokens =
-    data.stats.combined.totalInputTokens + data.stats.combined.totalOutputTokens;
+  const totalTokens = data.stats.combined.totalInputTokens + data.stats.combined.totalOutputTokens;
 
   return (
     <div className="wrapped-card-wrap">
@@ -66,10 +65,8 @@ export function WrappedCard({ data }: { data: CardData }) {
             <div className="wrapped-card-label">Personality</div>
             <div className="wrapped-card-title">{personality.name}</div>
             <div className="wrapped-card-sub">
-              Peak hour{" "}
-              <strong>{data.stats.highlights?.peakHourLabel ?? "3 PM"}</strong>{" "}
-              · {data.stats.combined.totalActiveDays ?? data.stats.claude.activeDays}{" "}
-              active days
+              Peak hour <strong>{data.stats.highlights?.peakHourLabel ?? "3 PM"}</strong> ·{" "}
+              {data.stats.combined.totalActiveDays ?? data.stats.claude.activeDays} active days
             </div>
           </div>
 
@@ -77,23 +74,14 @@ export function WrappedCard({ data }: { data: CardData }) {
             <Stat label="Total spend" value={formatCost(data.stats.combined.totalCost)} />
             <Stat label="Sessions" value={data.stats.combined.totalSessions.toLocaleString()} />
             <Stat label="Tokens" value={formatTokens(totalTokens)} />
-            <Stat
-              label="Cache saved"
-              value={formatCost(data.stats.claude.cacheSavingsUsd)}
-            />
+            <Stat label="Cache saved" value={formatCost(data.stats.claude.cacheSavingsUsd)} />
           </div>
 
           <div className="wrapped-card-bars" aria-hidden>
             {data.stats.claude.hourDistribution.map((v, i) => {
               const max = Math.max(...data.stats.claude.hourDistribution, 1);
               const h = 4 + (v / max) * 36;
-              return (
-                <span
-                  key={i}
-                  style={{ height: `${h}px` }}
-                  className="wrapped-card-bar"
-                />
-              );
+              return <span key={i} style={{ height: `${h}px` }} className="wrapped-card-bar" />;
             })}
           </div>
 
@@ -110,8 +98,8 @@ export function WrappedCard({ data }: { data: CardData }) {
       <div className="wrapped-card-caption">
         <span className="mk-sys">Live sample</span>
         <p>
-          Every bematist user gets a private card summarizing their coding-agent
-          activity. Share it, keep it, burn after reading.
+          Every bematist user gets a private card summarizing their coding-agent activity. Share it,
+          keep it, burn after reading.
         </p>
       </div>
     </div>

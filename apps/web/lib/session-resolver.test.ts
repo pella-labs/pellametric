@@ -163,6 +163,111 @@ describe("resolveSessionCtx — non-prod fallback", () => {
   });
 });
 
+describe("resolveSessionCtx — Better Auth PG path (M4 PR 1)", () => {
+  /**
+   * Fake PG client that returns the configured rows for any query. The real
+   * resolver only issues one query (the session join) so this is enough;
+   * we assert on params to make sure the cookie split is correct.
+   */
+  function makePgWithSession(rows: Array<{ id: string; org_id: string; role: string }>): {
+    pg: PgClient;
+    params: unknown[][];
+  } {
+    const params: unknown[][] = [];
+    const pg: PgClient = {
+      async query<T = unknown>(_sql: string, p?: unknown[]): Promise<T[]> {
+        params.push(p ?? []);
+        return rows as unknown as T[];
+      },
+    };
+    return { pg, params };
+  }
+
+  test("resolves tenant/actor/role from a signed Better Auth cookie (`<token>.<sig>`)", async () => {
+    const { pg, params } = makePgWithSession([{ id: USER_UUID, org_id: ORG_UUID, role: "admin" }]);
+    const ctx = await resolveSessionCtx({
+      sessionCookie: null,
+      betterAuthCookie: "the-token.abcdef-signature",
+      revealHeader: null,
+      env: { NODE_ENV: "production" },
+      redis,
+      db: { pg, ch: fakeCh, redis },
+    });
+    expect(ctx.tenant_id).toBe(ORG_UUID);
+    expect(ctx.actor_id).toBe(USER_UUID);
+    expect(ctx.role).toBe("admin");
+    // Resolver strips the signature before querying.
+    expect(params[0]).toEqual(["the-token"]);
+  });
+
+  test("maps `ic` role from `users.role` to the dashboard `engineer` role", async () => {
+    const { pg } = makePgWithSession([{ id: USER_UUID, org_id: ORG_UUID, role: "ic" }]);
+    const ctx = await resolveSessionCtx({
+      sessionCookie: null,
+      betterAuthCookie: "tok.sig",
+      revealHeader: null,
+      env: { NODE_ENV: "production" },
+      redis,
+      db: { pg, ch: fakeCh, redis },
+    });
+    expect(ctx.role).toBe("engineer");
+  });
+
+  test("falls through when PG returns no rows (expired / revoked session)", async () => {
+    const { pg } = makePgWithSession([]);
+    await expect(
+      resolveSessionCtx({
+        sessionCookie: null,
+        betterAuthCookie: "tok.sig",
+        revealHeader: null,
+        env: { NODE_ENV: "production" },
+        redis,
+        db: { pg, ch: fakeCh, redis },
+      }),
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  test("accepts unsigned cookie (no dot) by using the raw value as the token", async () => {
+    const { pg, params } = makePgWithSession([
+      { id: USER_UUID, org_id: ORG_UUID, role: "manager" },
+    ]);
+    const ctx = await resolveSessionCtx({
+      sessionCookie: null,
+      betterAuthCookie: "raw-token-no-sig",
+      revealHeader: null,
+      env: { NODE_ENV: "production" },
+      redis,
+      db: { pg, ch: fakeCh, redis },
+    });
+    expect(ctx.role).toBe("manager");
+    expect(params[0]).toEqual(["raw-token-no-sig"]);
+  });
+
+  test("PG path takes priority over the legacy Redis shim when both cookies are present", async () => {
+    const { pg } = makePgWithSession([{ id: "pg-user", org_id: "pg-org", role: "admin" }]);
+    // Seed a legacy Redis session too; PG path should win.
+    await redis.set(
+      "auth:session:legacy-tok",
+      JSON.stringify({
+        user_id: "redis-user",
+        org_id: "redis-org",
+        role: "engineer",
+      }),
+    );
+    const ctx = await resolveSessionCtx({
+      sessionCookie: "legacy-tok",
+      betterAuthCookie: "ba-tok.sig",
+      revealHeader: null,
+      env: { NODE_ENV: "production" },
+      redis,
+      db: { pg, ch: fakeCh, redis },
+    });
+    expect(ctx.tenant_id).toBe("pg-org");
+    expect(ctx.actor_id).toBe("pg-user");
+    expect(ctx.role).toBe("admin");
+  });
+});
+
 describe("resolveSessionCtx — reveal token path", () => {
   test("stitches reveal_token when Redis `reveal:<token>` is alive", async () => {
     await redis.set("reveal:rt-xyz", `${USER_UUID}:session-1`);

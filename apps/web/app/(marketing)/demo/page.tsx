@@ -29,14 +29,13 @@ export default function DemoPage() {
     <section className="mk-demo">
       <div>
         <div className="mk-sys" style={{ marginBottom: 16 }}>
-          SYS.DEMO // personal card
+          {"SYS.DEMO // personal card"}
         </div>
         <h1>Your card is the hook.</h1>
         <p>
-          The card on the right is demo data. Sign in, star the repo, generate
-          a one-shot token, and Bematist produces yours from local Claude Code,
-          Cursor, and Codex sessions. Only aggregated numbers leave your
-          machine.
+          The card on the right is demo data. Sign in, star the repo, generate a one-shot token, and
+          Bematist produces yours from local Claude Code, Cursor, and Codex sessions. Only
+          aggregated numbers leave your machine.
         </p>
         <GetStarted />
       </div>

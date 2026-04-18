@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 import { db, firebaseConfigured } from "@/lib/firebase/admin";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!firebaseConfigured) {
-    return NextResponse.json(
-      { error: "Firebase service account not configured" },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Firebase service account not configured" }, { status: 503 });
   }
   const { id } = await params;
   const doc = await db.collection("cards").doc(id).get();

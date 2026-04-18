@@ -29,6 +29,13 @@
       "when": 1776470458956,
       "tag": "0003_noisy_sebastian_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776800000000,
+      "tag": "0004_better_auth_tables",
+      "breakpoints": true
     }
   ]
 }

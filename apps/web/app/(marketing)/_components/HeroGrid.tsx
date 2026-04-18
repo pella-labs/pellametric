@@ -22,9 +22,7 @@ export function HeroGrid() {
     const container = containerRef.current;
     if (!container) return;
 
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -58,10 +56,7 @@ export function HeroGrid() {
     }
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(positions, 3),
-    );
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     const material = new THREE.LineBasicMaterial({
       color: 0x6e8a6f,
       transparent: true,

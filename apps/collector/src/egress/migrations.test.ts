@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { migrate } from "./migrations";
@@ -46,6 +46,44 @@ test("migrate() enables WAL mode", () => {
     expect(mode?.journal_mode.toLowerCase()).toBe("wal");
   } finally {
     db.close();
+  }
+});
+
+test("inlined migration bodies match the on-disk .sql files", () => {
+  // The inlined strings in migrations.ts exist so `bun build --compile`
+  // produces a binary that doesn't need the .sql files at runtime. They
+  // MUST stay in lockstep with the on-disk SQL — this test is the lock.
+  const onDisk = readFileSync(join(import.meta.dir, "migrations", "001_initial.sql"), "utf8");
+  // Round-trip: use migrate() against a fresh DB; the schema produced by
+  // loadMigrationSql's fallback path (inlined) must equal what the on-disk
+  // SQL produces.
+  const dbFromFile = new Database(join(dir, "file.sqlite"));
+  try {
+    dbFromFile.exec(onDisk);
+    const onDiskSchema = dbFromFile
+      .query<{ sql: string }, []>(
+        "SELECT sql FROM sqlite_master WHERE type IN ('table','index') AND sql IS NOT NULL ORDER BY name",
+      )
+      .all()
+      .map((r) => r.sql)
+      .join("\n");
+
+    const dbFromMigrate = new Database(join(dir, "migrate.sqlite"));
+    try {
+      migrate(dbFromMigrate);
+      const migrateSchema = dbFromMigrate
+        .query<{ sql: string }, []>(
+          "SELECT sql FROM sqlite_master WHERE type IN ('table','index') AND sql IS NOT NULL AND name != 'schema_migrations' ORDER BY name",
+        )
+        .all()
+        .map((r) => r.sql)
+        .join("\n");
+      expect(migrateSchema).toBe(onDiskSchema);
+    } finally {
+      dbFromMigrate.close();
+    }
+  } finally {
+    dbFromFile.close();
   }
 });
 

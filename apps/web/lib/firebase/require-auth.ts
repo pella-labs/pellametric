@@ -19,6 +19,9 @@ export async function requireAuth(req: Request): Promise<AuthResult> {
     return { ok: false, status: 401, error: "Missing or invalid Authorization header" };
   }
   const token = header.split("Bearer ")[1];
+  if (!token) {
+    return { ok: false, status: 401, error: "Missing or invalid Authorization header" };
+  }
   try {
     const decoded = await adminAuth.verifyIdToken(token);
     return { ok: true, user: decoded };

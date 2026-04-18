@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type CSSProperties } from "react";
+import { type CSSProperties, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
@@ -70,9 +70,11 @@ export function BMonogram({
 
     const svgData = new SVGLoader().parse(LOGO_SVG);
     const shapes: THREE.Shape[] = [];
-    svgData.paths.forEach((p) => {
-      SVGLoader.createShapes(p).forEach((s) => shapes.push(s));
-    });
+    for (const p of svgData.paths) {
+      for (const s of SVGLoader.createShapes(p)) {
+        shapes.push(s);
+      }
+    }
     const geometry = new THREE.ExtrudeGeometry(shapes, {
       depth: 6,
       bevelEnabled: true,
@@ -91,9 +93,7 @@ export function BMonogram({
       transmission: 0.35,
       thickness: 3.2,
       ior: 1.48,
-      attenuationColor: new THREE.Color(
-        attenuationColor as THREE.ColorRepresentation,
-      ),
+      attenuationColor: new THREE.Color(attenuationColor as THREE.ColorRepresentation),
       attenuationDistance: 1.4,
       clearcoat: 1.0,
       clearcoatRoughness: 0.08,
@@ -162,7 +162,7 @@ export function BMonogram({
       // Normalize yaw to the closest equivalent angle within ±π so the spring
       // takes the short way home instead of unwinding multiple turns.
       const twoPi = Math.PI * 2;
-      s.yaw = ((s.yaw + Math.PI) % twoPi + twoPi) % twoPi - Math.PI;
+      s.yaw = ((((s.yaw + Math.PI) % twoPi) + twoPi) % twoPi) - Math.PI;
       s.targetYaw = 0;
       s.targetPitch = 0;
       canvas.style.cursor = "grab";

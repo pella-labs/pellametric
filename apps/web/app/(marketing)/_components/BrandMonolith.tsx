@@ -49,7 +49,7 @@ function Ring({
       className={className}
       viewBox="0 0 1000 1000"
       xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
+      aria-hidden="true"
     >
       <defs>
         <path

@@ -38,6 +38,12 @@ export {
 } from "./queries/cluster";
 // Queries
 export { getSummary } from "./queries/dashboard";
+export {
+  createIngestKey,
+  listIngestKeys,
+  listOrgDevelopers,
+  revokeIngestKey,
+} from "./queries/ingestKeys";
 export { filterByConfidence, getWeeklyDigest } from "./queries/insights";
 export {
   perCommitOutcomes,

@@ -16,8 +16,9 @@ function getServiceAccount(): Record<string, string> | null {
 
 const serviceAccount = getServiceAccount();
 
-const app = getApps().length
-  ? getApps()[0]
+const existing = getApps()[0];
+const app = existing
+  ? existing
   : serviceAccount
     ? initializeApp({ credential: cert(serviceAccount) })
     : initializeApp();
