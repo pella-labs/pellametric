@@ -63,14 +63,31 @@ async function getSummaryFixture(
 /**
  * Real-branch ClickHouse read.
  *
- * EXPLAIN: Uses `dev_daily_rollup` MV for per-day cost series (projection
- * `p_org_ts`), `team_weekly_rollup` for team-scoped scoring. Tier-A forbidden
- * columns (prompt_text, tool_input, tool_output, messages, toolArgs,
- * toolOutputs, fileContents, diffs, filePaths, ticketIds, emails, realNames)
- * are NEVER selected — aggregates only.
+ * EXPLAIN: Uses `dev_daily_rollup` MV (AggregatingMergeTree, ORDER BY
+ * (org_id, engineer_id, day), partitioned by toYYYYMM(day)) for per-day cost
+ * series, `team_weekly_rollup` for team-scoped scoring. The MV stores
+ * AggregateFunction state columns (`cost_usd_state` from sumState,
+ * `sessions_state` from uniqState, `accepted_edits_state` from countIfState)
+ * — read-side MUST use the matching `*Merge` finalizers; raw `sum()` against
+ * those columns errors with "argument types do not match".
+ *
+ * Tier-A forbidden columns (prompt_text, tool_input, tool_output, messages,
+ * toolArgs, toolOutputs, fileContents, diffs, filePaths, ticketIds, emails,
+ * realNames) are NEVER selected — aggregates only.
  *
  * Partitioning filter `org_id = {tenant_id}` is mandatory; RLS backup on PG
  * side, but CH has no RLS — the parameterized filter is the boundary.
+ *
+ * Columns NOT yet on the MV (`merged_prs`, `outcome_events`, `cost_estimated`)
+ * are zero-filled here — they live on `outcome_daily_rollup` /
+ * `pr_outcome_rollup` / `events.cost_estimated`. Folding them in is a Jorge
+ * follow-up; for now the dashboard tile shows zero rather than blowing up
+ * with a column-not-found 500.
+ *
+ * `team_id` is not a column on `dev_daily_rollup` — filtering by team requires
+ * either the dev_team_dict join (lives on `team_weekly_rollup` only today) or
+ * a separate dict lookup. We drop the filter on the dev MV and apply it on
+ * the team-scoped score read below.
  */
 async function getSummaryReal(
   ctx: Ctx,
@@ -84,19 +101,17 @@ async function getSummaryReal(
     any_cost_estimated: number;
   }>(
     `SELECT
-       toDate(day) AS day,
-       sum(cost_usd) AS cost_usd,
-       max(cost_estimated) AS any_cost_estimated
+       day,
+       sumMerge(cost_usd_state) AS cost_usd,
+       0 AS any_cost_estimated
      FROM dev_daily_rollup
      WHERE org_id = {tenant_id:String}
        AND day >= today() - {days:UInt16}
-       ${input.team_id ? "AND team_id = {team_id:String}" : ""}
      GROUP BY day
      ORDER BY day ASC`,
     {
       tenant_id: ctx.tenant_id,
       days,
-      ...(input.team_id ? { team_id: input.team_id } : {}),
     },
   );
 
@@ -109,20 +124,18 @@ async function getSummaryReal(
     cohort_size: number;
   }>(
     `SELECT
-       sum(accepted_edits) AS accepted_edits,
-       sum(merged_prs) AS merged_prs,
-       sum(sessions) AS sessions,
+       countIfMerge(accepted_edits_state) AS accepted_edits,
+       0 AS merged_prs,
+       uniqMerge(sessions_state) AS sessions,
        uniqExact(day) AS active_days,
-       sum(outcome_events) AS outcome_events,
+       0 AS outcome_events,
        uniqExact(engineer_id) AS cohort_size
      FROM dev_daily_rollup
      WHERE org_id = {tenant_id:String}
-       AND day >= today() - {days:UInt16}
-       ${input.team_id ? "AND team_id = {team_id:String}" : ""}`,
+       AND day >= today() - {days:UInt16}`,
     {
       tenant_id: ctx.tenant_id,
       days,
-      ...(input.team_id ? { team_id: input.team_id } : {}),
     },
   );
 
@@ -152,12 +165,19 @@ async function getSummaryReal(
 
   let ai_leverage_score: DashboardSummaryOutput["ai_leverage_score"];
   if (gate.show) {
+    // `team_weekly_rollup` partition column is `week` (toMonday(toDate(ts))),
+    // not `week_start`. ALS itself isn't materialized into the MV yet — it's
+    // computed by Sandesh's `packages/scoring` H workstream from the rollup's
+    // raw aggregates. Until the H side lands a `team_weekly_als_v1` MV, we
+    // surface 0 from the SELECT (alias kept so the row shape is stable for
+    // tests/mocks that prefill `ai_leverage_v1`).
     const scoreRows = await ctx.db.ch.query<{ ai_leverage_v1: number }>(
-      `SELECT avg(ai_leverage_v1) AS ai_leverage_v1
+      `SELECT 0 AS ai_leverage_v1
          FROM team_weekly_rollup
          WHERE org_id = {tenant_id:String}
-           AND week_start >= today() - {days:UInt16}
-           ${input.team_id ? "AND team_id = {team_id:String}" : ""}`,
+           AND week >= today() - {days:UInt16}
+           ${input.team_id ? "AND team_id = {team_id:String}" : ""}
+         LIMIT 1`,
       {
         tenant_id: ctx.tenant_id,
         days,
