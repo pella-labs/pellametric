@@ -1,14 +1,27 @@
+import { type ClusterKStats, findTwins, type TwinSessionCandidate } from "@bematist/scoring";
 import { assertRole, type Ctx } from "../auth";
 import { useFixtures } from "../env";
-import type { Cluster, ClusterListInput, ClusterListOutput } from "../schemas/cluster";
+import type {
+  Cluster,
+  ClusterListInput,
+  ClusterListOutput,
+  TwinFinderInput,
+  TwinFinderOutput,
+} from "../schemas/cluster";
 
-/** k≥3 contributor floor per CLAUDE.md Privacy Model Rules + Clio/OpenClio prior art. */
+/** k>=3 contributor floor per CLAUDE.md Privacy Model Rules + Clio/OpenClio prior art. */
 export const CLUSTER_CONTRIBUTOR_FLOOR = 3;
+
+/** Default top-K for Twin Finder — matches `findTwins` default. */
+const TWIN_FINDER_DEFAULT_TOP_K = 10;
+
+/** Hard cap on candidate corpus pulled back before k-NN — scales linearly in cosine math. */
+const TWIN_FINDER_MAX_CANDIDATES = 10_000;
 
 /**
  * Prompt-cluster list — powers `/clusters` Twin Finder.
  *
- * Server enforces the k≥3 floor: any cluster whose contributor_count falls
+ * Server enforces the k>=3 floor: any cluster whose contributor_count falls
  * below 3 is computed but never surfaced. Callers get a `suppressed_below_floor`
  * count so they can transparently tell users that some clusters were dropped,
  * without exposing cluster ids.
@@ -48,7 +61,7 @@ async function listClustersFixture(ctx: Ctx, input: ClusterListInput): Promise<C
  *
  * EXPLAIN: `prompt_cluster_stats` MV (ORDER BY org_id, window_start,
  * cluster_id). Partition filter on `org_id` + window is mandatory. Server
- * enforces the k≥3 floor AFTER fetch so the `suppressed_below_floor` count
+ * enforces the k>=3 floor AFTER fetch so the `suppressed_below_floor` count
  * stays accurate.
  *
  * TIER-A ALLOWLIST: the MV aggregates cluster-level outcome counts only —
@@ -115,7 +128,7 @@ async function listClustersReal(ctx: Ctx, input: ClusterListInput): Promise<Clus
     fidelity: r.fidelity,
   }));
 
-  // Enforce k≥3 server-side. Suppressed count is the difference.
+  // Enforce k>=3 server-side. Suppressed count is the difference.
   const eligible = universe.filter((c) => c.contributor_count >= CLUSTER_CONTRIBUTOR_FLOOR);
   const suppressed = universe.length - eligible.length;
 
@@ -208,4 +221,282 @@ function lcg(seed: number): number {
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
+}
+
+/**
+ * Twin Finder — k-NN over `(cluster_assignment_mv, events.prompt_embedding)`
+ * against the query session's embedding, with k>=3 contributor floor enforced
+ * server-side via `@bematist/scoring`'s `findTwins`.
+ *
+ * Dual-mode:
+ *   - `USE_FIXTURES=0` reads CH `events` (for embeddings) +
+ *     `cluster_assignment_mv` (for cluster id) + `prompt_cluster_stats`
+ *     (for contributor_count).
+ *   - Otherwise (default) a deterministic synthetic corpus so the page renders.
+ *
+ * p95 budget: <500ms on a 10k-candidate fixture (enforced in test).
+ *
+ * TIER-A ALLOWLIST: SELECT list is `session_id`, `engineer_id` (hashed before
+ * return), `cluster_id`, `prompt_embedding`. No `prompt_text`, no
+ * `prompt_abstract`, no `tool_input/output`, no `raw_attrs`.
+ */
+export async function findSessionTwins(
+  ctx: Ctx,
+  input: TwinFinderInput,
+): Promise<TwinFinderOutput> {
+  assertRole(ctx, ["admin", "manager", "engineer", "auditor", "viewer"]);
+  if (useFixtures()) return findSessionTwinsFixture(ctx, input);
+  return findSessionTwinsReal(ctx, input);
+}
+
+function findSessionTwinsFixture(ctx: Ctx, input: TwinFinderInput): TwinFinderOutput {
+  const started = performance.now();
+  const topK = input.top_k ?? TWIN_FINDER_DEFAULT_TOP_K;
+  const promptIndex = input.prompt_index ?? 0;
+
+  const universe = buildTwinFixtureUniverse(ctx.tenant_id, input.session_id, promptIndex);
+  if (!universe.query) {
+    return {
+      ok: false,
+      query_session_id: input.session_id,
+      reason: "no_embedding",
+    };
+  }
+
+  const outcome = findTwins({
+    queryEmbedding: universe.query.embedding,
+    candidates: universe.candidates,
+    clusterStats: universe.clusterStats,
+    selfSessionId: input.session_id,
+    topK,
+  });
+
+  if (!outcome.ok) {
+    return {
+      ok: false,
+      query_session_id: input.session_id,
+      reason: outcome.error.kind,
+      cluster_id_hint: outcome.error.kind === "cohort_too_small" ? outcome.error.cluster_id : null,
+    };
+  }
+
+  return {
+    ok: true,
+    query_session_id: input.session_id,
+    query_cluster_id: universe.query.cluster_id,
+    matches: outcome.twins,
+    latency_ms: Math.round(performance.now() - started),
+  };
+}
+
+/**
+ * Real-branch CH read. Two round-trips:
+ *   1. Resolve the query session's cluster_id + embedding (from `events`).
+ *   2. Fetch candidate embeddings + engineer_ids for that cluster + contributor
+ *      counts in a single combined query using CTEs. The LIMIT cap
+ *      (`TWIN_FINDER_MAX_CANDIDATES`) keeps the cosine pass bounded.
+ *
+ * EXPLAIN: both reads hit `(org_id, ts, engineer_id)` ORDER BY on `events`;
+ * cluster lookup uses the `cluster_lookup` projection added in D1-03.
+ */
+async function findSessionTwinsReal(ctx: Ctx, input: TwinFinderInput): Promise<TwinFinderOutput> {
+  const started = performance.now();
+  const topK = input.top_k ?? TWIN_FINDER_DEFAULT_TOP_K;
+  const promptIndex = input.prompt_index ?? 0;
+
+  const queryRows = await ctx.db.ch.query<{
+    cluster_id: string | null;
+    prompt_embedding: number[];
+  }>(
+    `SELECT
+       a.cluster_id AS cluster_id,
+       e.prompt_embedding AS prompt_embedding
+     FROM events AS e
+     LEFT JOIN cluster_assignment_mv FINAL AS a
+       ON a.org_id = e.org_id
+      AND a.session_id = e.session_id
+      AND a.prompt_index = e.prompt_index
+     WHERE e.org_id = {tenant_id:String}
+       AND e.session_id = {session_id:String}
+       AND e.prompt_index = {prompt_index:UInt32}
+     LIMIT 1`,
+    {
+      tenant_id: ctx.tenant_id,
+      session_id: input.session_id,
+      prompt_index: promptIndex,
+    },
+  );
+
+  const queryRow = queryRows[0];
+  if (!queryRow?.prompt_embedding?.length) {
+    return {
+      ok: false,
+      query_session_id: input.session_id,
+      reason: "no_embedding",
+    };
+  }
+
+  // Pull candidate pool + contributor stats in parallel for the lowest p95.
+  const [candidateRows, statsRows] = await Promise.all([
+    ctx.db.ch.query<{
+      session_id: string;
+      engineer_id: string;
+      cluster_id: string;
+      prompt_embedding: number[];
+    }>(
+      `SELECT
+         e.session_id AS session_id,
+         e.engineer_id AS engineer_id,
+         a.cluster_id AS cluster_id,
+         e.prompt_embedding AS prompt_embedding
+       FROM cluster_assignment_mv FINAL AS a
+       INNER JOIN events AS e
+         ON e.org_id = a.org_id
+        AND e.session_id = a.session_id
+        AND e.prompt_index = a.prompt_index
+       WHERE a.org_id = {tenant_id:String}
+         AND length(e.prompt_embedding) > 0
+       LIMIT {max_candidates:UInt32}`,
+      {
+        tenant_id: ctx.tenant_id,
+        max_candidates: TWIN_FINDER_MAX_CANDIDATES,
+      },
+    ),
+    ctx.db.ch.query<{
+      cluster_id: string;
+      distinct_engineers: number;
+    }>(
+      `SELECT
+         cluster_id,
+         uniqMerge(contributing_engineers_state) AS distinct_engineers
+       FROM prompt_cluster_stats
+       WHERE org_id = {tenant_id:String}
+       GROUP BY cluster_id`,
+      { tenant_id: ctx.tenant_id },
+    ),
+  ]);
+
+  const candidates: TwinSessionCandidate[] = candidateRows.map((r) => ({
+    session_id: r.session_id,
+    cluster_id: r.cluster_id,
+    embedding: r.prompt_embedding,
+    engineer_id: r.engineer_id,
+  }));
+  const clusterStats: ClusterKStats[] = statsRows.map((r) => ({
+    cluster_id: r.cluster_id,
+    distinct_engineers: Number(r.distinct_engineers),
+  }));
+
+  const outcome = findTwins({
+    queryEmbedding: queryRow.prompt_embedding,
+    candidates,
+    clusterStats,
+    selfSessionId: input.session_id,
+    topK,
+    kFloor: CLUSTER_CONTRIBUTOR_FLOOR,
+  });
+
+  if (!outcome.ok) {
+    return {
+      ok: false,
+      query_session_id: input.session_id,
+      reason: outcome.error.kind,
+      cluster_id_hint: outcome.error.kind === "cohort_too_small" ? outcome.error.cluster_id : null,
+    };
+  }
+
+  return {
+    ok: true,
+    query_session_id: input.session_id,
+    query_cluster_id: queryRow.cluster_id ?? null,
+    matches: outcome.twins,
+    latency_ms: Math.round(performance.now() - started),
+  };
+}
+
+interface TwinFixtureUniverse {
+  query: { embedding: number[]; cluster_id: string } | null;
+  candidates: TwinSessionCandidate[];
+  clusterStats: ClusterKStats[];
+}
+
+/**
+ * Deterministic Twin Finder universe: 8 clusters, 2 of them deliberately below
+ * the k=3 floor. Query session ("ses_query_...") is planted into cluster c_000.
+ * Kept small (~120 candidates) so the fixture test is fast; the 10k-candidate
+ * performance fixture is synthesized in the test file directly — no need to
+ * carry that cost on every RSC render.
+ */
+function buildTwinFixtureUniverse(
+  tenantId: string,
+  querySessionId: string,
+  promptIndex: number,
+): TwinFixtureUniverse {
+  const seed = hash(`${tenantId}:twin:${querySessionId}:${promptIndex}`);
+  const dim = 32;
+
+  const clusters: { id: string; contributors: number }[] = [
+    { id: "c_000", contributors: 7 },
+    { id: "c_001", contributors: 5 },
+    { id: "c_002", contributors: 4 },
+    { id: "c_003", contributors: 3 },
+    { id: "c_004", contributors: 6 },
+    { id: "c_005", contributors: 2 }, // below floor
+    { id: "c_006", contributors: 1 }, // below floor
+    { id: "c_007", contributors: 8 },
+  ];
+
+  const clusterCentroids = new Map<string, number[]>();
+  for (const c of clusters) {
+    clusterCentroids.set(c.id, randomUnitVec(hash(`${seed}:centroid:${c.id}`), dim));
+  }
+
+  const queryCluster = "c_000";
+  const queryEmbedding = clusterCentroids.get(queryCluster) ?? randomUnitVec(seed, dim);
+
+  const candidates: TwinSessionCandidate[] = [];
+  let engineerCounter = 0;
+  for (const c of clusters) {
+    const baseVec = clusterCentroids.get(c.id) ?? randomUnitVec(seed + 1, dim);
+    const sessionsPerCluster = 15;
+    for (let i = 0; i < sessionsPerCluster; i++) {
+      const engId = `eng_fx_${(engineerCounter++ % Math.max(1, c.contributors))
+        .toString()
+        .padStart(3, "0")}`;
+      candidates.push({
+        session_id: `ses_${c.id}_${i.toString().padStart(3, "0")}`,
+        cluster_id: c.id,
+        engineer_id: engId,
+        embedding: perturb(baseVec, hash(`${seed}:${c.id}:${i}`), 0.08),
+      });
+    }
+  }
+
+  const clusterStats: ClusterKStats[] = clusters.map((c) => ({
+    cluster_id: c.id,
+    distinct_engineers: c.contributors,
+  }));
+
+  return {
+    query: { embedding: queryEmbedding, cluster_id: queryCluster },
+    candidates,
+    clusterStats,
+  };
+}
+
+function randomUnitVec(seed: number, dim: number): number[] {
+  const out: number[] = new Array(dim);
+  let mag = 0;
+  for (let i = 0; i < dim; i++) {
+    const v = lcg(seed + i * 101) - 0.5;
+    out[i] = v;
+    mag += v * v;
+  }
+  const n = Math.sqrt(mag) || 1;
+  for (let i = 0; i < dim; i++) out[i] = (out[i] ?? 0) / n;
+  return out;
+}
+
+function perturb(base: readonly number[], seed: number, magnitude: number): number[] {
+  return base.map((v, i) => v + (lcg(seed + i * 37) - 0.5) * magnitude);
 }

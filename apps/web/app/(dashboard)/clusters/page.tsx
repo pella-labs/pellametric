@@ -1,4 +1,4 @@
-import { listClusters } from "@bematist/api";
+import { findSessionTwins, listClusters } from "@bematist/api";
 import { Badge, Card, CardHeader, CardTitle, FidelityChip } from "@bematist/ui";
 import type { Metadata } from "next";
 import { getSessionCtx } from "@/lib/session";
@@ -13,9 +13,28 @@ const USD = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
 });
 
-export default async function ClustersPage() {
+interface ClustersPageProps {
+  /** Twin Finder search params: ?session_id=…&prompt_index=…&top_k=… */
+  searchParams?: Promise<{
+    session_id?: string;
+    prompt_index?: string;
+    top_k?: string;
+  }>;
+}
+
+export default async function ClustersPage({ searchParams }: ClustersPageProps) {
   const ctx = await getSessionCtx();
-  const data = await listClusters(ctx, { window: "30d" });
+  const sp = (await searchParams) ?? {};
+  const [data, twins] = await Promise.all([
+    listClusters(ctx, { window: "30d" }),
+    sp.session_id
+      ? findSessionTwins(ctx, {
+          session_id: sp.session_id,
+          ...(sp.prompt_index ? { prompt_index: Number(sp.prompt_index) } : {}),
+          ...(sp.top_k ? { top_k: Math.min(25, Number(sp.top_k) || 10) } : {}),
+        })
+      : Promise.resolve(null),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -91,6 +110,115 @@ export default async function ClustersPage() {
           </p>
         </Card>
       ) : null}
+
+      <section aria-label="Twin Finder" className="flex flex-col gap-3">
+        <header>
+          <h2 className="text-lg font-semibold tracking-tight">Twin Finder</h2>
+          <p className="text-sm text-muted-foreground">
+            Find sessions whose prompt embeddings cluster near a query session. The k≥3 contributor
+            floor is enforced server-side: candidate clusters with fewer than 3 distinct engineers
+            are never surfaced. Engineer ids are returned as opaque hashes.
+          </p>
+        </header>
+
+        <Card>
+          <form className="flex flex-wrap items-end gap-3" method="get">
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="text-muted-foreground">Session id</span>
+              <input
+                type="text"
+                name="session_id"
+                defaultValue={sp.session_id ?? ""}
+                placeholder="ses_query_42"
+                className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                required
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="text-muted-foreground">Prompt index</span>
+              <input
+                type="number"
+                name="prompt_index"
+                min={0}
+                defaultValue={sp.prompt_index ?? "0"}
+                className="w-24 rounded-md border border-border bg-background px-2 py-1 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="text-muted-foreground">Top K</span>
+              <input
+                type="number"
+                name="top_k"
+                min={1}
+                max={25}
+                defaultValue={sp.top_k ?? "10"}
+                className="w-24 rounded-md border border-border bg-background px-2 py-1 text-sm"
+              />
+            </label>
+            <button
+              type="submit"
+              className="cursor-pointer rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
+            >
+              Find twins
+            </button>
+          </form>
+        </Card>
+
+        {twins ? (
+          twins.ok ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  {twins.matches.length} twin{twins.matches.length === 1 ? "" : "s"} for{" "}
+                  <code className="font-mono text-sm">{twins.query_session_id}</code>
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Query cluster: <code className="font-mono">{twins.query_cluster_id ?? "—"}</code>{" "}
+                  · {twins.latency_ms}ms
+                </p>
+              </CardHeader>
+              {twins.matches.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No twins above the k≥3 contributor floor for this query.
+                </p>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-muted-foreground">
+                      <th className="py-1.5">Session</th>
+                      <th className="py-1.5">Cluster</th>
+                      <th className="py-1.5">Engineer (hash)</th>
+                      <th className="py-1.5 text-right">Cosine similarity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {twins.matches.map((m) => (
+                      <tr key={m.session_id} className="border-t border-border">
+                        <td className="py-1.5 font-mono">{m.session_id}</td>
+                        <td className="py-1.5 font-mono">{m.cluster_id}</td>
+                        <td className="py-1.5 font-mono">{m.engineer_id_hash}</td>
+                        <td className="py-1.5 text-right tabular-nums">
+                          {m.similarity.toFixed(3)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
+          ) : (
+            <Card>
+              <p className="text-sm">
+                {twins.reason === "no_embedding"
+                  ? `No prompt embedding for session ${twins.query_session_id}. The session may not have a Clio-abstracted prompt yet, or it predates the embed pipeline.`
+                  : twins.reason === "cohort_too_small"
+                    ? "Candidate cluster falls below the k≥3 contributor floor. Suppressed for privacy."
+                    : "No matches in the candidate pool."}
+              </p>
+            </Card>
+          )
+        ) : null}
+      </section>
     </div>
   );
 }

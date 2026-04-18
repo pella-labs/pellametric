@@ -2,6 +2,7 @@
 // PgBoss is for crons only (CLAUDE.md Architecture Rule #4). Per-event work goes
 // to ClickHouse MVs or Redis Streams.
 
+import { prompt_clusters } from "@bematist/schema/postgres";
 import type { ClickHouseClient } from "@clickhouse/client";
 import PgBoss from "pg-boss";
 import { ch } from "./clickhouse";
@@ -9,6 +10,8 @@ import { db } from "./db";
 import { PostgresAnomalyNotifier } from "./jobs/anomaly/pg_notifier";
 import type { CohortP95, DailyMetricRow } from "./jobs/anomaly/types";
 import { runAnomalyDetection } from "./jobs/anomaly_detect";
+import { recluster } from "./jobs/cluster/recluster";
+import type { PromptRecordForClustering } from "./jobs/cluster/types";
 import { handlePartitionDrop } from "./jobs/partition_drop";
 
 const PG_BOSS_URL =
@@ -16,6 +19,11 @@ const PG_BOSS_URL =
 const GDPR_CRON_SCHEDULE = process.env.GDPR_CRON_SCHEDULE ?? "0 * * * *"; // hourly
 // Anomaly detection runs hourly per CLAUDE.md §AI Rules — NOT weekly.
 const ANOMALY_CRON_SCHEDULE = process.env.ANOMALY_CRON_SCHEDULE ?? "0 * * * *";
+// Nightly recluster (#30) runs at 03:30 UTC by default — outside any business
+// hours and after the day's events have settled into CH.
+const RECLUSTER_CRON_SCHEDULE = process.env.RECLUSTER_CRON_SCHEDULE ?? "30 3 * * *";
+const RECLUSTER_EMBEDDING_MODEL = process.env.RECLUSTER_EMBEDDING_MODEL ?? "openai-3-small-512";
+const RECLUSTER_MAX_PROMPTS_PER_ORG = Number(process.env.RECLUSTER_MAX_PROMPTS_PER_ORG ?? 5_000);
 
 export async function startWorker() {
   const boss = new PgBoss(PG_BOSS_URL);
@@ -33,11 +41,18 @@ export async function startWorker() {
   });
   await boss.schedule("anomaly.hourly", ANOMALY_CRON_SCHEDULE);
 
+  await boss.work("cluster.recluster_nightly", async () => {
+    return await runReclusterAllOrgs({ ch: ch() });
+  });
+  await boss.schedule("cluster.recluster_nightly", RECLUSTER_CRON_SCHEDULE);
+
   console.log(
     "[worker] started; gdpr.partition_drop:",
     GDPR_CRON_SCHEDULE,
     "anomaly.hourly:",
     ANOMALY_CRON_SCHEDULE,
+    "cluster.recluster_nightly:",
+    RECLUSTER_CRON_SCHEDULE,
   );
   return boss;
 }
@@ -203,6 +218,93 @@ async function loadCohorts(client: ClickHouseClient): Promise<Map<string, Cohort
     });
   }
   return map;
+}
+
+/**
+ * Run #30's recluster across every org with embeddings in the last 30d.
+ * Writes centroids to PG `prompt_clusters` + assignments to CH
+ * `cluster_assignment_mv`. Per-org budget is bounded by
+ * `RECLUSTER_MAX_PROMPTS_PER_ORG` to keep mini-batch k-means cheap.
+ *
+ * Tier-A allowlist: only embeddings + session_id + prompt_index leave CH.
+ * No prompt_text, no prompt_abstract, no raw_attrs.
+ */
+export async function runReclusterAllOrgs(deps: { ch: ClickHouseClient }): Promise<{
+  orgs: number;
+  prompts: number;
+  centroids: number;
+}> {
+  const { ch: client } = deps;
+  const orgRowsRes = await client.query({
+    query: `SELECT DISTINCT org_id FROM events
+            WHERE ts >= now() - INTERVAL 30 DAY
+              AND length(prompt_embedding) > 0`,
+    format: "JSONEachRow",
+  });
+  const orgRows = (await orgRowsRes.json()) as Array<{ org_id: string }>;
+
+  let totalPrompts = 0;
+  let totalCentroids = 0;
+
+  for (const { org_id } of orgRows) {
+    const promptRowsRes = await client.query({
+      query: `SELECT session_id, prompt_index, prompt_embedding, ts
+              FROM events
+              WHERE org_id = {org:String}
+                AND ts >= now() - INTERVAL 30 DAY
+                AND length(prompt_embedding) > 0
+              ORDER BY ts DESC
+              LIMIT {lim:UInt32}`,
+      query_params: { org: org_id, lim: RECLUSTER_MAX_PROMPTS_PER_ORG },
+      format: "JSONEachRow",
+    });
+    const promptRows = (await promptRowsRes.json()) as Array<{
+      session_id: string;
+      prompt_index: number;
+      prompt_embedding: number[];
+      ts: string;
+    }>;
+    if (promptRows.length === 0) continue;
+
+    const embeddings = promptRows.map((r) => r.prompt_embedding);
+    const records: PromptRecordForClustering[] = promptRows.map((r) => ({
+      session_id: r.session_id,
+      prompt_index: r.prompt_index,
+      org_id,
+      abstract: "",
+    }));
+
+    const result = recluster({ embeddings, records });
+    totalPrompts += result.submitted;
+    totalCentroids += result.centroids.length;
+
+    if (result.centroids.length === 0) continue;
+
+    await db.insert(prompt_clusters).values(
+      result.centroids.map((c) => ({
+        org_id,
+        centroid: c.centroid,
+        dim: c.dim,
+        model: RECLUSTER_EMBEDDING_MODEL,
+        label: null,
+      })),
+    );
+
+    const nowIso = new Date().toISOString().replace("T", " ").replace(/\..+$/, "");
+    await client.insert({
+      table: "cluster_assignment_mv",
+      values: result.assignments.map((a) => ({
+        org_id,
+        session_id: a.session_id,
+        prompt_index: a.prompt_index,
+        cluster_id: a.cluster_id,
+        ts: nowIso,
+      })),
+      format: "JSONEachRow",
+    });
+  }
+
+  return { orgs: orgRows.length, prompts: totalPrompts, centroids: totalCentroids };
 }
 
 if (import.meta.main) {

@@ -50,3 +50,48 @@ export const ClusterListOutput = z.object({
   suppressed_below_floor: z.number().int().nonnegative(),
 });
 export type ClusterListOutput = z.infer<typeof ClusterListOutput>;
+
+/**
+ * Twin Finder — given a query session_id, return the top-K most similar
+ * sessions across the corpus. k>=3 contributor floor on the candidate's cluster
+ * is server-enforced by `@bematist/scoring`'s `findTwins`. Engineer ids are
+ * never returned in raw form — only an opaque `engineer_id_hash`.
+ */
+export const TwinFinderInput = z.object({
+  session_id: z.string().min(1),
+  /** Zero-based prompt index within the session. Defaults to 0 — first prompt. */
+  prompt_index: z.number().int().nonnegative().optional(),
+  /** How many twins to return. Default 10, capped at 25. */
+  top_k: z.number().int().positive().max(25).optional(),
+});
+export type TwinFinderInput = z.infer<typeof TwinFinderInput>;
+
+export const TwinFinderMatch = z.object({
+  session_id: z.string(),
+  cluster_id: z.string(),
+  /** Cosine similarity in [-1, 1]. */
+  similarity: z.number(),
+  /** Opaque hash of the matched engineer's id — raw engineer_id never leaks. */
+  engineer_id_hash: z.string(),
+});
+export type TwinFinderMatch = z.infer<typeof TwinFinderMatch>;
+
+export const TwinFinderOutput = z.union([
+  z.object({
+    ok: z.literal(true),
+    query_session_id: z.string(),
+    /** Cluster the query session lives in; null if unassigned. */
+    query_cluster_id: z.string().nullable(),
+    matches: z.array(TwinFinderMatch),
+    /** Wall-clock latency of the query path, milliseconds. */
+    latency_ms: z.number().nonnegative(),
+  }),
+  z.object({
+    ok: z.literal(false),
+    query_session_id: z.string(),
+    reason: z.enum(["no_embedding", "cohort_too_small", "no_matches"]),
+    /** Present only when reason = cohort_too_small; surfaced as a count, never the id. */
+    cluster_id_hint: z.string().nullable().optional(),
+  }),
+]);
+export type TwinFinderOutput = z.infer<typeof TwinFinderOutput>;

@@ -111,4 +111,14 @@ export interface ScoringOutput {
   inputs_hash: string;
 }
 
+export {
+  type ClusterKStats,
+  cosineSimilarity,
+  type FindTwinsError,
+  type FindTwinsOpts,
+  type FindTwinsOutcome,
+  findTwins,
+  type TwinFinderResult,
+  type TwinSessionCandidate,
+} from "./twinFinder";
 export { score } from "./v1/index";

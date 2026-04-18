@@ -21,6 +21,7 @@
   "dependencies": {
     "@bematist/schema": "workspace:*",
     "@bematist/fixtures": "workspace:*",
+    "@bematist/scoring": "workspace:*",
     "zod": "^3.23.8"
   },
   "devDependencies": {

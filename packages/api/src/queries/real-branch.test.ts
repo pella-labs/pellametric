@@ -20,7 +20,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { Ctx, Role } from "../auth";
 import { listAlerts } from "./alerts";
 import { getMyViewHistory } from "./audit";
-import { listClusters } from "./cluster";
+import { findSessionTwins, listClusters } from "./cluster";
 import { getSummary } from "./dashboard";
 import { getWeeklyDigest } from "./insights";
 import { perCommitOutcomes, perDevOutcomes, perPROutcomes } from "./outcomes";
@@ -371,6 +371,84 @@ describe("cluster.listClusters (real branch)", () => {
     expect(sql).toContain("FROM prompt_cluster_stats");
     expect(params.tenant_id).toBe("org_fixtures_off");
     assertNoForbiddenColumns(sql);
+  });
+});
+
+describe("cluster.findSessionTwins (real branch)", () => {
+  test("two-step CH read: query embedding lookup, then candidate fetch + stats; no forbidden columns", async () => {
+    let callIdx = 0;
+    const ch = mock(async (sql: string, params: Record<string, unknown>) => {
+      callIdx += 1;
+      if (sql.includes("LIMIT 1")) {
+        // Query session lookup
+        expect(params.tenant_id).toBe("org_fixtures_off");
+        expect(params.session_id).toBe("ses_under_test");
+        return [
+          {
+            cluster_id: "c_realbranch",
+            prompt_embedding: [1, 0, 0, 0],
+          },
+        ];
+      }
+      if (sql.includes("prompt_cluster_stats")) {
+        return [
+          { cluster_id: "c_realbranch", distinct_engineers: 5 },
+          { cluster_id: "c_other", distinct_engineers: 1 }, // below floor
+        ];
+      }
+      // candidate pool — must have org_id filter + LIMIT cap
+      expect(sql).toContain("cluster_assignment_mv");
+      expect(sql).toContain("INNER JOIN events");
+      expect(params.tenant_id).toBe("org_fixtures_off");
+      expect(params.max_candidates).toBe(10_000);
+      assertNoForbiddenColumns(sql);
+      return [
+        {
+          session_id: "ses_match_1",
+          engineer_id: "eng_real_a",
+          cluster_id: "c_realbranch",
+          prompt_embedding: [0.99, 0.1, 0, 0],
+        },
+        {
+          session_id: "ses_match_2",
+          engineer_id: "eng_real_b",
+          cluster_id: "c_realbranch",
+          prompt_embedding: [0.95, 0.2, 0, 0],
+        },
+        {
+          session_id: "ses_filtered",
+          engineer_id: "eng_real_c",
+          cluster_id: "c_other", // below floor — must be dropped
+          prompt_embedding: [1, 0, 0, 0],
+        },
+      ];
+    });
+    const ctx = makeCtx("manager", { ch });
+
+    const out = await findSessionTwins(ctx, { session_id: "ses_under_test", top_k: 5 });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.query_cluster_id).toBe("c_realbranch");
+    expect(out.matches.length).toBe(2);
+    expect(out.matches.find((m) => m.session_id === "ses_filtered")).toBeUndefined();
+    for (const m of out.matches) {
+      expect(m.engineer_id_hash).not.toContain("eng_real_");
+    }
+    expect(callIdx).toBeGreaterThanOrEqual(3);
+  });
+
+  test("returns no_embedding when the query session has no prompt_embedding", async () => {
+    const ch = mock(async (sql: string) => {
+      if (sql.includes("LIMIT 1")) {
+        return [{ cluster_id: null, prompt_embedding: [] }];
+      }
+      return [];
+    });
+    const ctx = makeCtx("manager", { ch });
+    const out = await findSessionTwins(ctx, { session_id: "ses_empty" });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    expect(out.reason).toBe("no_embedding");
   });
 });
 

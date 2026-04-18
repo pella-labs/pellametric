@@ -30,7 +30,7 @@ export { setNotificationPref } from "./mutations/policy";
 export { revealSession } from "./mutations/session";
 export { listAlerts } from "./queries/alerts";
 export { getMyViewHistory } from "./queries/audit";
-export { CLUSTER_CONTRIBUTOR_FLOOR, listClusters } from "./queries/cluster";
+export { CLUSTER_CONTRIBUTOR_FLOOR, findSessionTwins, listClusters } from "./queries/cluster";
 // Queries
 export { getSummary } from "./queries/dashboard";
 export { filterByConfidence, getWeeklyDigest } from "./queries/insights";
