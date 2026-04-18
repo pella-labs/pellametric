@@ -840,7 +840,9 @@
 
 .bematist-marketing .mk-demo-card-host {
   position: relative;
-  min-height: 620px;
+  min-height: 720px;
+  aspect-ratio: 5 / 7;
+  max-height: 820px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -852,7 +854,54 @@
   border: 1px solid var(--mk-border);
   border-radius: 14px;
   padding: 32px;
+  overflow: hidden;
 }
+
+/* Embed the pharos card inside the demo column (originally position:fixed) */
+.bematist-marketing .mk-demo-card-host .card-scene {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(380px, calc(100% - 40px));
+  height: min(540px, calc(100% - 120px));
+  z-index: 1;
+}
+
+.bematist-marketing .mk-demo-card-host .card-nav-side {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.bematist-marketing .mk-demo-card-host .card-nav-left { left: 12px; }
+.bematist-marketing .mk-demo-card-host .card-nav-right { right: 12px; }
+
+.bematist-marketing .mk-demo-card-host .card-page-dots {
+  position: absolute;
+  bottom: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.bematist-marketing .mk-demo-card-host .share-bar {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.bematist-marketing .mk-demo-card-host .flip-hint,
+.bematist-marketing .mk-demo-card-host .global-toggle {
+  display: none;
+}
+
+/* Tone down the holo shimmer to fit the Bematist aesthetic */
+.bematist-marketing .mk-demo-card-host .pharos-holo {
+  --card-opacity: 0.35;
+}
+.bematist-marketing .mk-demo-card-host .pharos-holo-shine { opacity: 0.35; }
+.bematist-marketing .mk-demo-card-host .pharos-holo-glare { opacity: 0.35; }
 
 .bematist-marketing .mk-demo h1 {
   font-size: clamp(28px, 3.4vw, 40px);
