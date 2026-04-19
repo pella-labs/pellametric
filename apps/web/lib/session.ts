@@ -28,9 +28,18 @@ export async function getSessionCtx(): Promise<Ctx> {
   // Separate from the legacy `bematist-session` Redis shim so the M4 path
   // (PG-backed session row) and the pre-M4 path (Redis-backed) can coexist
   // without interfering with each other's tests.
+  // Production HTTPS deploys get the `__Secure-` prefix on Better Auth's
+  // session cookie (RFC 6265bis §4.1.3.1 — browsers require it when the
+  // cookie is Set-Cookie'd with `Secure`). Local HTTP dev still uses the
+  // unprefixed name. Check both.
+  const betterAuthCookie =
+    ck.get(BETTER_AUTH_COOKIE_NAME)?.value ??
+    ck.get(`__Secure-${BETTER_AUTH_COOKIE_NAME}`)?.value ??
+    null;
+
   return resolveSessionCtx({
     sessionCookie: ck.get(SESSION_COOKIE_NAME)?.value ?? null,
-    betterAuthCookie: ck.get(BETTER_AUTH_COOKIE_NAME)?.value ?? null,
+    betterAuthCookie,
     revealHeader: hs.get("x-reveal-token"),
     env: process.env,
     redis: db.redis,
