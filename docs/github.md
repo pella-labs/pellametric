@@ -3,6 +3,8 @@
 > **Status.** Interim plan. A full `/research-and-plan` pass is recommended to ratify scope, score the outcome-signal upgrades by effort, and land D-numbers in `dev-docs/PRD.md`. This doc is the sharp brief that pass should consume — not a replacement for it.
 >
 > **Doctrine.** Test-Driven throughout. Every surface listed below follows the loop: webhook fixture committed → failing test → implementation → green → integration test → ship. No surface merges without its contract test (per CLAUDE.md Testing Rules + Adapter Matrix "per-adapter contract tests pinned to golden fixtures").
+>
+> **Market focus: US only.** All GitHub signals default ON. EU/works-council compliance surface is owned by a separate workstream and being put behind env flags; this plan does not implement EU-specific defaults, per-signal capture flags, or jurisdictional retention policies.
 
 ## Summary
 
@@ -60,7 +62,7 @@ We are not standing up a tunnel for a one-off demo. Path is: build and validate 
 **Production cutover (same code, no demo flag):**
 
 1. Deploy the branch to the production ingest URL (already has public HTTPS — that is the only "tunnel" we need).
-2. Register the production GitHub App against the real Bematist GitHub org with scopes: `pull_request`, `pull_request_review`, `push`, `check_suite`, `workflow_run`, `deployment`, `deployment_status`, `repository`, read-only metadata, read-only contents (CODEOWNERS), read-only workflows, read-only secret-scanning-alerts (optional, works-council-gated).
+2. Register the production GitHub App against the real Bematist GitHub org with scopes: `pull_request`, `pull_request_review`, `push`, `check_suite`, `workflow_run`, `deployment`, `deployment_status`, `repository`, read-only metadata, read-only contents (CODEOWNERS), read-only workflows, read-only secret-scanning-alerts.
 3. Point the App's webhook URL at the production ingest endpoint; store webhook secret in the platform secrets store (never in `.env` for prod).
 4. Install on the dev org's repos. Fail-closed boot guarantees persistence is healthy before traffic arrives; the initial `GET /installation/repositories` sync populates the registry; webhooks start landing.
 5. Watch `bematist_github_webhook_received_total{status}` and `bematist_github_reconciliation_gap_seconds` for the first 24h. Replay any missed deliveries with `POST /api/admin/github/redeliver`.
@@ -156,7 +158,7 @@ The derived linkage surface lives in **Postgres**, not ClickHouse. Reasons:
 
 - Recompute triggers are event-driven and small-batch (webhook arrival, reconciliation run, enrichment arrival, tracked-repo toggle). Postgres is the right primitive for stateful materialization.
 - Manager dashboard filters join this table to ClickHouse queries via an IN-list of `session_id` — the set is small (thousands, not millions, per rendered page).
-- Right-to-erasure semantics map cleanly to Postgres row-deletes; ClickHouse MVs make GDPR harder, not easier.
+- Row-level deletes for tenant offboarding are simpler in Postgres than in ClickHouse MVs.
 - At 8M evt/day, linkage cardinality is session-count not event-count — well within Postgres reach.
 
 If profiling shows the IN-list join is slow, we introduce a ClickHouse dictionary synced from Postgres — additive, not replacing.
@@ -187,7 +189,7 @@ If profiling shows the IN-list join is slow, we introduce a ClickHouse dictionar
 
 ### Outcome signal capture (the core upgrade)
 
-These signals are what turn Bematist from "spend analytics" into "outcome analytics." Each is its own parser + Postgres cache + scoring-layer feed. All behind per-repo capture flags so works-council-sensitive tenants can turn individual signals off.
+These signals are what turn Bematist from "spend analytics" into "outcome analytics." Each is its own parser + Postgres cache + scoring-layer feed. All signals default ON — US market focus, no per-signal capture-flag plumbing in v1. (If/when an EU customer surfaces, an env-flagged kill-switch can be layered in without schema change; the EU compliance surface is being managed by a separate workstream.)
 
 1. **First-push-green-rate** — from `check_suite.conclusion` joined to `push.head_commit.id`. Metric: of AI-assisted sessions that produced a push, what fraction had all check suites green on the first completion? Feeds `outcome_quality_v1` sub-score. `bematist outcomes` CLI surfaces this per-session.
 2. **Deployment-as-outcome** — from `deployment` + `deployment_status` events. Metric: deployed-per-dollar, time-to-first-deploy after merge, deploy success rate. Feeds `outcome_quality_v1`. Many orgs deploy via GitHub Environments; for those that don't, the signal is absent and the metric is suppressed (never zero-filled).
@@ -282,7 +284,7 @@ Enumerated so `/research-and-plan` can validate coverage.
 - **Repo archive** / **delete** / **restore** — lifecycle fields capture all three; restored repos re-enter eligibility.
 - **5000-repo initial sync** — paginated, rate-limit-aware, backgrounded, surfaced in UI.
 - **GitHub Enterprise Server (GHE)** — delta from github.com: webhook endpoint format, rate limits, API URL prefix. Flagged as a Phase-2 compatibility pass unless a customer needs it at v1 launch; tracked as an open question.
-- **GDPR erasure** — `bematist erase --org` drops Postgres rows in `github_*`, `session_repo_links`, `session_repo_eligibility`; 7-day SLA matches existing.
+- **Tenant offboarding / data deletion** — `bematist erase --org` drops Postgres rows in `github_*`, `session_repo_links`, `session_repo_eligibility`. Same code path as existing tenant deletion; no special EU SLA.
 - **Tenant isolation** — RLS on every new Postgres table; cross-tenant probe (INT9) extended with GitHub tables; merge-blocker.
 
 ## Test Plan — TDD workflow
@@ -316,7 +318,7 @@ Required merge-blocking tests (CLAUDE.md Testing Rules):
 - Per-adapter contract test per event parser — pinned to golden fixture.
 - Privacy adversarial: forbidden-field fuzzer on ingest (restated from existing).
 - RLS cross-tenant probe extended to GitHub tables — 0 rows across tenants.
-- GDPR erasure E2E extended: `bematist erase --org <id>` removes all `github_*` rows within 7d SLA.
+- Tenant-deletion E2E extended: `bematist erase --org <id>` removes all `github_*` rows.
 - Webhook HMAC validation: seeded bad signatures return 401 + audit log entry; 100% rejection.
 - Boot-fail-closed: test harness removes each required config and asserts startup failure with distinct error codes.
 - Linkage surface commutativity: apply webhooks in random order, assert final state identical.
@@ -350,8 +352,9 @@ Test coverage minimums (CLAUDE.md §10 Phase 1): Workstream I ≥5 means at leas
 - Webhook HMAC validation mandatory (CLAUDE.md Outcome Attribution §8.5, restated).
 - GitHub App private key lives in the platform secrets store (AWS Secrets Manager / Vault / sealed-secret in self-host). Never on disk outside; never in env vars in managed cloud. Self-host writes to `${BEMATIST_DATA_DIR}/secrets/` with 0600.
 - Installation tokens cached in Redis with TTL; never persisted to Postgres.
-- Per-signal capture flags let works-council-sensitive tenants disable individual outcome signals. Default profile for DE/FR/IT tenants: only `pr_link`, `commit_link`, `direct_repo`, CI-green. Deployment, review-timing, and security-alert signals default off in those regions (admin can opt in with a works-council signoff checkbox, audit-logged).
-- GDPR: all GitHub-cached data respects the 7-day erasure SLA; RLS on every new table; cross-tenant probe extended.
+- All GitHub signals default ON for the US market. No per-signal capture flags in v1.
+- RLS on every new table; cross-tenant probe extended (multi-tenant isolation, not jurisdictional compliance).
+- EU/works-council compliance surface is owned by a separate workstream and is being moved behind env flags. This plan does not implement EU-specific defaults.
 - No per-engineer GitHub leaderboard. No "who reviewed fastest" public ranking. CLAUDE.md §2.3 non-goals reaffirmed.
 
 ## Open questions — prioritized queue for `/research-and-plan`
@@ -362,7 +365,7 @@ Ordered by expected impact on v1.
 2. **Copilot Metrics API scope stability** — has GitHub changed the scope requirements since 2025-Q4? Affects whether this is v1 or Phase 2.
 3. **Squash-merge trailer preservation in the wild** — survey: what fraction of real orgs have "pull request title and description" set? If low, we need an alternative attribution path beyond the `AI-Assisted:` trailer.
 4. **Rate-limit posture for 10k-dev orgs** — primary endpoint is webhooks (no rate limit), but reconciliation + initial sync + Copilot Metrics hit the REST/GraphQL quotas. Needs a worked capacity model.
-5. **Works-council-sensitive default profile** — which signals are safe-by-default in DE/FR/IT? Needs legal read against BetrVG §87(1) nr. 6.
+5. ~~Works-council default profile~~ — **dropped.** US market focus; EU surface is a separate workstream behind env flags.
 6. **CODEOWNERS ambiguity resolution** — real repos have multi-owner glob patterns. What's the rule when a session touches files owned by two teams?
 7. **Deployment provider diversity** — GitHub Environments vs external CD (Vercel, Spinnaker, ArgoCD with webhooks). Worth profiling real dev orgs; the signal is weak if most deploys bypass GitHub's deployment API.
 8. **Secret-scanning cost on high-volume orgs** — do we throttle? Skip on repos with > N alerts/day?
