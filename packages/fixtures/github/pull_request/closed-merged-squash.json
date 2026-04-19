@@ -1,0 +1,144 @@
+{
+  "action": "closed",
+  "number": 7,
+  "pull_request": {
+    "id": 111001,
+    "node_id": "PR_kwDOFIXTURE001",
+    "number": 7,
+    "state": "closed",
+    "locked": false,
+    "title": "Fixture PR title — redacted",
+    "user": {
+      "login": "fixture-engineer",
+      "id": 555111,
+      "node_id": "U_kgDOFIXTURE_SENDER",
+      "type": "User",
+      "site_admin": false
+    },
+    "body": "Fixture body — redacted.",
+    "created_at": "2026-04-01T00:00:00Z",
+    "updated_at": "2026-04-01T00:05:00Z",
+    "closed_at": "2026-04-01T01:00:00Z",
+    "merged_at": "2026-04-01T01:00:00Z",
+    "merge_commit_sha": "0000000000000000000000000000000000000003",
+    "assignees": [],
+    "requested_reviewers": [],
+    "requested_teams": [],
+    "labels": [],
+    "milestone": null,
+    "draft": false,
+    "head": {
+      "label": "fixture-org:feature/fixture-branch",
+      "ref": "feature/fixture-branch",
+      "sha": "0000000000000000000000000000000000000001",
+      "user": {
+        "login": "fixture-engineer",
+        "id": 555111,
+        "node_id": "U_kgDOFIXTURE_SENDER",
+        "type": "User",
+        "site_admin": false
+      },
+      "repo": {
+        "id": 987654321,
+        "node_id": "R_kgDOFIXTURE001",
+        "name": "fixture-repo",
+        "full_name": "fixture-org/fixture-repo",
+        "private": false,
+        "owner": {
+          "login": "fixture-org",
+          "id": 123456,
+          "node_id": "O_kgDOFIXTUREORG",
+          "type": "Organization",
+          "site_admin": false
+        },
+        "html_url": "https://bematist.local/fixture-org/fixture-repo",
+        "description": null,
+        "fork": false,
+        "default_branch": "main",
+        "clone_url": "https://bematist.local/fixture-org/fixture-repo"
+      }
+    },
+    "base": {
+      "label": "fixture-org:main",
+      "ref": "main",
+      "sha": "0000000000000000000000000000000000000002",
+      "user": {
+        "login": "fixture-engineer",
+        "id": 555111,
+        "node_id": "U_kgDOFIXTURE_SENDER",
+        "type": "User",
+        "site_admin": false
+      },
+      "repo": {
+        "id": 987654321,
+        "node_id": "R_kgDOFIXTURE001",
+        "name": "fixture-repo",
+        "full_name": "fixture-org/fixture-repo",
+        "private": false,
+        "owner": {
+          "login": "fixture-org",
+          "id": 123456,
+          "node_id": "O_kgDOFIXTUREORG",
+          "type": "Organization",
+          "site_admin": false
+        },
+        "html_url": "https://bematist.local/fixture-org/fixture-repo",
+        "description": null,
+        "fork": false,
+        "default_branch": "main",
+        "clone_url": "https://bematist.local/fixture-org/fixture-repo"
+      }
+    },
+    "author_association": "MEMBER",
+    "auto_merge": null,
+    "active_lock_reason": null,
+    "merged": true,
+    "mergeable": true,
+    "rebaseable": true,
+    "mergeable_state": "clean",
+    "merged_by": {
+      "login": "fixture-engineer",
+      "id": 555111,
+      "node_id": "U_kgDOFIXTURE_SENDER",
+      "type": "User",
+      "site_admin": false
+    },
+    "comments": 0,
+    "review_comments": 0,
+    "maintainer_can_modify": false,
+    "commits": 3,
+    "additions": 42,
+    "deletions": 3,
+    "changed_files": 2
+  },
+  "repository": {
+    "id": 987654321,
+    "node_id": "R_kgDOFIXTURE001",
+    "name": "fixture-repo",
+    "full_name": "fixture-org/fixture-repo",
+    "private": false,
+    "owner": {
+      "login": "fixture-org",
+      "id": 123456,
+      "node_id": "O_kgDOFIXTUREORG",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "html_url": "https://bematist.local/fixture-org/fixture-repo",
+    "description": null,
+    "fork": false,
+    "default_branch": "main",
+    "clone_url": "https://bematist.local/fixture-org/fixture-repo"
+  },
+  "sender": {
+    "login": "fixture-engineer",
+    "id": 555111,
+    "node_id": "U_kgDOFIXTURE_SENDER",
+    "type": "User",
+    "site_admin": false
+  },
+  "installation": {
+    "id": 42424242,
+    "node_id": "MDIzOkZJWFRVUkUwMDE="
+  }
+}

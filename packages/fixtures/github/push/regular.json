@@ -1,0 +1,91 @@
+{
+  "ref": "refs/heads/main",
+  "before": "0000000000000000000000000000000000000002",
+  "after": "0000000000000000000000000000000000000001",
+  "created": false,
+  "deleted": false,
+  "forced": false,
+  "compare": "https://bematist.local/fixture-org/fixture-repo/compare/000000000000...000000000000",
+  "pusher": {
+    "name": "fixture-engineer",
+    "email": "fixture-engineer@example.com"
+  },
+  "commits": [
+    {
+      "id": "0000000000000000000000000000000000000001",
+      "tree_id": "0000000000000000000000000000000000000100",
+      "distinct": true,
+      "message": "fixture: add redacted file",
+      "timestamp": "2026-04-01T00:05:00Z",
+      "url": "https://bematist.local/fixture-org/fixture-repo/commit/0000000000000000000000000000000000000001",
+      "author": {
+        "name": "Fixture Engineer",
+        "email": "fixture-engineer@example.com",
+        "username": "fixture-engineer"
+      },
+      "committer": {
+        "name": "Fixture Engineer",
+        "email": "fixture-engineer@example.com",
+        "username": "fixture-engineer"
+      },
+      "added": [
+        "FIXTURE_CHANGELOG"
+      ],
+      "removed": [],
+      "modified": []
+    }
+  ],
+  "head_commit": {
+    "id": "0000000000000000000000000000000000000001",
+    "tree_id": "0000000000000000000000000000000000000100",
+    "distinct": true,
+    "message": "fixture: add redacted file",
+    "timestamp": "2026-04-01T00:05:00Z",
+    "url": "https://bematist.local/fixture-org/fixture-repo/commit/0000000000000000000000000000000000000001",
+    "author": {
+      "name": "Fixture Engineer",
+      "email": "fixture-engineer@example.com",
+      "username": "fixture-engineer"
+    },
+    "committer": {
+      "name": "Fixture Engineer",
+      "email": "fixture-engineer@example.com",
+      "username": "fixture-engineer"
+    },
+    "added": [
+      "FIXTURE_CHANGELOG"
+    ],
+    "removed": [],
+    "modified": []
+  },
+  "repository": {
+    "id": 987654321,
+    "node_id": "R_kgDOFIXTURE001",
+    "name": "fixture-repo",
+    "full_name": "fixture-org/fixture-repo",
+    "private": false,
+    "owner": {
+      "login": "fixture-org",
+      "id": 123456,
+      "node_id": "O_kgDOFIXTUREORG",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "html_url": "https://bematist.local/fixture-org/fixture-repo",
+    "description": null,
+    "fork": false,
+    "default_branch": "main",
+    "clone_url": "https://bematist.local/fixture-org/fixture-repo"
+  },
+  "sender": {
+    "login": "fixture-engineer",
+    "id": 555111,
+    "node_id": "U_kgDOFIXTURE_SENDER",
+    "type": "User",
+    "site_admin": false
+  },
+  "installation": {
+    "id": 42424242,
+    "node_id": "MDIzOkZJWFRVUkUwMDE="
+  }
+}

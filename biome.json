@@ -24,7 +24,9 @@
       "!packages/ui/src/styles/theme.css",
       "!**/*.md",
       "!packages/otel/src/gen",
-      "!packages/otel/vendor"
+      "!packages/otel/vendor",
+      "!packages/fixtures/github/**/*.json",
+      "!packages/fixtures/github/.webhook-secret"
     ]
   },
   "formatter": {

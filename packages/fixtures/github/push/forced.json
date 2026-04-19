@@ -1,0 +1,67 @@
+{
+  "ref": "refs/heads/feature/fixture-branch",
+  "before": "0000000000000000000000000000000000000005",
+  "after": "0000000000000000000000000000000000000004",
+  "created": false,
+  "deleted": false,
+  "forced": true,
+  "compare": "https://bematist.local/fixture-org/fixture-repo/compare/000000000000...000000000000",
+  "pusher": {
+    "name": "fixture-engineer",
+    "email": "fixture-engineer@example.com"
+  },
+  "commits": [],
+  "head_commit": {
+    "id": "0000000000000000000000000000000000000004",
+    "tree_id": "0000000000000000000000000000000000000101",
+    "distinct": true,
+    "message": "fixture: force-push rewrite",
+    "timestamp": "2026-04-01T01:15:00Z",
+    "url": "https://bematist.local/fixture-org/fixture-repo/commit/0000000000000000000000000000000000000004",
+    "author": {
+      "name": "Fixture Engineer",
+      "email": "fixture-engineer@example.com",
+      "username": "fixture-engineer"
+    },
+    "committer": {
+      "name": "Fixture Engineer",
+      "email": "fixture-engineer@example.com",
+      "username": "fixture-engineer"
+    },
+    "added": [],
+    "removed": [],
+    "modified": [
+      "FIXTURE_CHANGELOG"
+    ]
+  },
+  "repository": {
+    "id": 987654321,
+    "node_id": "R_kgDOFIXTURE001",
+    "name": "fixture-repo",
+    "full_name": "fixture-org/fixture-repo",
+    "private": false,
+    "owner": {
+      "login": "fixture-org",
+      "id": 123456,
+      "node_id": "O_kgDOFIXTUREORG",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "html_url": "https://bematist.local/fixture-org/fixture-repo",
+    "description": null,
+    "fork": false,
+    "default_branch": "main",
+    "clone_url": "https://bematist.local/fixture-org/fixture-repo"
+  },
+  "sender": {
+    "login": "fixture-engineer",
+    "id": 555111,
+    "node_id": "U_kgDOFIXTURE_SENDER",
+    "type": "User",
+    "site_admin": false
+  },
+  "installation": {
+    "id": 42424242,
+    "node_id": "MDIzOkZJWFRVUkUwMDE="
+  }
+}

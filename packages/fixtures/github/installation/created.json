@@ -1,0 +1,56 @@
+{
+  "action": "created",
+  "installation": {
+    "id": 42424242,
+    "node_id": "MDIzOkZJWFRVUkUwMDE=",
+    "account": {
+      "login": "fixture-org",
+      "id": 123456,
+      "node_id": "O_kgDOFIXTUREORG",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "repository_selection": "selected",
+    "access_tokens_url": "https://bematist.local/api/v3/app/installations/42424242/access_tokens",
+    "repositories_url": "https://bematist.local/api/v3/installation/repositories",
+    "html_url": "https://bematist.local/organizations/fixture-org/settings/installations/42424242",
+    "app_id": 909090,
+    "app_slug": "bematist-fixture-app",
+    "target_id": 123456,
+    "target_type": "Organization",
+    "permissions": {
+      "actions": "read",
+      "checks": "read",
+      "contents": "read",
+      "metadata": "read",
+      "pull_requests": "read",
+      "statuses": "read"
+    },
+    "events": [
+      "pull_request",
+      "push",
+      "check_suite",
+      "workflow_run"
+    ],
+    "created_at": "2026-04-01T00:00:00Z",
+    "updated_at": "2026-04-01T00:00:00Z",
+    "single_file_name": null,
+    "has_multiple_single_files": false
+  },
+  "repositories": [
+    {
+      "id": 987654321,
+      "node_id": "R_kgDOFIXTURE001",
+      "name": "fixture-repo",
+      "full_name": "fixture-org/fixture-repo",
+      "private": false
+    }
+  ],
+  "sender": {
+    "login": "fixture-engineer",
+    "id": 555111,
+    "node_id": "U_kgDOFIXTURE_SENDER",
+    "type": "User",
+    "site_admin": false
+  }
+}

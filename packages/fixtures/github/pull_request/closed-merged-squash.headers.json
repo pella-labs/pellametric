@@ -1,0 +1,5 @@
+{
+  "X-GitHub-Event": "pull_request",
+  "X-GitHub-Delivery": "fixture-pull_request-closed-merged-squash",
+  "X-Hub-Signature-256": "sha256=f7dd15f063bb681f6fb9b4dfb7419fc1a2caf907805485db90fccac1255ff6fc"
+}

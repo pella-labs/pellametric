@@ -1,0 +1,5 @@
+{
+  "X-GitHub-Event": "pull_request",
+  "X-GitHub-Delivery": "fixture-pull_request-synchronize",
+  "X-Hub-Signature-256": "sha256=d1bc6e96970b506b9dd086d532569bd0990272c24a9330751e8c69f6f79354d6"
+}

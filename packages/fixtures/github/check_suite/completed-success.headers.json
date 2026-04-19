@@ -1,0 +1,5 @@
+{
+  "X-GitHub-Event": "check_suite",
+  "X-GitHub-Delivery": "fixture-check_suite-completed-success",
+  "X-Hub-Signature-256": "sha256=f8dad7c891e9fe0e90fab23ebc485dd7f0ceea4a48f0784cf177944e43cf4c00"
+}

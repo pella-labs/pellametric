@@ -1,0 +1,74 @@
+{
+  "action": "completed",
+  "check_suite": {
+    "id": 700001,
+    "node_id": "CS_kwDOFIXTURE001",
+    "head_branch": "feature/fixture-branch",
+    "head_sha": "0000000000000000000000000000000000000001",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://bematist.local/fixture-org/fixture-repo/check-suites/700001",
+    "before": "0000000000000000000000000000000000000002",
+    "after": "0000000000000000000000000000000000000001",
+    "pull_requests": [
+      {
+        "id": 111001,
+        "number": 7,
+        "head": {
+          "ref": "feature/fixture-branch",
+          "sha": "0000000000000000000000000000000000000001",
+          "repo": {
+            "id": 987654321,
+            "name": "fixture-repo"
+          }
+        },
+        "base": {
+          "ref": "main",
+          "sha": "0000000000000000000000000000000000000002",
+          "repo": {
+            "id": 987654321,
+            "name": "fixture-repo"
+          }
+        }
+      }
+    ],
+    "app": {
+      "id": 909090,
+      "slug": "bematist-fixture-app",
+      "name": "Bematist Fixture App"
+    },
+    "created_at": "2026-04-01T00:05:30Z",
+    "updated_at": "2026-04-01T00:10:00Z",
+    "latest_check_runs_count": 3
+  },
+  "repository": {
+    "id": 987654321,
+    "node_id": "R_kgDOFIXTURE001",
+    "name": "fixture-repo",
+    "full_name": "fixture-org/fixture-repo",
+    "private": false,
+    "owner": {
+      "login": "fixture-org",
+      "id": 123456,
+      "node_id": "O_kgDOFIXTUREORG",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "html_url": "https://bematist.local/fixture-org/fixture-repo",
+    "description": null,
+    "fork": false,
+    "default_branch": "main",
+    "clone_url": "https://bematist.local/fixture-org/fixture-repo"
+  },
+  "sender": {
+    "login": "fixture-engineer",
+    "id": 555111,
+    "node_id": "U_kgDOFIXTURE_SENDER",
+    "type": "User",
+    "site_admin": false
+  },
+  "installation": {
+    "id": 42424242,
+    "node_id": "MDIzOkZJWFRVUkUwMDE="
+  }
+}
