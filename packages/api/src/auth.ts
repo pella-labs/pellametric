@@ -49,7 +49,7 @@ export interface RedisClient {
 
 export class AuthError extends Error {
   constructor(
-    public code: "UNAUTHORIZED" | "FORBIDDEN",
+    public code: "UNAUTHORIZED" | "FORBIDDEN" | "BAD_REQUEST",
     message: string,
   ) {
     super(message);

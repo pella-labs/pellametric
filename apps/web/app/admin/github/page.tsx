@@ -1,10 +1,11 @@
-import { getGithubConnection } from "@bematist/api";
+import { getGithubAdminBanners, getGithubConnection } from "@bematist/api";
 import { Badge, Button, Card, CardHeader, CardTitle } from "@bematist/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSessionCtx } from "@/lib/session";
 import { RedeliverPanel } from "./_components/RedeliverPanel";
 import { RotateSecretPanel } from "./_components/RotateSecretPanel";
+import { SquashMergeBanner } from "./_components/SquashMergeBanner";
 import { StartSyncButton } from "./_components/StartSyncButton";
 import { SyncProgressBar } from "./_components/SyncProgressBar";
 import { TrackingModeControl } from "./_components/TrackingModeControl";
@@ -24,6 +25,8 @@ export const metadata: Metadata = {
 export default async function AdminGithubPage() {
   const ctx = await getSessionCtx();
   const connection = await getGithubConnection(ctx, {});
+  const banners = await getGithubAdminBanners(ctx, {});
+  const squashBanner = banners.banners.find((b) => b.banner_key === "squash_merge_trailer_loss");
 
   // Env drives the install URL — if not set, we render a generic instruction.
   const installSlug = process.env.GITHUB_APP_SLUG;
@@ -41,6 +44,18 @@ export default async function AdminGithubPage() {
           fills the repo catalog and establishes the tracking lattice.
         </p>
       </header>
+
+      {squashBanner ? (
+        <SquashMergeBanner
+          affectedRepoCount={Number(squashBanner.metadata.affected_repo_count ?? 0)}
+          sampleProviderRepoIds={
+            Array.isArray(squashBanner.metadata.sample_provider_repo_ids)
+              ? (squashBanner.metadata.sample_provider_repo_ids as string[])
+              : []
+          }
+          initialDismissed={squashBanner.dismissed}
+        />
+      ) : null}
 
       <Card>
         <CardHeader>

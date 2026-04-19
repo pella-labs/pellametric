@@ -86,4 +86,61 @@ describe("github_codeowners_v1", () => {
     const i = input();
     expect(resolveCodeowners(i)).toEqual(resolveCodeowners(i));
   });
+
+  // ----- G3 D47 live override ----------------------------------------------
+
+  test("G3 D47: IC with 35% share on `frontend/*` AND no static match → codeowner_domain=frontend", () => {
+    // Scenario: repo has NO CODEOWNERS entries (rules list empty). IC has
+    // 35% share on the frontend tree via git_events. Per D47, IC is owner
+    // of frontend/* regardless of static file.
+    const result = resolveCodeowners({
+      touched_paths: ["frontend/app/page.tsx", "frontend/components/btn.tsx"],
+      rules: [],
+      ic_commit_share_by_path: { "frontend/app": 0.35 },
+    });
+    expect(result.codeowner_domain).toBe("frontend");
+    expect(result.contribution_earned_override_pending).toBe(true);
+    expect(result.contribution_earned_paths).toEqual(["frontend/app"]);
+  });
+
+  test("G3 D47: IC with 29% share → NOT an owner (below 30% threshold)", () => {
+    const result = resolveCodeowners({
+      touched_paths: ["frontend/app/page.tsx"],
+      rules: [],
+      ic_commit_share_by_path: { "frontend/app": 0.29 },
+    });
+    expect(result.codeowner_domain).toBe("generalist");
+    expect(result.contribution_earned_override_pending).toBe(false);
+    expect(result.contribution_earned_paths).toEqual([]);
+  });
+
+  test("G3 D47: static match wins for codeowner_domain; override paths carried alongside", () => {
+    // Static file says frontend belongs to team:frontend. IC also has 45% on
+    // backend/* (without static match). Domain keeps frontend; paths list
+    // includes backend.
+    const result = resolveCodeowners({
+      touched_paths: ["frontend/app/page.tsx"],
+      rules: [{ pattern: "/frontend/**", owners: ["team:frontend"] }],
+      ic_commit_share_by_path: { "backend/api": 0.45 },
+    });
+    expect(result.codeowner_domain).toBe("frontend");
+    expect(result.contribution_earned_paths).toEqual(["backend/api"]);
+    expect(result.owner_teams).toEqual(new Set(["team:frontend"]));
+  });
+
+  test("G3 D47: most-specific earned path preferred for domain inference", () => {
+    const result = resolveCodeowners({
+      touched_paths: ["backend/api/users.ts"],
+      rules: [],
+      ic_commit_share_by_path: {
+        backend: 0.35,
+        "backend/api": 0.55,
+      },
+    });
+    // Both paths earned — domain inference picks the longest.
+    // topLevelSegment("backend/api") === "backend" so domain is still
+    // "backend" but `contribution_earned_paths` carries both (sorted).
+    expect(result.codeowner_domain).toBe("backend");
+    expect(result.contribution_earned_paths).toEqual(["backend", "backend/api"]);
+  });
 });

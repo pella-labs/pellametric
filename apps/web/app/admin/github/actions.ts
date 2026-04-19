@@ -1,11 +1,15 @@
 "use server";
 import {
+  dismissAdminBanner,
   enqueueGithubSync,
+  patchRepoProdEnvRegex,
   patchRepoTracking,
   patchTrackingMode,
   redeliverWebhooks,
   rotateWebhookSecret,
 } from "@bematist/api";
+import { DismissAdminBannerInput } from "@bematist/api/schemas/github/banners";
+import { PatchRepoProdEnvRegexInput } from "@bematist/api/schemas/github/prodEnvRegex";
 import { RedeliverWebhooksInput } from "@bematist/api/schemas/github/redeliver";
 import { EnqueueGithubSyncInput } from "@bematist/api/schemas/github/sync";
 import {
@@ -146,6 +150,55 @@ export async function redeliverWebhooksAction(raw: {
   }
 }
 
+/** POST /api/admin/github/banners/dismiss — G3. */
+export async function dismissAdminBannerAction(raw: { banner_key: "squash_merge_trailer_loss" }) {
+  const parsed = DismissAdminBannerInput.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false as const,
+      error: {
+        code: "BAD_REQUEST" as const,
+        message: "Invalid input.",
+        issues: parsed.error.issues,
+      },
+    };
+  }
+  try {
+    const ctx = await getSessionCtx();
+    const data = await dismissAdminBanner(ctx, parsed.data);
+    revalidatePath("/admin/github");
+    return { ok: true as const, data };
+  } catch (err) {
+    return errorResult(err);
+  }
+}
+
+/** PATCH /api/admin/github/repos/:id/prod-env-regex — G3. */
+export async function patchProdEnvRegexAction(raw: {
+  provider_repo_id: string;
+  pattern: string | null;
+}) {
+  const parsed = PatchRepoProdEnvRegexInput.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false as const,
+      error: {
+        code: "BAD_REQUEST" as const,
+        message: "Invalid input.",
+        issues: parsed.error.issues,
+      },
+    };
+  }
+  try {
+    const ctx = await getSessionCtx();
+    const data = await patchRepoProdEnvRegex(ctx, parsed.data);
+    revalidatePath("/admin/github/repos");
+    return { ok: true as const, data };
+  } catch (err) {
+    return errorResult(err);
+  }
+}
+
 function errorResult(err: unknown) {
   if (
     err &&
@@ -155,7 +208,7 @@ function errorResult(err: unknown) {
     (err as { name: unknown }).name === "AuthError"
   ) {
     const e = err as { code: string; message?: string };
-    const code = e.code as "UNAUTHORIZED" | "FORBIDDEN";
+    const code = e.code as "UNAUTHORIZED" | "FORBIDDEN" | "BAD_REQUEST";
     return {
       ok: false as const,
       error: { code, message: e.message ?? "Auth error." },

@@ -114,4 +114,32 @@ describe("Adversarial persona assertions (D44)", () => {
       expect(v).toBeLessThan(60);
     }
   });
+
+  // ---------- G3 deploy-specific adversarial personas -----------------------
+
+  test("Persona G3-9: Non-prod-env gamer (`canary-eu`) — deploy suppressed, NOT over-scored", () => {
+    // Module: computeDeployPerDollar returns suppressed when environments
+    // don't match the prod allowlist AND no admin override. Composite rule
+    // D41 redistributes deploy weight to other terms → score cannot rise
+    // above the baseline of the deploy-spam-staging gamer.
+    const cases = forPersona("deploy-non-prod-env-gamer");
+    expect(cases.length).toBe(8);
+    const s = scores(cases);
+    for (const v of s) {
+      expect(v).toBeLessThan(60);
+    }
+  });
+
+  test("Persona G3-10: Healthy prod-deployer — deploy term LIVE, score rises", () => {
+    // This is the positive-signal partner of the two adversarial personas.
+    // Ensures the deploy-per-dollar module is actually contributing to
+    // composite when the signal is present (so suppression is a real gate,
+    // not a permanent zero).
+    const cases = forPersona("healthy-prod-deployer");
+    expect(cases.length).toBe(8);
+    const s = scores(cases);
+    for (const v of s) {
+      expect(v).toBeGreaterThan(40);
+    }
+  });
 });

@@ -46,6 +46,13 @@ export interface SessionEnrichment {
   direct_provider_repo_ids: string[];
   commit_shas: string[];
   pr_numbers: number[];
+  /**
+   * G3 — ISO-8601 timestamps per commit_sha, same order. Optional for
+   * back-compat: when absent OR empty, timestamp-range tombstones have no
+   * effect (only SHA-list tombstones apply). Same length as `commit_shas`
+   * when present.
+   */
+  commit_timestamps?: string[];
 }
 
 export interface PullRequest {
@@ -77,16 +84,28 @@ export interface Alias {
 }
 
 /**
- * Force-push tombstone: SHAs that must be excluded from link evidence
- * because they were rewound out of history by a forced push.
+ * Force-push tombstone (G3, D53 pure-function extension) — SHAs AND/OR
+ * commit-timestamp ranges that must be excluded from link evidence because
+ * they were rewound out of history by a forced push.
  *
- * G1 scope: eligibility exclusion only (the excluded SHAs never contribute
- * to `session_enrichment.commit_shas ∩ pr.head_sha|merge_sha`). Full
- * tombstone ranges + 30-min windows are `TODO(g3)`.
+ * G1 shipped the flat SHA list. G3 extends to 30-minute windows keyed on
+ * the force-push timestamp: `[force_push_at - 30min, force_push_at]`. A
+ * session's commit whose `commit_timestamp` falls inside any range is
+ * excluded from eligibility, mirroring the behavior for SHA exclusion.
+ *
+ * Both shapes coexist — callers can pass flat SHAs (old) and/or ranges
+ * (new). Commutativity is preserved because ranges are sorted and
+ * de-duped before hashing in `canonicalInputSet`.
  */
 export interface ForcePushTombstone {
   provider_repo_id: string;
-  excluded_shas: string[]; // TODO(g3): extend to [range_start, range_end] timestamps.
+  excluded_shas: string[];
+  /**
+   * 30-min windows during which rewound commits were published. Format:
+   * ISO-8601 timestamps, `range_end` exclusive. Empty array permitted for
+   * back-compat with G1-shaped inputs.
+   */
+  excluded_ranges?: Array<{ range_start: string; range_end: string }>;
 }
 
 export interface LinkerInputs {
@@ -172,6 +191,39 @@ export function computeLinkerState(
     const s = tombstoneShas.get(t.provider_repo_id) ?? new Set<string>();
     for (const sha of t.excluded_shas) s.add(sha);
     tombstoneShas.set(t.provider_repo_id, s);
+  }
+
+  // G3: Build per-commit_sha exclusion based on commit_timestamp ranges. For
+  // each tombstone-range that covers a commit's timestamp, add that commit
+  // to its repo's tombstone set. This closes the race with concurrent
+  // session enrichment (PRD §17 risk #8): a session whose commit arrives
+  // DURING a force-push window gets excluded identically regardless of
+  // event ordering.
+  const hasTimestamps =
+    Array.isArray(inputs.session.commit_timestamps) &&
+    inputs.session.commit_timestamps.length === inputs.session.commit_shas.length;
+  for (const t of inputs.tombstones) {
+    const ranges = t.excluded_ranges ?? [];
+    if (ranges.length === 0 || !hasTimestamps) continue;
+    const set = tombstoneShas.get(t.provider_repo_id) ?? new Set<string>();
+    for (let i = 0; i < inputs.session.commit_shas.length; i++) {
+      const sha = inputs.session.commit_shas[i];
+      // biome-ignore lint/style/noNonNullAssertion: guarded above.
+      const ts = inputs.session.commit_timestamps![i];
+      if (!sha || !ts) continue;
+      const ms = Date.parse(ts);
+      if (Number.isNaN(ms)) continue;
+      for (const r of ranges) {
+        const startMs = Date.parse(r.range_start);
+        const endMs = Date.parse(r.range_end);
+        if (Number.isNaN(startMs) || Number.isNaN(endMs)) continue;
+        if (ms >= startMs && ms < endMs) {
+          set.add(sha);
+          break;
+        }
+      }
+    }
+    tombstoneShas.set(t.provider_repo_id, set);
   }
 
   // Session SHAs with tombstones excluded, per provider_repo_id filter we'll
@@ -433,10 +485,23 @@ function canonicalInputSet(inputs: LinkerInputs, sortedCandidates: unknown[]): u
     })),
     (r) => r.provider_repo_id,
   );
+  // Sort commit_shas with their paired timestamps so both sides travel
+  // together — otherwise a permuted commit-order would break commutativity
+  // when a timestamp-range tombstone is present.
+  const commits = inputs.session.commit_shas.map((sha, i) => ({
+    sha,
+    ts:
+      Array.isArray(inputs.session.commit_timestamps) &&
+      inputs.session.commit_timestamps.length === inputs.session.commit_shas.length
+        ? (inputs.session.commit_timestamps[i] ?? null)
+        : null,
+  }));
+  const sortedCommits = [...commits].sort((a, b) => (a.sha < b.sha ? -1 : a.sha > b.sha ? 1 : 0));
   const sortedSession = {
     session_id: inputs.session.session_id,
     direct_provider_repo_ids: [...inputs.session.direct_provider_repo_ids].sort(),
-    commit_shas: [...inputs.session.commit_shas].sort(),
+    commit_shas: sortedCommits.map((c) => c.sha),
+    commit_timestamps: sortedCommits.map((c) => c.ts),
     pr_numbers: [...inputs.session.pr_numbers].sort((a, b) => a - b),
   };
   const sortedPrs = sortBy(
@@ -477,6 +542,19 @@ function canonicalInputSet(inputs: LinkerInputs, sortedCandidates: unknown[]): u
     inputs.tombstones.map((t) => ({
       provider_repo_id: t.provider_repo_id,
       excluded_shas: [...t.excluded_shas].sort(),
+      excluded_ranges: [...(t.excluded_ranges ?? [])]
+        .map((r) => ({ range_start: r.range_start, range_end: r.range_end }))
+        .sort((a, b) =>
+          a.range_start === b.range_start
+            ? a.range_end < b.range_end
+              ? -1
+              : a.range_end > b.range_end
+                ? 1
+                : 0
+            : a.range_start < b.range_start
+              ? -1
+              : 1,
+        ),
     })),
     (t) => t.provider_repo_id,
   );

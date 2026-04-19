@@ -48,7 +48,10 @@ export type GithubPersona =
   | "backend-vs-frontend"
   | "deploy-spam-staging"
   | "ci-flakiness-blamed"
-  | "revert-heavy-high-loc";
+  | "revert-heavy-high-loc"
+  // G3 additions
+  | "deploy-non-prod-env-gamer"
+  | "healthy-prod-deployer";
 
 const SHARED_COHORT = {
   accepted_edits: [3, 8, 15, 22, 35, 50, 68, 85, 110, 180],
@@ -326,6 +329,45 @@ const PERSONA_SPECS: GithubPersonaSpec[] = [
         codeowner_domain: "backend",
         deploy_success_per_dollar: { value: 0, suppressed: true },
         expected_persona_intent: "should-not-under-score",
+      };
+    },
+  },
+  // ----- G3 deploy-specific personas -----
+  {
+    persona: "deploy-non-prod-env-gamer",
+    count: 8,
+    tag: "goodhart-gaming",
+    sample: (rng) => {
+      // 10 deploys/day to `canary-eu` (non-prod), no admin override.
+      // Module MUST suppress → composite does not elevate.
+      const accepted = uniformInt(rng, 25, 45);
+      const retained = Math.max(0, accepted - uniformInt(rng, 2, 7));
+      return {
+        signals: normalSignals(rng, accepted, retained, "avg"),
+        first_push_green_input: normalFirstPushInput(rng, "avg"),
+        author_association: "MEMBER",
+        codeowner_domain: "backend",
+        deploy_success_per_dollar: { value: 0, suppressed: true },
+        expected_persona_intent: "should-not-over-score",
+      };
+    },
+  },
+  {
+    persona: "healthy-prod-deployer",
+    count: 8,
+    tag: "high-leverage",
+    sample: (rng) => {
+      // Honest IC who ships prod daily. deploy_success_per_dollar term is
+      // LIVE (not suppressed) at a high percentile. Score should rise.
+      const accepted = uniformInt(rng, 80, 140);
+      const retained = Math.max(0, accepted - uniformInt(rng, 0, 4));
+      return {
+        signals: normalSignals(rng, accepted, retained, "high"),
+        first_push_green_input: normalFirstPushInput(rng, "high"),
+        author_association: "MEMBER",
+        codeowner_domain: "backend",
+        deploy_success_per_dollar: { value: 85, suppressed: false },
+        expected_persona_intent: "score-high",
       };
     },
   },

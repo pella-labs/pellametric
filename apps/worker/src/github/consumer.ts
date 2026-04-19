@@ -72,7 +72,31 @@ export async function consumeMessage(
   const event = payload.event;
   const body = JSON.parse(Buffer.from(payload.body_b64, "base64").toString("utf8")) as unknown;
   const parsed = parseDomain(event, body);
-  return handleParsed(parsed, payload, deps);
+  const outcome = await handleParsed(parsed, payload, deps);
+  // G3: record every successfully-handled delivery in the seen-table so the
+  // hourly reconciler (apps/worker/src/github-linker/reconcileScaffold.ts)
+  // can detect + backfill gaps via `POST /app/hook/deliveries/:id/attempts`.
+  // Ignored events are recorded too — they still represent a delivery we saw
+  // and don't want to re-request.
+  try {
+    await deps.sql.unsafe(
+      `INSERT INTO github_webhook_deliveries_seen
+         (tenant_id, installation_id, delivery_id, event)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (tenant_id, delivery_id) DO NOTHING`,
+      [payload.tenant_id, payload.installation_id, payload.delivery_id, payload.event],
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const log = deps.log ?? ((e) => console.log(JSON.stringify(e)));
+    log({
+      level: "warn",
+      app: "worker-github",
+      msg: "failed to write github_webhook_deliveries_seen",
+      err: msg,
+    });
+  }
+  return outcome;
 }
 
 export interface ConsumeOutcome {

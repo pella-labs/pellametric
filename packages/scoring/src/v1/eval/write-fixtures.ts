@@ -85,6 +85,9 @@ writeJsonl(
     "deploy-spam-staging": 3,
     "ci-flakiness-blamed": 5,
     "revert-heavy-high-loc": 6,
+    // G3 — include both new personas in held-out, small counts.
+    "deploy-non-prod-env-gamer": 0,
+    "healthy-prod-deployer": 0,
   }),
 );
 

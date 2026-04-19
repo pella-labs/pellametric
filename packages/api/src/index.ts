@@ -30,23 +30,25 @@ export {
   type EngineerViewAttemptOutput,
   recordEngineerViewAttempt,
 } from "./mutations/engineer_view";
-export { enqueueGithubSync } from "./mutations/github/sync";
+export { dismissAdminBanner } from "./mutations/github/dismissBanner";
+export { patchRepoProdEnvRegex } from "./mutations/github/prodEnvRegex";
 export {
-  patchRepoTracking,
-  type PatchRepoTrackingDeps,
-  type RecomputeScopedEmitter,
-} from "./mutations/github/repoTracking";
-export {
-  patchTrackingMode,
-  type PatchTrackingModeDeps,
-  type RecomputeEmitter,
-} from "./mutations/github/trackingMode";
-export { rotateWebhookSecret } from "./mutations/github/rotateWebhookSecret";
-export {
-  redeliverWebhooks,
   type RedeliveryDeps,
   type RedeliveryHttpClient,
+  redeliverWebhooks,
 } from "./mutations/github/redeliver";
+export {
+  type PatchRepoTrackingDeps,
+  patchRepoTracking,
+  type RecomputeScopedEmitter,
+} from "./mutations/github/repoTracking";
+export { rotateWebhookSecret } from "./mutations/github/rotateWebhookSecret";
+export { enqueueGithubSync } from "./mutations/github/sync";
+export {
+  type PatchTrackingModeDeps,
+  patchTrackingMode,
+  type RecomputeEmitter,
+} from "./mutations/github/trackingMode";
 export { setNotificationPref } from "./mutations/policy";
 // Mutations
 export { revealSession } from "./mutations/session";
@@ -60,6 +62,7 @@ export {
 } from "./queries/cluster";
 // Queries
 export { getSummary } from "./queries/dashboard";
+export { getGithubAdminBanners } from "./queries/github/banners";
 export { getGithubConnection } from "./queries/github/connection";
 export { listGithubRepos } from "./queries/github/repos";
 export { getTrackingPreview } from "./queries/github/trackingPreview";

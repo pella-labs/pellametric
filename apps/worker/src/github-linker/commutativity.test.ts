@@ -337,6 +337,83 @@ const scenarios: Scenario[] = [
     }),
   },
   {
+    // G3 — D53 pure-function extension: 30-min force-push windows.
+    // Session has 3 commits; the middle one's timestamp falls inside the
+    // tombstone window so it must be excluded from link evidence. Permuting
+    // any input collection or the commit order must produce the same result.
+    name: "s11 (G3): force-push RANGE tombstone excludes a commit by timestamp",
+    build: () => ({
+      tenant_id: UUID(11),
+      tenant_mode: "all",
+      installations: [{ installation_id: "inst-11", status: "active" }],
+      repos: [{ provider_repo_id: "1101", tracking_state: "inherit" }],
+      session: {
+        session_id: UUID(1100),
+        direct_provider_repo_ids: [],
+        commit_shas: [SHA(110), SHA(111), SHA(112)],
+        commit_timestamps: [
+          "2026-04-10T10:00:00.000Z",
+          "2026-04-10T10:55:00.000Z", // inside [10:40, 11:10)
+          "2026-04-10T11:30:00.000Z",
+        ],
+        pr_numbers: [],
+      },
+      pull_requests: [
+        {
+          provider_repo_id: "1101",
+          pr_number: 5,
+          head_sha: SHA(110),
+          merge_commit_sha: null,
+          state: "open",
+          from_fork: false,
+          title_hash: HASH("t-110"),
+          author_login_hash: HASH("a-110"),
+          additions: 0,
+          deletions: 0,
+          changed_files: 0,
+        },
+        {
+          // the MIDDLE commit's head — must be excluded by the range.
+          provider_repo_id: "1101",
+          pr_number: 6,
+          head_sha: SHA(111),
+          merge_commit_sha: null,
+          state: "open",
+          from_fork: false,
+          title_hash: HASH("t-111"),
+          author_login_hash: HASH("a-111"),
+          additions: 0,
+          deletions: 0,
+          changed_files: 0,
+        },
+        {
+          provider_repo_id: "1101",
+          pr_number: 7,
+          head_sha: SHA(112),
+          merge_commit_sha: null,
+          state: "open",
+          from_fork: false,
+          title_hash: HASH("t-112"),
+          author_login_hash: HASH("a-112"),
+          additions: 0,
+          deletions: 0,
+          changed_files: 0,
+        },
+      ],
+      deployments: [],
+      aliases: [],
+      tombstones: [
+        {
+          provider_repo_id: "1101",
+          excluded_shas: [],
+          excluded_ranges: [
+            { range_start: "2026-04-10T10:40:00.000Z", range_end: "2026-04-10T11:10:00.000Z" },
+          ],
+        },
+      ],
+    }),
+  },
+  {
     name: "s10: unknown PR repo ignored (noise)",
     build: () => ({
       tenant_id: UUID(10),
@@ -373,20 +450,55 @@ const scenarios: Scenario[] = [
 ];
 
 function permuteInputs(inp: LinkerInputs, rng: () => number): LinkerInputs {
+  // If commit_timestamps is present, shuffle BOTH arrays with the same
+  // permutation so the paired shape doesn't desync — the canonicalizer
+  // sorts them together before hashing.
+  const hasTs =
+    Array.isArray(inp.session.commit_timestamps) &&
+    inp.session.commit_timestamps.length === inp.session.commit_shas.length;
+  let shas: string[];
+  let timestamps: string[] | undefined;
+  if (hasTs && inp.session.commit_timestamps) {
+    const paired = inp.session.commit_shas.map((s, i) => ({
+      sha: s,
+      // biome-ignore lint/style/noNonNullAssertion: guarded by hasTs.
+      ts: inp.session.commit_timestamps![i]!,
+    }));
+    const shuffled = shuffle(paired, rng);
+    shas = shuffled.map((p) => p.sha);
+    timestamps = shuffled.map((p) => p.ts);
+  } else {
+    shas = shuffle(inp.session.commit_shas, rng);
+    timestamps = undefined;
+  }
+  const sessionBase: typeof inp.session = {
+    ...inp.session,
+    direct_provider_repo_ids: shuffle(inp.session.direct_provider_repo_ids, rng),
+    commit_shas: shas,
+    pr_numbers: shuffle(inp.session.pr_numbers, rng),
+  };
+  if (timestamps !== undefined) {
+    sessionBase.commit_timestamps = timestamps;
+  }
+  // Tombstone-range arrays shuffled inside each tombstone, AND the list of
+  // tombstones itself shuffled.
+  const tombstones = shuffle(
+    inp.tombstones.map((t) =>
+      t.excluded_ranges && t.excluded_ranges.length > 0
+        ? { ...t, excluded_ranges: shuffle(t.excluded_ranges, rng) }
+        : t,
+    ),
+    rng,
+  );
   return {
     ...inp,
     installations: shuffle(inp.installations, rng),
     repos: shuffle(inp.repos, rng),
-    session: {
-      ...inp.session,
-      direct_provider_repo_ids: shuffle(inp.session.direct_provider_repo_ids, rng),
-      commit_shas: shuffle(inp.session.commit_shas, rng),
-      pr_numbers: shuffle(inp.session.pr_numbers, rng),
-    },
+    session: sessionBase,
     pull_requests: shuffle(inp.pull_requests, rng),
     deployments: shuffle(inp.deployments, rng),
     aliases: shuffle(inp.aliases, rng),
-    tombstones: shuffle(inp.tombstones, rng),
+    tombstones,
   };
 }
 
