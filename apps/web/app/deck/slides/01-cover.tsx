@@ -93,7 +93,9 @@ export function Slide01Cover(_props: { totalPages: number }) {
         <div>
           <div className="label">Presented by</div>
           <div className="val">
-            Walid Khori · David Aihe · Sebastian Garces · Jorge Alejandro Diaz · Sandesh Pathak
+            Walid Khori · David Aihe · Sebastian Garces
+            <br />
+            Jorge Alejandro Diez · Sandesh Pathak
           </div>
         </div>
         <div>
@@ -102,7 +104,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
         </div>
         <div>
           <div className="label">Contact</div>
-          <div className="val">hello@bematist.dev</div>
+          <div className="val">@bematist_dev on X</div>
         </div>
       </div>
       <div className="pagenum-left">bematist.dev</div>

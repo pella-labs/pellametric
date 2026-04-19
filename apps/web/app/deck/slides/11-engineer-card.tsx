@@ -60,23 +60,10 @@ export function Slide11EngineerCard({
                 Lvl 5 · Senior · Power User — rendered from your history.
               </span>
             </li>
-            <li>
-              <span className="ink" style={{ fontWeight: 500 }}>
-                Private by default.
-              </span>{" "}
-              <span className="muted">
-                Share when{" "}
-                <em style={{ fontStyle: "normal" }} className="accent">
-                  you
-                </em>{" "}
-                choose to.
-              </span>
-            </li>
           </ul>
 
           <div style={{ marginTop: 40, display: "flex", gap: 16, flexWrap: "wrap" }}>
             <span className="badge accent">SHAREABLE</span>
-            <span className="badge">PRIVATE BY DEFAULT</span>
             <span className="badge warm">8 CARDS IN SERIES</span>
           </div>
         </div>
