@@ -64,7 +64,11 @@ export function WasteStackedBarChart({
   const absDomain: [number, number] | undefined = (() => {
     if (mode !== "abs") return undefined;
     const totals = shaped
-      .map((d) => (d as { productive: number; retryWaste: number }).productive + (d as { retryWaste: number }).retryWaste)
+      .map(
+        (d) =>
+          (d as { productive: number; retryWaste: number }).productive +
+          (d as { retryWaste: number }).retryWaste,
+      )
       .filter((n) => n > 0)
       .sort((a, b) => a - b);
     if (totals.length === 0) return undefined;
@@ -120,10 +124,7 @@ export function WasteStackedBarChart({
             formatter={tooltipFmt as any}
             labelStyle={{ color: "var(--muted-foreground)" }}
           />
-          <Legend
-            wrapperStyle={{ fontSize: 11, color: "var(--muted-foreground)" }}
-            iconSize={10}
-          />
+          <Legend wrapperStyle={{ fontSize: 11, color: "var(--muted-foreground)" }} iconSize={10} />
           <Bar
             dataKey="productive"
             name="Productive (est.)"

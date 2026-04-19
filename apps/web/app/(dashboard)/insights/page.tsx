@@ -42,7 +42,8 @@ export default async function InsightsPage() {
           <CardValue>{USD.format(trend.currentWeekCost)}</CardValue>
           <p className="mt-1 text-xs text-muted-foreground">
             {trend.changePercent >= 0 ? "+" : ""}
-            {trend.changePercent.toFixed(1)}% vs prior week · last week {USD.format(trend.previousWeekCost)}
+            {trend.changePercent.toFixed(1)}% vs prior week · last week{" "}
+            {USD.format(trend.previousWeekCost)}
           </p>
         </Card>
         <Card>
@@ -51,7 +52,8 @@ export default async function InsightsPage() {
           </CardHeader>
           <CardValue>{PCT.format(retry.firstTryRate)}</CardValue>
           <p className="mt-1 text-xs text-muted-foreground">
-            {INT.format(retry.retriedTurns)} retried turns · {USD.format(retry.retryCostUsd)} spent on retries
+            {INT.format(retry.retriedTurns)} retried turns · {USD.format(retry.retryCostUsd)} spent
+            on retries
           </p>
         </Card>
         <Card>
@@ -156,9 +158,9 @@ export default async function InsightsPage() {
           </table>
           {retry.worstSession ? (
             <p className="mt-3 text-xs text-muted-foreground">
-              Worst-retries session: <span className="font-mono">{retry.worstSession.name}</span>{" "}
-              on {retry.worstSession.date} · burned {USD.format(retry.worstSession.retryCostUsd)}{" "}
-              on retries
+              Worst-retries session: <span className="font-mono">{retry.worstSession.name}</span> on{" "}
+              {retry.worstSession.date} · burned {USD.format(retry.worstSession.retryCostUsd)} on
+              retries
             </p>
           ) : null}
         </Card>

@@ -43,9 +43,7 @@ function ToolBubble({ turn }: { turn: TranscriptTurn }) {
       <summary className="cursor-pointer select-none flex items-center gap-2">
         <span
           className={`inline-flex items-center rounded px-1.5 py-0.5 font-medium ${
-            isError
-              ? "bg-red-500/15 text-red-400"
-              : "bg-muted text-muted-foreground"
+            isError ? "bg-red-500/15 text-red-400" : "bg-muted text-muted-foreground"
           }`}
         >
           🛠 {turn.tool?.name ?? "tool"}
@@ -127,9 +125,7 @@ function TurnBubble({ turn }: { turn: TranscriptTurn }) {
   return (
     <div
       className={`rounded-lg border px-4 py-3 ${
-        isUser
-          ? "border-blue-500/30 bg-blue-500/5"
-          : "border-border/40 bg-muted/10"
+        isUser ? "border-blue-500/30 bg-blue-500/5" : "border-border/40 bg-muted/10"
       }`}
     >
       <div className="flex items-center justify-between gap-3 text-xs mb-2">
@@ -168,10 +164,7 @@ export default async function SessionDetailPage({
   if (!isValidSource(source)) notFound();
   const id = decodeURIComponent(encodedId);
 
-  const [transcript, localData] = await Promise.all([
-    loadTranscript(source, id),
-    getLocalData(),
-  ]);
+  const [transcript, localData] = await Promise.all([loadTranscript(source, id), getLocalData()]);
   const shape = classifyTurns(transcript.totals);
 
   // Look up the source-specific session aggregate from grammata's cached
@@ -210,10 +203,9 @@ export default async function SessionDetailPage({
             {
               label: "Retries",
               value: `${claudeSession.retryCount}/${claudeSession.totalEditTurns || claudeSession.retryCount}`,
-              sub:
-                claudeSession.mostRetriedFile
-                  ? `worst: ${claudeSession.mostRetriedFile.split("/").pop()}`
-                  : "",
+              sub: claudeSession.mostRetriedFile
+                ? `worst: ${claudeSession.mostRetriedFile.split("/").pop()}`
+                : "",
               tone: claudeSession.retryCount > 0 ? "warn" : "default",
             },
           ]}
@@ -286,7 +278,9 @@ export default async function SessionDetailPage({
             { label: "Project", value: cursorSession.project || "(no project)" },
             {
               label: "Created",
-              value: cursorSession.createdAt ? cursorSession.createdAt.slice(0, 19).replace("T", " ") : "—",
+              value: cursorSession.createdAt
+                ? cursorSession.createdAt.slice(0, 19).replace("T", " ")
+                : "—",
             },
           ]}
         />
@@ -315,10 +309,10 @@ export default async function SessionDetailPage({
 
       <Card className="border-amber-500/30 bg-amber-500/5">
         <div className="text-xs text-amber-400/90 leading-relaxed">
-          <strong>Local view.</strong> Prompts shown here are read directly from your disk
-          (<code>~/.claude</code>, <code>~/.codex</code>, Cursor SQLite). Nothing is sent to any
-          server. This is your own <code>/me</code> view — the team dashboard never renders
-          prompt text without the IC&apos;s explicit Tier-C opt-in (CLAUDE.md §Privacy Rules D7/D8).
+          <strong>Local view.</strong> Prompts shown here are read directly from your disk (
+          <code>~/.claude</code>, <code>~/.codex</code>, Cursor SQLite). Nothing is sent to any
+          server. This is your own <code>/me</code> view — the team dashboard never renders prompt
+          text without the IC&apos;s explicit Tier-C opt-in (CLAUDE.md §Privacy Rules D7/D8).
         </div>
       </Card>
 
@@ -336,8 +330,8 @@ export default async function SessionDetailPage({
               : source === "codex"
                 ? "~/.codex/sessions"
                 : "Cursor SQLite"}
-            . Claude Code and Codex purge logs older than their retention policy; the aggregate
-            row still shows in Summary because grammata cached it.
+            . Claude Code and Codex purge logs older than their retention policy; the aggregate row
+            still shows in Summary because grammata cached it.
           </p>
         </Card>
       ) : (

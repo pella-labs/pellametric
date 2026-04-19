@@ -73,7 +73,10 @@ export default async function OutcomesPage() {
 
   // Last ~10 real blocks (skip gaps, newest first) — "did I run hot yesterday
   // afternoon or was that block chill?" is a question the IC asks often.
-  const recentBlocks = blocks.filter((b) => !b.isGap).slice(-10).reverse();
+  const recentBlocks = blocks
+    .filter((b) => !b.isGap)
+    .slice(-10)
+    .reverse();
   const { cacheStats } = analytics;
 
   // Productive-side sorts. Same rows, re-ranked by productive $ (cost − waste).
@@ -95,8 +98,8 @@ export default async function OutcomesPage() {
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">Outcomes</h1>
         <p className="text-sm text-muted-foreground">
-          Productive work on the left, retry waste on the right. Proxy metric until outcome-attribution
-          lands (accept events, merged commits); honest caveats below.
+          Productive work on the left, retry waste on the right. Proxy metric until
+          outcome-attribution lands (accept events, merged commits); honest caveats below.
         </p>
       </header>
 
@@ -163,8 +166,8 @@ export default async function OutcomesPage() {
             <CardTitle>Current billing block</CardTitle>
           </CardHeader>
           <p className="text-sm text-muted-foreground">
-            No active 5-hour block right now. Start a session and this tile will light up with
-            burn rate + projected cost.
+            No active 5-hour block right now. Start a session and this tile will light up with burn
+            rate + projected cost.
           </p>
         </Card>
       )}
@@ -259,9 +262,9 @@ export default async function OutcomesPage() {
           }))}
         />
         <p className="mt-2 text-xs text-muted-foreground">
-          Absolute $ per day — bar height shows actual spend, the red slice is the estimated
-          retry waste inside it. Y-axis is capped at the 95th-percentile day so one outlier
-          doesn&apos;t flatten the rest; hover any bar for the true number.
+          Absolute $ per day — bar height shows actual spend, the red slice is the estimated retry
+          waste inside it. Y-axis is capped at the 95th-percentile day so one outlier doesn&apos;t
+          flatten the rest; hover any bar for the true number.
         </p>
       </Card>
 
@@ -279,18 +282,17 @@ export default async function OutcomesPage() {
           }))}
         />
         <p className="mt-2 text-xs text-muted-foreground">
-          Same data as above, every bar normalized to 100% — shows the waste <em>rate</em> per
-          day irrespective of that day&apos;s total spend. Useful for spotting "ugly" days even
-          when they were cheap. Per session:{" "}
+          Same data as above, every bar normalized to 100% — shows the waste <em>rate</em> per day
+          irrespective of that day&apos;s total spend. Useful for spotting "ugly" days even when
+          they were cheap. Per session:{" "}
           <code className="font-mono">waste = cost × (retryCount / totalEditTurns)</code>.
         </p>
         <p className="mt-3 text-xs text-muted-foreground" hidden>
           <strong>How this is computed:</strong> for each session,{" "}
-          <code className="font-mono">waste = cost × (retryCount / totalEditTurns)</code>.
-          Sessions with zero retries count fully productive. Red slice is the estimate aggregated
-          per day. Grammata&apos;s global{" "}
-          <code className="font-mono">retryCostUsd</code> (in the tile above) uses the same math
-          aggregated differently — the two should agree within a few percent.
+          <code className="font-mono">waste = cost × (retryCount / totalEditTurns)</code>. Sessions
+          with zero retries count fully productive. Red slice is the estimate aggregated per day.
+          Grammata&apos;s global <code className="font-mono">retryCostUsd</code> (in the tile above)
+          uses the same math aggregated differently — the two should agree within a few percent.
         </p>
       </Card>
 
@@ -438,7 +440,12 @@ export default async function OutcomesPage() {
                         </Link>
                         <div className="mt-0.5 text-[10px] text-muted-foreground truncate">
                           <span className="font-mono">{s.model || "—"}</span>
-                          {s.gitBranch ? <> · <span className="font-mono">{s.gitBranch}</span></> : null}
+                          {s.gitBranch ? (
+                            <>
+                              {" "}
+                              · <span className="font-mono">{s.gitBranch}</span>
+                            </>
+                          ) : null}
                           {s.topTool ? <> · {s.topTool}</> : null}
                           {" · "}
                           <span className="opacity-70">{projectLabel(s.project)}</span>
@@ -496,7 +503,12 @@ export default async function OutcomesPage() {
                       </Link>
                       <div className="mt-0.5 text-[10px] text-muted-foreground truncate">
                         <span className="font-mono">{s.model || "—"}</span>
-                        {s.gitBranch ? <> · <span className="font-mono">{s.gitBranch}</span></> : null}
+                        {s.gitBranch ? (
+                          <>
+                            {" "}
+                            · <span className="font-mono">{s.gitBranch}</span>
+                          </>
+                        ) : null}
                         {s.topTool ? <> · {s.topTool}</> : null}
                         {" · "}
                         <span className="opacity-70">{projectLabel(s.project)}</span>
@@ -522,10 +534,10 @@ export default async function OutcomesPage() {
           <strong>Honest caveats.</strong> This view uses grammata&apos;s{" "}
           <code className="font-mono">retryCount</code> and{" "}
           <code className="font-mono">totalEditTurns</code> as proxies for &quot;work redone.&quot;
-          Real outcome attribution (accepted edits, merged commits, passing tests) isn&apos;t
-          wired yet, so a session that retried an edit and ultimately succeeded counts here the
-          same as one that gave up. The green&nbsp;+&nbsp;red totals sum to total spend; the
-          split between them is an estimate, not a judgment.
+          Real outcome attribution (accepted edits, merged commits, passing tests) isn&apos;t wired
+          yet, so a session that retried an edit and ultimately succeeded counts here the same as
+          one that gave up. The green&nbsp;+&nbsp;red totals sum to total spend; the split between
+          them is an estimate, not a judgment.
         </div>
       </Card>
     </div>

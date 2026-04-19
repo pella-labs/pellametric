@@ -11,11 +11,7 @@ import { cn } from "../lib/cn";
  * - `post-migration`: adapter requires a specific app version; pre-migration
  *   data is skipped.
  */
-export type Fidelity =
-  | "full"
-  | "estimated"
-  | "aggregate-only"
-  | "post-migration";
+export type Fidelity = "full" | "estimated" | "aggregate-only" | "post-migration";
 
 const LABELS: Record<Fidelity, string> = {
   full: "Full fidelity",
@@ -53,11 +49,7 @@ export interface FidelityChipProps {
   compact?: boolean;
 }
 
-export function FidelityChip({
-  fidelity,
-  className,
-  compact = false,
-}: FidelityChipProps) {
+export function FidelityChip({ fidelity, className, compact = false }: FidelityChipProps) {
   const visible = compact ? COMPACT_LABELS[fidelity] : LABELS[fidelity];
   return (
     <Tooltip content={DESCRIPTIONS[fidelity]}>

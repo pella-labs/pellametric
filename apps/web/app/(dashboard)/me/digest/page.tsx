@@ -60,7 +60,10 @@ export default async function MyDigestPage({
   const claude = sources.find((s) => s.key === "claude-code");
   const codex = sources.find((s) => s.key === "codex");
   const cursor = sources.find((s) => s.key === "cursor");
-  const recentBlocks = blocks.filter((b) => !b.isGap).slice(-12).reverse();
+  const recentBlocks = blocks
+    .filter((b) => !b.isGap)
+    .slice(-12)
+    .reverse();
   const recentCursor = cursorRaw
     ? [...cursorRaw.sessions]
         .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
@@ -130,9 +133,7 @@ export default async function MyDigestPage({
                 +{INT.format(cursorRaw.totalLinesAdded)}
               </CardValue>
               <p className="mt-1 text-xs text-muted-foreground">
-                <span className="text-red-400/80">
-                  −{INT.format(cursorRaw.totalLinesRemoved)}
-                </span>{" "}
+                <span className="text-red-400/80">−{INT.format(cursorRaw.totalLinesRemoved)}</span>{" "}
                 removed
               </p>
             </Card>
@@ -330,7 +331,8 @@ export default async function MyDigestPage({
           </thead>
           <tbody>
             {recentBlocks.map((b) => {
-              const tokens = b.inputTokens + b.outputTokens + b.cacheReadTokens + b.cacheCreateTokens;
+              const tokens =
+                b.inputTokens + b.outputTokens + b.cacheReadTokens + b.cacheCreateTokens;
               return (
                 <tr key={b.startMs} className="border-t border-border/40">
                   <td className="py-2 text-xs text-muted-foreground">
@@ -362,9 +364,9 @@ export default async function MyDigestPage({
             </CardTitle>
           </CardHeader>
           <p className="text-xs text-muted-foreground">
-            Cursor&apos;s SQLite doesn&apos;t expose per-project attribution, so these
-            sessions don&apos;t appear in the cross-source project table. This panel surfaces
-            everything Cursor does report.
+            Cursor&apos;s SQLite doesn&apos;t expose per-project attribution, so these sessions
+            don&apos;t appear in the cross-source project table. This panel surfaces everything
+            Cursor does report.
           </p>
           <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
             <div>

@@ -346,9 +346,12 @@ type EventBase = {
  * last-resort sonnet pricing. This keeps dated variants (`claude-opus-4-7`,
  * `claude-opus-4-5-20251101`, etc.) priced instead of dropping to $0.
  */
-function getClaudePricing(
-  model: string,
-): { input: number; output: number; cacheRead: number; cacheCreation: number } {
+function getClaudePricing(model: string): {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheCreation: number;
+} {
   const exact = MODEL_PRICING_PER_MTOK[model];
   if (exact) return exact;
   const normalized = model.toLowerCase();

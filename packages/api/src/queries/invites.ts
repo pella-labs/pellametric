@@ -497,10 +497,9 @@ export async function acceptInviteByToken(
       expires_at: unknown;
       max_uses: number | null;
       uses: number;
-    }>(
-      `SELECT revoked_at, expires_at, max_uses, uses FROM org_invites WHERE id = $1 LIMIT 1`,
-      [invite.id],
-    );
+    }>(`SELECT revoked_at, expires_at, max_uses, uses FROM org_invites WHERE id = $1 LIMIT 1`, [
+      invite.id,
+    ]);
     const f = fresh[0];
     if (!f) return { ok: false, error: "not_found" };
     if (f.revoked_at) return { ok: false, error: "revoked" };

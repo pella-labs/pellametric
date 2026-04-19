@@ -16,9 +16,9 @@ import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { resolveBranch } from "./index";
 import { normalizeSession } from "./normalize";
 import { parseSessionFile } from "./parsers/parseSessionFile";
-import { resolveBranch } from "./index";
 
 const FIX = join(import.meta.dir, "fixtures", "rollout-turn-context.jsonl");
 
@@ -119,9 +119,7 @@ test("acceptance: ≥1 event with source='codex', real model, non-empty tool_nam
     expect(events.length).toBeGreaterThanOrEqual(1);
     for (const e of events) expect(e.source).toBe("codex");
 
-    const hasRealModel = events.some(
-      (e) => e.gen_ai?.request?.model === "gpt-5.3-codex",
-    );
+    const hasRealModel = events.some((e) => e.gen_ai?.request?.model === "gpt-5.3-codex");
     const hasRealToolName = events.some(
       (e) => e.dev_metrics.event_kind === "exec_command_start" && e.dev_metrics.tool_name === "bun",
     );

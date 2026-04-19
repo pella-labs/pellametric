@@ -2,12 +2,7 @@
 // biome-ignore-all lint/a11y/useFocusableInteractive: rows receive tabIndex=0 when clickable; header rows intentionally non-focusable.
 "use client";
 
-import {
-  type ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useRef } from "react";
 import { cn } from "../lib/cn";
@@ -63,9 +58,7 @@ export function VirtualTable<T>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    ...(getRowId
-      ? { getRowId: (row: T, index: number) => getRowId(row, index) }
-      : {}),
+    ...(getRowId ? { getRowId: (row: T, index: number) => getRowId(row, index) } : {}),
   });
 
   const rows = table.getRowModel().rows;
@@ -79,11 +72,7 @@ export function VirtualTable<T>({
 
   if (rows.length === 0 && empty) {
     return (
-      <div
-        className={cn("rounded-xl border border-border bg-card p-6", className)}
-      >
-        {empty}
-      </div>
+      <div className={cn("rounded-xl border border-border bg-card p-6", className)}>{empty}</div>
     );
   }
 
@@ -104,11 +93,7 @@ export function VirtualTable<T>({
     >
       <div role="rowgroup" className="sticky top-0 z-10 bg-background">
         {table.getHeaderGroups().map((headerGroup) => (
-          <div
-            key={headerGroup.id}
-            role="row"
-            className="flex border-b border-border"
-          >
+          <div key={headerGroup.id} role="row" className="flex border-b border-border">
             {headerGroup.headers.map((header) => (
               <div
                 key={header.id}
@@ -121,10 +106,7 @@ export function VirtualTable<T>({
               >
                 {header.isPlaceholder
                   ? null
-                  : flexRender(
-                      header.column.columnDef.header,
-                      header.getContext(),
-                    )}
+                  : flexRender(header.column.columnDef.header, header.getContext())}
               </div>
             ))}
           </div>

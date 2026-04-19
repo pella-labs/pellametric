@@ -112,7 +112,9 @@ async function buildCodexIndex(): Promise<Map<string, string>> {
         await walk(p, depth + 1);
       } else if (e.isFile() && e.name.startsWith("rollout-") && e.name.endsWith(".jsonl")) {
         // Codex filenames look like: rollout-YYYY-MM-DDTHH-MM-SS-<uuid>.jsonl
-        const m = e.name.match(/rollout-.*?-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/i);
+        const m = e.name.match(
+          /rollout-.*?-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/i,
+        );
         if (m?.[1]) out.set(m[1], p);
       }
     }
@@ -363,8 +365,7 @@ async function loadCodexTranscript(sessionId: string): Promise<TranscriptResult>
           (payload.stdout ?? "") || (payload.stderr ?? "") || `exit ${payload.exit_code ?? "?"}`,
         tool: {
           name: "shell-end",
-          output:
-            (payload.stdout ?? "") + (payload.stderr ? `\n[stderr] ${payload.stderr}` : ""),
+          output: (payload.stdout ?? "") + (payload.stderr ? `\n[stderr] ${payload.stderr}` : ""),
           status: failure ? "error" : "ok",
         },
       });
@@ -412,7 +413,15 @@ function cursorDbPath(): string | null {
   const home = homedir();
   const p = platform();
   if (p === "darwin")
-    return join(home, "Library", "Application Support", "Cursor", "User", "globalStorage", "state.vscdb");
+    return join(
+      home,
+      "Library",
+      "Application Support",
+      "Cursor",
+      "User",
+      "globalStorage",
+      "state.vscdb",
+    );
   if (p === "win32")
     return join(home, "AppData", "Roaming", "Cursor", "User", "globalStorage", "state.vscdb");
   return join(home, ".config", "Cursor", "User", "globalStorage", "state.vscdb");

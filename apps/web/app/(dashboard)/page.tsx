@@ -79,11 +79,11 @@ export default async function DashboardHome({
             <p className="text-xs text-amber-400/90 leading-relaxed">
               <strong>Why no cost or tokens here?</strong> Cursor is a subscription product —
               per-request cost isn&apos;t billed. Token counts do exist in Cursor&apos;s SQLite
-              schema (<code className="font-mono">tokenCount.inputTokens</code> on each bubble)
-              but your DB stores zeros for every row, so we can&apos;t recover them. Same story
-              for every third-party Cursor tracker. Instead, this view surfaces the signals
-              Cursor <em>does</em> expose — messages, lines changed, tab/composer accept rates,
-              files created, thinking time.
+              schema (<code className="font-mono">tokenCount.inputTokens</code> on each bubble) but
+              your DB stores zeros for every row, so we can&apos;t recover them. Same story for
+              every third-party Cursor tracker. Instead, this view surfaces the signals Cursor{" "}
+              <em>does</em> expose — messages, lines changed, tab/composer accept rates, files
+              created, thinking time.
             </p>
           </Card>
 

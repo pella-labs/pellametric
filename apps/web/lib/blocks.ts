@@ -67,15 +67,7 @@ export interface ActiveBlockSnapshot {
 /** Floor a timestamp down to the nearest UTC hour. */
 function floorToHourUTC(ms: number): number {
   const d = new Date(ms);
-  return Date.UTC(
-    d.getUTCFullYear(),
-    d.getUTCMonth(),
-    d.getUTCDate(),
-    d.getUTCHours(),
-    0,
-    0,
-    0,
-  );
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), 0, 0, 0);
 }
 
 export function buildBlocks(entries: BlockEntry[], now: number = Date.now()): BillingBlock[] {

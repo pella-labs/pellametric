@@ -66,11 +66,7 @@ export default async function JoinInvitePage({ params }: { params: Promise<{ tok
 
         <main className="flex flex-1 flex-col items-center justify-center gap-8">
           {preview.ok ? (
-            <ActiveInvite
-              preview={preview}
-              token={token}
-              alreadySignedIn={alreadySignedIn}
-            />
+            <ActiveInvite preview={preview} token={token} alreadySignedIn={alreadySignedIn} />
           ) : (
             <InactiveInvite error={preview.error} />
           )}
@@ -124,8 +120,7 @@ function ActiveInvite({
               <strong className="font-medium text-foreground">
                 {preview.role === "admin" ? "admin" : "engineer"}
               </strong>{" "}
-              in {preview.org_name}. We only read your GitHub email and handle — no repo
-              access.
+              in {preview.org_name}. We only read your GitHub email and handle — no repo access.
             </>
           )}
         </p>

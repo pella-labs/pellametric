@@ -308,8 +308,7 @@ function costForTurn(turn: CodexTurnUsage): number | undefined {
   if (!p) return undefined;
   const cached = turn.cached_input_tokens;
   const uncached = Math.max(turn.input_tokens - cached, 0);
-  const cost =
-    (uncached * p.input + cached * p.cached + turn.output_tokens * p.output) / 1_000_000;
+  const cost = (uncached * p.input + cached * p.cached + turn.output_tokens * p.output) / 1_000_000;
   return Math.round(cost * 1e6) / 1e6;
 }
 

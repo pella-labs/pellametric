@@ -116,8 +116,7 @@ export function parseLines(lines: string[]): ParsedSession {
       // mid-stream partial + final assistant records — they share
       // requestId/message.id but the final record carries cumulative usage;
       // naive summation would double-count every turn.
-      const usageKey =
-        parsed.message?.id ?? rid ?? parsed.uuid ?? `anon-${perUsageKey.size}`;
+      const usageKey = parsed.message?.id ?? rid ?? parsed.uuid ?? `anon-${perUsageKey.size}`;
       usageKeyByEntryIdx.set(entryIdx, usageKey);
       if (!seenKeys.has(usageKey)) {
         seenKeys.add(usageKey);

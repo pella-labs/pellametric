@@ -177,8 +177,8 @@ export default async function SessionsPage({
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
         <p className="text-sm text-muted-foreground">
-          Every Claude Code, Codex, and Cursor session on this machine. Click a row to see the
-          full prompt/response transcript. Data stays local.
+          Every Claude Code, Codex, and Cursor session on this machine. Click a row to see the full
+          prompt/response transcript. Data stays local.
         </p>
       </header>
 

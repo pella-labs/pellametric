@@ -73,9 +73,7 @@ function EngineerChipRow({
           }`}
         >
           <span
-            className={`h-2 w-2 rounded-full ${
-              online ? "bg-primary" : "bg-muted-foreground/40"
-            }`}
+            className={`h-2 w-2 rounded-full ${online ? "bg-primary" : "bg-muted-foreground/40"}`}
           />
           <span>{e.name}</span>
           {!online ? <span className="text-muted-foreground">(offline)</span> : null}
@@ -159,8 +157,7 @@ function EngineerView({
           </CardHeader>
           <CardValue>{INT.format(analytics.totalSessions)}</CardValue>
           <p className="mt-1 text-xs text-muted-foreground">
-            avg {USD.format(analytics.totalCost / Math.max(1, analytics.totalSessions))} /
-            session
+            avg {USD.format(analytics.totalCost / Math.max(1, analytics.totalSessions))} / session
           </p>
         </Card>
         <Card>
@@ -307,10 +304,7 @@ function CohortView({
   }
 
   const totalCost = engineers.reduce((a, e) => a + (e.data?.analytics.totalCost ?? 0), 0);
-  const totalSessions = engineers.reduce(
-    (a, e) => a + (e.data?.analytics.totalSessions ?? 0),
-    0,
-  );
+  const totalSessions = engineers.reduce((a, e) => a + (e.data?.analytics.totalSessions ?? 0), 0);
 
   const firstTryRanks = percentileRank(
     engineers.map((e) => e.data?.analytics.retryStats.firstTryRate ?? 0),
@@ -333,11 +327,11 @@ function CohortView({
     <>
       <Card className="border-emerald-500/30 bg-emerald-500/5">
         <p className="text-xs text-emerald-400/90">
-          <strong>{engineers.length}-engineer cohort.</strong> This is the real team view —
-          each dot on the 2×2 below is a teammate, names are shown because it&apos;s just
-          {` ${engineers.length}`} of you (below k=5). Prompt text is NEVER in this data;
-          each peer&apos;s <code className="font-mono">/api/peer/snapshot</code> returns
-          grammata aggregates only (CLAUDE.md §Privacy Rules Tier B).
+          <strong>{engineers.length}-engineer cohort.</strong> This is the real team view — each dot
+          on the 2×2 below is a teammate, names are shown because it&apos;s just
+          {` ${engineers.length}`} of you (below k=5). Prompt text is NEVER in this data; each
+          peer&apos;s <code className="font-mono">/api/peer/snapshot</code> returns grammata
+          aggregates only (CLAUDE.md §Privacy Rules Tier B).
         </p>
       </Card>
 
@@ -423,7 +417,9 @@ function CohortView({
                   </td>
                   <td className="py-2 text-right tabular-nums">
                     {data
-                      ? TOK.format(data.analytics.totalInputTokens + data.analytics.totalOutputTokens)
+                      ? TOK.format(
+                          data.analytics.totalInputTokens + data.analytics.totalOutputTokens,
+                        )
                       : "—"}
                   </td>
                   <td className="py-2 text-right tabular-nums">
@@ -441,8 +437,8 @@ function CohortView({
           <CardTitle>2×2 — outcome quality × efficiency (engineers as dots)</CardTitle>
         </CardHeader>
         <p className="mb-2 text-xs text-muted-foreground">
-          X: first-try rate rank. Y: sessions-per-dollar rank. Bubble size ∝ log(cost).
-          Upper-right = healthy; lower-left = "why is this engineer so expensive AND broken?"
+          X: first-try rate rank. Y: sessions-per-dollar rank. Bubble size ∝ log(cost). Upper-right
+          = healthy; lower-left = "why is this engineer so expensive AND broken?"
         </p>
         <ScatterChart
           data={scatter}
@@ -499,7 +495,10 @@ function ProjectProxyCohort({
 
   const avgFirstTryRate =
     rows.reduce((a, r) => a + r.firstTryRate * r.totalSessions, 0) /
-    Math.max(1, rows.reduce((a, r) => a + r.totalSessions, 0));
+    Math.max(
+      1,
+      rows.reduce((a, r) => a + r.totalSessions, 0),
+    );
 
   const sortedByCost = [...rows].sort((a, b) => b.cost - a.cost).slice(0, 10);
   const sortedByRetry = [...rows]
@@ -511,11 +510,11 @@ function ProjectProxyCohort({
     <>
       <Card className="border-amber-500/30 bg-amber-500/5">
         <p className="text-xs text-amber-400/90">
-          <strong>Single-engineer local mode.</strong> Only 1 engineer configured
-          ({entries.length > 1 ? `${entries.length - 1} peer(s) offline` : "no peers configured"}).
-          Projects stand in as proxy cohort members so the layout is real. Configure peers via
-          the <code className="font-mono">BEMATIST_PEERS</code> env var to unlock engineer
-          dots on the 2×2.
+          <strong>Single-engineer local mode.</strong> Only 1 engineer configured (
+          {entries.length > 1 ? `${entries.length - 1} peer(s) offline` : "no peers configured"}).
+          Projects stand in as proxy cohort members so the layout is real. Configure peers via the{" "}
+          <code className="font-mono">BEMATIST_PEERS</code> env var to unlock engineer dots on the
+          2×2.
         </p>
       </Card>
 
@@ -610,9 +609,7 @@ function ProjectProxyCohort({
                 {sortedByRetry.map((p) => (
                   <tr key={p.project} className="border-t border-border/40">
                     <td className="py-2 text-xs truncate max-w-[14rem]">{p.displayName}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {INT.format(p.totalSessions)}
-                    </td>
+                    <td className="py-2 text-right tabular-nums">{INT.format(p.totalSessions)}</td>
                     <td className="py-2 text-right tabular-nums text-red-400/80">
                       {INT.format(p.retriedSessions)}
                     </td>
@@ -687,26 +684,25 @@ export default async function TeamsPage({
           <li>
             <strong className="text-foreground">No prompts cross the wire.</strong>{" "}
             <code className="font-mono text-xs">/api/peer/snapshot</code> returns only
-            grammata&apos;s aggregate object: session counts, tokens, cost, tool counts,
-            retry ratios, model/project/branch rollups. Zero message text.
+            grammata&apos;s aggregate object: session counts, tokens, cost, tool counts, retry
+            ratios, model/project/branch rollups. Zero message text.
           </li>
           <li>
-            <strong className="text-foreground">Session transcripts stay local.</strong>{" "}
-            The <code className="font-mono text-xs">/sessions/[source]/[id]</code> detail
-            page reads raw JSONL from the IC&apos;s disk — peers can&apos;t reach it, no
-            network path exists.
+            <strong className="text-foreground">Session transcripts stay local.</strong> The{" "}
+            <code className="font-mono text-xs">/sessions/[source]/[id]</code> detail page reads raw
+            JSONL from the IC&apos;s disk — peers can&apos;t reach it, no network path exists.
           </li>
           <li>
             <strong className="text-foreground">Bearer auth, not public.</strong>{" "}
-            <code className="font-mono text-xs">BEMATIST_PEER_SECRET</code> on the serving
-            side + per-peer secrets in <code className="font-mono text-xs">BEMATIST_PEERS</code>
-            {" "}on the consuming side. Intended for Tailscale / VPN deploys.
+            <code className="font-mono text-xs">BEMATIST_PEER_SECRET</code> on the serving side +
+            per-peer secrets in <code className="font-mono text-xs">BEMATIST_PEERS</code> on the
+            consuming side. Intended for Tailscale / VPN deploys.
           </li>
           <li>
-            <strong className="text-foreground">Tier-B default.</strong> This matches
-            CLAUDE.md §Privacy Rules D7 — counters + redacted envelopes, works-council
-            compatible. Tier C (prompt text) would need an additional IC opt-in flow that
-            is <em>not</em> wired here; peer endpoint never upgrades.
+            <strong className="text-foreground">Tier-B default.</strong> This matches CLAUDE.md
+            §Privacy Rules D7 — counters + redacted envelopes, works-council compatible. Tier C
+            (prompt text) would need an additional IC opt-in flow that is <em>not</em> wired here;
+            peer endpoint never upgrades.
           </li>
         </ul>
       </Card>
