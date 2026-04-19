@@ -126,6 +126,8 @@ export function startLoop(deps: LoopDeps): LoopHandle {
           const events = await runOnce(registry, (a) => mkAdapterContext(config, db, a), {
             concurrency: config.adapterConcurrency,
             perPollTimeoutMs: config.perPollTimeoutMs,
+            hardKillMs: config.hardKillMs,
+            adapterQuarantineMs: config.adapterQuarantineMs,
           });
           for (const e of events) journal.enqueue(e as Event);
           if (events.length > 0) {

@@ -1,7 +1,7 @@
+import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "bun:test";
 import { loadConfig, loadConfigWithSources, parseEnvFile } from "./config";
 
 const saved: Record<string, string | undefined> = {};
@@ -22,6 +22,8 @@ const bmVars = [
   "BEMATIST_FLUSH_INTERVAL_MS",
   "BEMATIST_CONCURRENCY",
   "BEMATIST_POLL_TIMEOUT_MS",
+  "BEMATIST_HARD_KILL_MS",
+  "BEMATIST_ADAPTER_QUARANTINE_MS",
   "BEMATIST_CONFIG_ENV_PATH",
   "DEVMETRICS_TOKEN",
   "DEVMETRICS_ENDPOINT",
@@ -63,6 +65,40 @@ test("loadConfig has sensible defaults", () => {
   expect(cfg.logLevel).toBe("warn");
   expect(cfg.batchSize).toBe(500);
   expect(cfg.perPollTimeoutMs).toBe(3_600_000);
+  // hardKillMs default = 0 → orchestrator computes at runtime.
+  expect(cfg.hardKillMs).toBe(0);
+  expect(cfg.adapterQuarantineMs).toBe(5 * 60 * 1000);
+});
+
+test("BEMATIST_HARD_KILL_MS parses int", () => {
+  process.env.BEMATIST_HARD_KILL_MS = "120000";
+  expect(loadConfig().hardKillMs).toBe(120_000);
+});
+
+test("invalid BEMATIST_HARD_KILL_MS falls back to default", () => {
+  process.env.BEMATIST_HARD_KILL_MS = "not-a-number";
+  expect(loadConfig().hardKillMs).toBe(0);
+});
+
+test("BEMATIST_ADAPTER_QUARANTINE_MS parses int", () => {
+  process.env.BEMATIST_ADAPTER_QUARANTINE_MS = "60000";
+  expect(loadConfig().adapterQuarantineMs).toBe(60_000);
+});
+
+test("invalid BEMATIST_ADAPTER_QUARANTINE_MS falls back to 5min default", () => {
+  process.env.BEMATIST_ADAPTER_QUARANTINE_MS = "garbage";
+  expect(loadConfig().adapterQuarantineMs).toBe(5 * 60 * 1000);
+});
+
+test("hardKillMs + adapterQuarantineMs from config.env file", () => {
+  writeConfigEnv(
+    ["BEMATIST_HARD_KILL_MS=45000", "BEMATIST_ADAPTER_QUARANTINE_MS=90000", ""].join("\n"),
+  );
+  const { config, sources } = loadConfigWithSources();
+  expect(config.hardKillMs).toBe(45_000);
+  expect(config.adapterQuarantineMs).toBe(90_000);
+  expect(sources.hardKillMs).toBe("file");
+  expect(sources.adapterQuarantineMs).toBe("file");
 });
 
 test("BEMATIST_ENDPOINT overrides default", () => {
@@ -148,7 +184,7 @@ test("defaults report source = default", () => {
 });
 
 test("config.env parses quoted values", () => {
-  writeConfigEnv('BEMATIST_ENDPOINT="https://quoted.test"\nBEMATIST_TOKEN=\'bm_single\'\n');
+  writeConfigEnv("BEMATIST_ENDPOINT=\"https://quoted.test\"\nBEMATIST_TOKEN='bm_single'\n");
   const { config } = loadConfigWithSources();
   expect(config.endpoint).toBe("https://quoted.test");
   expect(config.token).toBe("bm_single");

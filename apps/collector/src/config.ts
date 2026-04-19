@@ -62,6 +62,22 @@ export interface CollectorConfig {
   adapterConcurrency: number;
   /** Per-poll timeout to prevent a hung adapter from blocking others. */
   perPollTimeoutMs: number;
+  /**
+   * Hard-kill watchdog timeout. Bug #6 fix: adapters that ignore
+   * AbortSignal can wedge the orchestrator. Hard-kill fires strictly
+   * *after* `perPollTimeoutMs` and stops awaiting a non-responsive
+   * adapter's promise. Default: `max(perPollTimeoutMs * 2,
+   * perPollTimeoutMs + 30s)`, computed at runtime when 0. Env:
+   * `BEMATIST_HARD_KILL_MS`.
+   */
+  hardKillMs: number;
+  /**
+   * Quarantine window after 3 consecutive hard-kills. While quarantined,
+   * an adapter's poll is skipped entirely. Strikes reset on first
+   * successful poll after expiry. Default 5 minutes. Env:
+   * `BEMATIST_ADAPTER_QUARANTINE_MS`.
+   */
+  adapterQuarantineMs: number;
 }
 
 export type ConfigSources = Record<keyof CollectorConfig, ConfigSource>;
@@ -151,10 +167,7 @@ function resolveStr(
   return { value: fallback, source: "default" };
 }
 
-function resolveOptStr(
-  envName: string,
-  fileVars: Record<string, string>,
-): Resolved<string | null> {
+function resolveOptStr(envName: string, fileVars: Record<string, string>): Resolved<string | null> {
   const envVal = process.env[envName];
   if (envVal !== undefined && envVal !== "") {
     return { value: envVal, source: "env" };
@@ -205,9 +218,7 @@ export function loadConfig(overrides: Partial<CollectorConfig> = {}): CollectorC
  * Same as loadConfig() but also surfaces which source each field came from.
  * `bematist doctor` uses this to annotate each resolved value.
  */
-export function loadConfigWithSources(
-  overrides: Partial<CollectorConfig> = {},
-): LoadedConfig {
+export function loadConfigWithSources(overrides: Partial<CollectorConfig> = {}): LoadedConfig {
   const fileVars = readFileVars(configEnvPath());
 
   const endpoint = (() => {
@@ -251,6 +262,12 @@ export function loadConfigWithSources(
   const flushIntervalMs = resolveInt("BEMATIST_FLUSH_INTERVAL_MS", fileVars, 1_000);
   const adapterConcurrency = resolveInt("BEMATIST_CONCURRENCY", fileVars, 4);
   const perPollTimeoutMs = resolveInt("BEMATIST_POLL_TIMEOUT_MS", fileVars, 3_600_000);
+  // hardKillMs default = 0, which the orchestrator treats as "compute from
+  // perPollTimeoutMs at runtime." An explicit positive override via env/
+  // file is honored as-is. We don't compute the default here because
+  // perPollTimeoutMs may itself be overridden later (e.g. via tests).
+  const hardKillMs = resolveInt("BEMATIST_HARD_KILL_MS", fileVars, 0);
+  const adapterQuarantineMs = resolveInt("BEMATIST_ADAPTER_QUARANTINE_MS", fileVars, 5 * 60 * 1000);
 
   const config: CollectorConfig = {
     endpoint: endpoint.value,
@@ -268,6 +285,8 @@ export function loadConfigWithSources(
     flushIntervalMs: flushIntervalMs.value,
     adapterConcurrency: adapterConcurrency.value,
     perPollTimeoutMs: perPollTimeoutMs.value,
+    hardKillMs: hardKillMs.value,
+    adapterQuarantineMs: adapterQuarantineMs.value,
     ...overrides,
   };
 
@@ -287,6 +306,8 @@ export function loadConfigWithSources(
     flushIntervalMs: flushIntervalMs.source,
     adapterConcurrency: adapterConcurrency.source,
     perPollTimeoutMs: perPollTimeoutMs.source,
+    hardKillMs: hardKillMs.source,
+    adapterQuarantineMs: adapterQuarantineMs.source,
   };
 
   for (const k of Object.keys(overrides) as Array<keyof CollectorConfig>) {
