@@ -1,0 +1,1131 @@
+/*
+ * Investor pitch deck — scoped design tokens and primitives.
+ * Scoped under .bematist-deck so it never leaks to the dashboard or marketing pages.
+ * Deck is full-viewport, dark, 16:9 — matches the standalone HTML source.
+ */
+
+.bematist-deck {
+  --bg: #0a0b0d;
+  --bg-elev: #111316;
+  --bg-term: #050506;
+  --ink: #ede8de;
+  --ink-muted: rgba(237, 232, 222, 0.6);
+  --ink-faint: rgba(237, 232, 222, 0.3);
+  --border: rgba(237, 232, 222, 0.14);
+  --border-hover: rgba(237, 232, 222, 0.3);
+  --accent: #6e8a6f;
+  --accent-muted: rgba(110, 138, 111, 0.15);
+  --warm: #b07b3e;
+  --warm-muted: rgba(176, 123, 62, 0.15);
+
+  --f-sans: var(--font-mk-sans, "Inter", -apple-system, BlinkMacSystemFont, sans-serif);
+  --f-head: var(--font-heading, "IBM Plex Sans", -apple-system, sans-serif);
+  --f-mono: var(--font-mk-mono, "JetBrains Mono", ui-monospace, Menlo, monospace);
+  --f-sys: var(--font-mk-sys, "Space Mono", ui-monospace, monospace);
+
+  /* Grid unit — 1920×1080 stage scale */
+  --grid: 48px;
+
+  /* Type scale (1920×1080 canonical, scaled via clamp + CSS zoom on small screens) */
+  --t-display: 168px;
+  --t-title: 88px;
+  --t-subtitle: 48px;
+  --t-body: 30px;
+  --t-small: 22px;
+  --t-mono: 20px;
+  --t-sys: 18px;
+
+  /* Spacing */
+  --pad-top: 96px;
+  --pad-bottom: 80px;
+  --pad-x: 96px;
+  --title-gap: 48px;
+  --item-gap: 28px;
+
+  background: #000;
+  color: var(--ink);
+  font-family: var(--f-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Deck shell ────────────────────────────────────────────────── */
+.bematist-deck .deck-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Stage — fixed 16:9 aspect, scales to viewport without distortion */
+.bematist-deck .deck-stage {
+  position: relative;
+  width: 100vw;
+  height: 56.25vw; /* 16:9 */
+  max-height: 100vh;
+  max-width: 177.78vh;
+  background: var(--bg);
+  overflow: hidden;
+  box-shadow: 0 40px 120px -40px rgba(0, 0, 0, 0.6);
+}
+
+.bematist-deck .deck-slide {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: var(--t-body);
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  /* Render at 1920×1080 then scale to fit the stage — keeps inner pixel math exact */
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+}
+
+/* ── Primitives ──────────────────────────────────────────────── */
+.bematist-deck .slide {
+  display: flex;
+  flex-direction: column;
+  padding: var(--pad-top) var(--pad-x) var(--pad-bottom);
+  position: relative;
+  height: 100%;
+}
+
+.bematist-deck .slide-chrome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.bematist-deck .slide-chrome::before,
+.bematist-deck .slide-chrome::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.bematist-deck .slide-chrome::before {
+  left: var(--pad-x);
+}
+.bematist-deck .slide-chrome::after {
+  right: var(--pad-x);
+}
+
+.bematist-deck .slide-body {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.bematist-deck .grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(237, 232, 222, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(237, 232, 222, 0.03) 1px, transparent 1px);
+  background-size: var(--grid) var(--grid);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bematist-deck .chrome-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 28px 96px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  z-index: 3;
+}
+.bematist-deck .chrome-row .wordmark {
+  font-family: var(--f-sys);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  font-size: 24px;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.bematist-deck .chrome-row .wordmark-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border-radius: 2px;
+  display: inline-block;
+}
+.bematist-deck .chrome-row .chrome-right {
+  font-family: var(--f-mono);
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bematist-deck .slide.with-chrome {
+  padding-top: 176px;
+}
+
+.bematist-deck .eyebrow {
+  font-family: var(--f-mono);
+  font-size: var(--t-mono);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 48px;
+}
+
+.bematist-deck .sys {
+  font-family: var(--f-sys);
+  font-size: var(--t-sys);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 400;
+}
+
+.bematist-deck h1,
+.bematist-deck h2,
+.bematist-deck h3 {
+  font-family: var(--f-head);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.bematist-deck .title {
+  font-family: var(--f-head);
+  font-weight: 500;
+  font-size: var(--t-title);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  margin: 0;
+  max-width: 1440px;
+}
+.bematist-deck .title em,
+.bematist-deck .accent {
+  font-style: normal;
+  color: var(--accent);
+}
+.bematist-deck .warm {
+  color: var(--warm);
+}
+.bematist-deck .ink {
+  color: var(--ink);
+}
+.bematist-deck .muted {
+  color: var(--ink-muted);
+}
+.bematist-deck .faint {
+  color: var(--ink-faint);
+}
+.bematist-deck .mono {
+  font-family: var(--f-mono);
+}
+
+.bematist-deck .lede {
+  font-size: var(--t-subtitle);
+  color: var(--ink-muted);
+  max-width: 1320px;
+  line-height: 1.25;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  font-family: var(--f-head);
+}
+
+.bematist-deck .body-text {
+  font-size: var(--t-body);
+  color: var(--ink-muted);
+  line-height: 1.5;
+  max-width: 1180px;
+}
+
+/* ── Cover ───────────────────────────────────────────────────── */
+.bematist-deck .cover {
+  padding: 96px;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  grid-template-rows: auto 1fr auto;
+  column-gap: 72px;
+  row-gap: 32px;
+  height: 100%;
+  position: relative;
+}
+.bematist-deck .cover-top {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-family: var(--f-mono);
+  font-size: 24px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.bematist-deck .cover-left {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  text-align: left;
+}
+.bematist-deck .cover-right {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: 640px;
+}
+.bematist-deck .cover-wordmark {
+  font-family: var(--f-sys);
+  font-weight: 700;
+  font-size: 180px;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+  color: var(--ink);
+  margin: 0;
+}
+.bematist-deck .cover-monogram {
+  width: 560px;
+  height: 560px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.bematist-deck .cover-monogram .ring-text {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  animation: deck-ring-spin 28s linear infinite;
+  transform-origin: 50% 50%;
+}
+.bematist-deck .cover-monogram .ring-text text {
+  fill: var(--ink-faint);
+  font-family: var(--f-mono);
+  font-size: 14px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+.bematist-deck .cover-monogram .logo-host {
+  position: relative;
+  z-index: 2;
+  width: 62%;
+  height: 62%;
+}
+@keyframes deck-ring-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bematist-deck .cover-monogram .ring-text,
+  .bematist-deck .rings-bg .ring-outer,
+  .bematist-deck .rings-bg .ring-inner {
+    animation: none !important;
+  }
+}
+.bematist-deck .cover-bottom {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  gap: 48px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+}
+.bematist-deck .cover-bottom .label {
+  color: var(--ink-faint);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.bematist-deck .cover-bottom .val {
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+/* ── Features grid ───────────────────────────────────────────── */
+.bematist-deck .features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-top: 48px;
+  min-height: 320px;
+}
+.bematist-deck .feature {
+  padding: 40px 40px 40px 0;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bematist-deck .feature:not(:first-child) {
+  padding-left: 40px;
+}
+.bematist-deck .feature:last-child {
+  border-right: none;
+}
+.bematist-deck .feature-index {
+  font-family: var(--f-mono);
+  font-size: 18px;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+}
+.bematist-deck .feature h3 {
+  font-family: var(--f-sys);
+  font-size: 40px;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--ink);
+  margin: 0;
+}
+.bematist-deck .feature p {
+  color: var(--ink-muted);
+  font-size: var(--t-body);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* ── KV list ─────────────────────────────────────────────────── */
+.bematist-deck .kv {
+  list-style: none;
+  padding: 0;
+  margin: 32px 0 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 72px;
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+}
+.bematist-deck .kv li {
+  display: contents;
+}
+.bematist-deck .kv li > * {
+  padding: 18px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.bematist-deck .kv li:last-child > * {
+  border-bottom: none;
+}
+.bematist-deck .kv li span:first-child {
+  color: var(--ink-muted);
+}
+
+/* ── Terminal ────────────────────────────────────────────────── */
+.bematist-deck .terminal {
+  font-family: var(--f-mono);
+  font-size: 24px;
+  line-height: 1.9;
+  color: var(--ink-muted);
+  background: var(--bg-term);
+  padding: 40px 48px;
+  border: 1px solid var(--border);
+}
+.bematist-deck .term-prompt {
+  color: var(--accent);
+  margin-right: 16px;
+}
+.bematist-deck .term-cmd {
+  color: var(--ink);
+}
+.bematist-deck .term-comment {
+  color: #5c6370;
+}
+
+/* ── Badge ───────────────────────────────────────────────────── */
+.bematist-deck .badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  font-family: var(--f-mono);
+  font-size: 18px;
+  background: var(--bg);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+}
+.bematist-deck .badge.accent {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.bematist-deck .badge.warm {
+  border-color: var(--warm);
+  color: var(--warm);
+}
+
+/* ── Timeline (Why now) ──────────────────────────────────────── */
+.bematist-deck .timeline {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
+  margin-top: 48px;
+  min-height: 280px;
+}
+.bematist-deck .timeline-col {
+  padding: 36px 36px 36px 0;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.bematist-deck .timeline-col:not(:first-child) {
+  padding-left: 36px;
+}
+.bematist-deck .timeline-col:last-child {
+  border-right: none;
+}
+.bematist-deck .timeline-year {
+  font-family: var(--f-sys);
+  font-size: 56px;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+  line-height: 1;
+}
+.bematist-deck .timeline-col h4 {
+  font-family: var(--f-head);
+  font-size: 34px;
+  line-height: 1.15;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.bematist-deck .timeline-col p {
+  font-size: var(--t-body);
+  color: var(--ink-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Bars ────────────────────────────────────────────────────── */
+.bematist-deck .bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  height: 200px;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  margin-top: 0;
+}
+.bematist-deck .bars .bar {
+  flex: 1;
+  background: linear-gradient(180deg, var(--accent), rgba(110, 138, 111, 0.2));
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+  color: var(--ink);
+  font-family: var(--f-mono);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+.bematist-deck .bars .bar::after {
+  content: attr(data-year);
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--ink-muted);
+  font-family: var(--f-mono);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Diagram ─────────────────────────────────────────────────── */
+.bematist-deck .diagram {
+  display: grid;
+  grid-template-columns: 320px 1fr 320px;
+  gap: 56px;
+  align-items: center;
+  margin-top: 40px;
+  min-height: 0;
+  flex: 1;
+}
+.bematist-deck .diagram-nodes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bematist-deck .diagram-node {
+  padding: 12px 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  font-family: var(--f-mono);
+  font-size: 20px;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.bematist-deck .diagram-node .dot {
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+.bematist-deck .diagram-center {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bematist-deck .diagram-hub {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background:
+    radial-gradient(120% 90% at 25% 20%, rgba(110, 138, 111, 0.55), transparent 60%),
+    radial-gradient(100% 80% at 85% 90%, rgba(176, 123, 62, 0.45), transparent 55%),
+    linear-gradient(160deg, #1a1f1a, #0a0b0d 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    inset 0 0 0 1px rgba(237, 232, 222, 0.1),
+    0 20px 60px -20px rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+.bematist-deck .diagram-hub::before {
+  content: "";
+  position: absolute;
+  inset: -24px;
+  border: 1px dashed rgba(237, 232, 222, 0.1);
+  border-radius: 50%;
+}
+.bematist-deck .diagram-hub svg {
+  width: 55%;
+  height: 55%;
+  color: #ede8de;
+}
+
+/* ── QCards ──────────────────────────────────────────────────── */
+.bematist-deck .qcards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  margin-top: 64px;
+}
+.bematist-deck .qcard {
+  border: 1px solid var(--border);
+  padding: 48px 44px;
+  background: var(--bg-elev);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 440px;
+  transition: border-color 0.3s ease;
+}
+.bematist-deck .qcard:hover {
+  border-color: var(--border-hover);
+}
+.bematist-deck .qcard .qnum {
+  font-family: var(--f-sys);
+  font-size: 96px;
+  color: var(--ink-faint);
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+.bematist-deck .qcard h3 {
+  font-family: var(--f-head);
+  font-size: 40px;
+  line-height: 1.1;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.bematist-deck .qcard p {
+  font-size: var(--t-body);
+  color: var(--ink-muted);
+  margin: 0;
+  line-height: 1.45;
+}
+.bematist-deck .qcard .answer {
+  margin-top: auto;
+  padding-top: 24px;
+  border-top: 1px dashed var(--border);
+  font-family: var(--f-mono);
+  font-size: 20px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+/* ── Readers ─────────────────────────────────────────────────── */
+.bematist-deck .readers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--border);
+  margin-top: 40px;
+  min-height: 0;
+  flex: 1;
+}
+.bematist-deck .reader-col {
+  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.bematist-deck .reader-col + .reader-col {
+  border-left: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+.bematist-deck .reader-role {
+  font-family: var(--f-mono);
+  font-size: 20px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.bematist-deck .reader-col h3 {
+  font-family: var(--f-head);
+  font-size: 40px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.bematist-deck .reader-sees {
+  font-family: var(--f-mono);
+  font-size: 14px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 6px;
+}
+.bematist-deck .reader-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bematist-deck .reader-list li {
+  font-family: var(--f-mono);
+  font-size: 20px;
+  color: var(--ink-muted);
+  padding-left: 28px;
+  position: relative;
+  line-height: 1.35;
+}
+.bematist-deck .reader-list li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+/* ── Dashboard mock ──────────────────────────────────────────── */
+.bematist-deck .dashmock {
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  margin-top: 40px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.bematist-deck .dashmock-side {
+  border-right: 1px solid var(--border);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg);
+}
+.bematist-deck .dashmock-side .brand {
+  font-family: var(--f-sys);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--ink);
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.bematist-deck .dashmock-side-item {
+  padding: 10px 14px;
+  font-family: var(--f-mono);
+  font-size: 18px;
+  color: var(--ink-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.bematist-deck .dashmock-side-item.active {
+  background: var(--accent-muted);
+  color: var(--ink);
+}
+.bematist-deck .dashmock-main {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.bematist-deck .dashmock-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.bematist-deck .dashmock-kpi {
+  padding: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bematist-deck .dashmock-kpi-label {
+  font-family: var(--f-mono);
+  font-size: 14px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.bematist-deck .dashmock-kpi-value {
+  font-family: var(--f-sys);
+  font-size: 36px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.bematist-deck .dashmock-kpi-delta {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  color: var(--accent);
+}
+.bematist-deck .dashmock-chart {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 24px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-height: 0;
+}
+.bematist-deck .dashmock-chart .b {
+  flex: 1;
+  background: linear-gradient(180deg, var(--accent), rgba(110, 138, 111, 0.25));
+  min-height: 6%;
+}
+
+/* ── Quote slide ─────────────────────────────────────────────── */
+.bematist-deck .quote-slide {
+  padding: 120px var(--pad-x);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  background: var(--bg-elev);
+}
+.bematist-deck .quote-text {
+  font-family: var(--f-head);
+  font-size: 88px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-weight: 400;
+  max-width: 1600px;
+}
+.bematist-deck .quote-text em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+/* ── CTA ─────────────────────────────────────────────────────── */
+.bematist-deck .cta {
+  padding: 120px 96px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 96px;
+  align-items: end;
+  height: 100%;
+}
+.bematist-deck .cta h2 {
+  font-family: var(--f-head);
+  font-size: 140px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  font-weight: 500;
+  margin: 0 0 32px;
+}
+.bematist-deck .cta h2 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.bematist-deck .cta-url {
+  font-family: var(--f-mono);
+  font-size: 36px;
+  color: var(--accent);
+  margin-top: 40px;
+}
+
+/* ── Section opener ──────────────────────────────────────────── */
+.bematist-deck .opener {
+  padding: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  background:
+    radial-gradient(50% 40% at 15% 25%, rgba(110, 138, 111, 0.08), transparent 60%), var(--bg);
+  position: relative;
+}
+.bematist-deck .opener .num {
+  font-family: var(--f-sys);
+  font-size: 240px;
+  line-height: 0.9;
+  color: var(--ink-faint);
+  letter-spacing: -0.06em;
+  margin-bottom: 32px;
+}
+.bematist-deck .opener .big-title {
+  font-family: var(--f-head);
+  font-size: 144px;
+  line-height: 1;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  max-width: 1400px;
+}
+.bematist-deck .opener .big-title em {
+  font-style: normal;
+  color: var(--accent);
+}
+.bematist-deck .opener .sub {
+  font-family: var(--f-mono);
+  font-size: var(--t-body);
+  color: var(--ink-muted);
+  margin-top: 40px;
+  max-width: 1200px;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
+/* ── Rings flourish ──────────────────────────────────────────── */
+.bematist-deck .rings-bg {
+  position: absolute;
+  right: -200px;
+  top: -200px;
+  width: 900px;
+  height: 900px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+.bematist-deck .rings-bg svg {
+  width: 100%;
+  height: 100%;
+}
+@keyframes deck-rings-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.bematist-deck .rings-bg .ring-outer {
+  animation: deck-rings-spin 180s linear infinite;
+  transform-origin: 50% 50%;
+}
+.bematist-deck .rings-bg .ring-inner {
+  animation: deck-rings-spin 120s linear infinite reverse;
+  transform-origin: 50% 50%;
+}
+
+/* ── Pagenum ─────────────────────────────────────────────────── */
+.bematist-deck .pagenum {
+  position: absolute;
+  bottom: 28px;
+  right: 96px;
+  font-family: var(--f-mono);
+  font-size: 16px;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  z-index: 3;
+}
+.bematist-deck .pagenum .total {
+  color: var(--ink-faint);
+}
+.bematist-deck .pagenum-left {
+  position: absolute;
+  bottom: 28px;
+  left: 96px;
+  font-family: var(--f-mono);
+  font-size: 16px;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  z-index: 3;
+}
+
+/* ── Nav chrome (host — outside stage) ───────────────────────── */
+.bematist-deck .deck-nav {
+  position: fixed;
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: none;
+}
+.bematist-deck .deck-nav .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(237, 232, 222, 0.2);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+.bematist-deck .deck-nav .dot:hover {
+  background: rgba(237, 232, 222, 0.5);
+  transform: scale(1.3);
+}
+.bematist-deck .deck-nav .dot.active {
+  background: var(--accent);
+  transform: scale(1.3);
+}
+.bematist-deck .deck-counter {
+  position: fixed;
+  bottom: 18px;
+  right: 24px;
+  font-family: var(--f-mono);
+  font-size: 13px;
+  color: var(--ink-faint);
+  letter-spacing: 0.12em;
+  z-index: 10;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+.bematist-deck .deck-help {
+  position: fixed;
+  bottom: 18px;
+  left: 24px;
+  font-family: var(--f-mono);
+  font-size: 13px;
+  color: var(--ink-faint);
+  letter-spacing: 0.12em;
+  z-index: 10;
+  text-transform: uppercase;
+  background: none;
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+.bematist-deck .deck-help:hover {
+  border-color: var(--border-hover);
+  color: var(--ink);
+}
+.bematist-deck .deck-shortcuts {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 20;
+  backdrop-filter: blur(4px);
+}
+.bematist-deck .deck-shortcuts-panel {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  padding: 40px 48px;
+  min-width: 420px;
+  font-family: var(--f-mono);
+  font-size: 14px;
+  color: var(--ink-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bematist-deck .deck-shortcuts-panel h3 {
+  font-family: var(--f-sys);
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+  margin: 0 0 12px;
+}
+.bematist-deck .deck-shortcuts-panel kbd {
+  font-family: var(--f-mono);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--ink);
+  margin: 0 2px;
+}
+.bematist-deck .deck-shortcuts-close {
+  align-self: flex-end;
+  margin-top: 16px;
+  background: none;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  color: var(--ink-muted);
+  font-family: var(--f-mono);
+  font-size: 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.bematist-deck .deck-shortcuts-close:hover {
+  border-color: var(--border-hover);
+  color: var(--ink);
+}
+
+/* ── Reduced motion ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .bematist-deck .deck-slide,
+  .bematist-deck .deck-nav .dot {
+    transition: none !important;
+    animation: none !important;
+  }
+}
