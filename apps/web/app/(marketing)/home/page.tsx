@@ -32,12 +32,14 @@ const ADAPTERS = [
   {
     name: "Claude Code",
     iface: "CLI",
-    captures: "Sessions · input/output/cache tokens · models · tool calls · accepted edits",
+    captures:
+      "Sessions · input/output/cache tokens · models · tool calls · accepted edits",
   },
   {
     name: "Cursor",
     iface: "IDE",
-    captures: "Generations · accept/reject · mode (auto/manual) · estimated cost",
+    captures:
+      "Generations · accept/reject · mode (auto/manual) · estimated cost",
   },
   {
     name: "Codex CLI",
@@ -47,7 +49,8 @@ const ADAPTERS = [
   {
     name: "Continue.dev",
     iface: "IDE",
-    captures: "Chat turns · token generation · edit outcomes · tool usage (four streams)",
+    captures:
+      "Chat turns · token generation · edit outcomes · tool usage (four streams)",
   },
   {
     name: "OpenCode",
@@ -57,7 +60,8 @@ const ADAPTERS = [
   {
     name: "VS Code extensions",
     iface: "IDE",
-    captures: "Pluggable handlers via SDK — Twinny shipped, community adapters supported",
+    captures:
+      "Pluggable handlers via SDK — Twinny shipped, community adapters supported",
   },
 ] as const;
 
@@ -122,9 +126,10 @@ export default function MarketingHome() {
               Where is all your AI money <em>actually going</em>?
             </h1>
             <p>
-              AI coding agents are exploding across engineering teams — Claude Code, Cursor, Codex.
-              Spend is up, usage is everywhere, but the answer to "what are we getting back" is
-              still a black box. Bematist makes that system legible. Start with a personal card in
+              AI coding agents are exploding across engineering teams — Claude
+              Code, Cursor, Codex. Spend is up, usage is everywhere, but the
+              answer to "what are we getting back" is still a black box.
+              Bematist makes that system legible. Start with a personal card in
               30 seconds; the dashboard is where your team lives.
             </p>
             <div className="mk-hero-actions">
@@ -171,7 +176,9 @@ export default function MarketingHome() {
       {/* Adapters */}
       <section>
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">02 / Six agents, parsing real session files today</span>
+          <span className="mk-mono mk-xs">
+            02 / Six agents, parsing real session files today
+          </span>
         </div>
         <table className="mk-table">
           <thead>
@@ -185,8 +192,12 @@ export default function MarketingHome() {
             {ADAPTERS.map((row) => (
               <tr key={row.name}>
                 <td style={{ color: "var(--mk-ink)" }}>{row.name}</td>
-                <td className="mk-muted">{row.iface}</td>
-                <td className="mk-muted">{row.captures}</td>
+                <td className="mk-muted" data-label="Interface">
+                  {row.iface}
+                </td>
+                <td className="mk-muted" data-label="Captures">
+                  {row.captures}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -201,9 +212,9 @@ export default function MarketingHome() {
           <div className="mk-metric-label">
             <strong>accepted edits per dollar</strong>
             <br />
-            Dedup unit is (session_id, hunk_sha256). Denominator window is the session. Reverts
-            within 24h subtract. Pricing pinned at capture time, so model-price shifts don't
-            silently rewrite history.
+            Dedup unit is (session_id, hunk_sha256). Denominator window is the
+            session. Reverts within 24h subtract. Pricing pinned at capture
+            time, so model-price shifts don't silently rewrite history.
           </div>
         </div>
         <div className="mk-metric-details">
@@ -236,7 +247,9 @@ export default function MarketingHome() {
       {/* AI Leverage Score */}
       <section aria-label="AI Leverage Score">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">03 / AI Leverage Score v1 · ai_leverage_v1</span>
+          <span className="mk-mono mk-xs">
+            03 / AI Leverage Score v1 · ai_leverage_v1
+          </span>
         </div>
         <div className="mk-score-grid">
           {SCORE_DIMENSIONS.map((d) => (
@@ -250,9 +263,10 @@ export default function MarketingHome() {
             <span className="mk-score-weight">GATES</span>
             <h3>No number, no gate</h3>
             <p>
-              A score renders only when all four hold: ≥10 sessions, ≥5 active days, ≥3 outcome
-              events, cohort ≥8 peers. Below any of them, the tile says "insufficient data" and
-              names the gate that failed — never interpolated, never estimated.
+              A score renders only when all four hold: ≥10 sessions, ≥5 active
+              days, ≥3 outcome events, cohort ≥8 peers. Below any of them, the
+              tile says "insufficient data" and names the gate that failed —
+              never interpolated, never estimated.
             </p>
           </div>
         </div>
@@ -260,12 +274,17 @@ export default function MarketingHome() {
 
       {/* Install CTA — full runbook lives on /install */}
       <section className="mk-terminal-wrap" aria-labelledby="install-cta">
-        <span className="mk-sys" style={{ display: "block", marginBottom: 12 }} id="install-cta">
+        <span
+          className="mk-sys"
+          style={{ display: "block", marginBottom: 12 }}
+          id="install-cta"
+        >
           04 / Install
         </span>
         <div className="mk-terminal" style={{ marginBottom: 20 }}>
           <div className="mk-term-comment">
-            # Five minutes to first event — signed binary, no proxy, no API keys.
+            # Five minutes to first event — signed binary, no proxy, no API
+            keys.
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
@@ -274,12 +293,16 @@ export default function MarketingHome() {
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">brew install pella-labs/bematist/bematist</span>
+            <span className="mk-term-cmd">
+              brew install pella-labs/bematist/bematist
+            </span>
             <span className="mk-term-comment">&nbsp;&nbsp;# collector</span>
           </div>
           <div>
             <span className="mk-term-prompt">$</span>
-            <span className="mk-term-cmd">bematist dry-run && bematist serve</span>
+            <span className="mk-term-cmd">
+              bematist dry-run && bematist serve
+            </span>
           </div>
         </div>
         <Link href="/install" className="mk-btn mk-btn-ghost">
@@ -291,13 +314,14 @@ export default function MarketingHome() {
       <section className="mk-closing" aria-label="Closing">
         <div className="mk-closing-inner">
           <p className="mk-closing-quote">
-            The most expensive system your engineering org has ever bought may be the one you
-            understand the least.
+            The most expensive system your engineering org has ever bought may
+            be the one you understand the least.
           </p>
           <p className="mk-closing-body">
-            Bematist is the instrument for measuring it. One open-source platform that makes AI
-            spend legible, accountable, and tied to real engineering outcomes. The data was always
-            yours. We just made it legible.
+            Bematist is the instrument for measuring it. One open-source
+            platform that makes AI spend legible, accountable, and tied to real
+            engineering outcomes. The data was always yours. We just made it
+            legible.
           </p>
           <div className="mk-closing-actions">
             <Link href="/card" className="mk-btn mk-btn-primary">
@@ -319,10 +343,11 @@ export default function MarketingHome() {
       <section className="mk-license">
         <span className="mk-sys">05 / License</span>
         <div className="mk-license-body">
-          <strong>Apache 2.0</strong> for the collector, dashboard, adapters, schemas, and CLI.
+          <strong>Apache 2.0</strong> for the collector, dashboard, adapters,
+          schemas, and CLI.
           <br />
-          <strong>BSL 1.1</strong> for the managed-cloud gateway and admin surfaces. Converts to
-          Apache 2.0 after four years.
+          <strong>BSL 1.1</strong> for the managed-cloud gateway and admin
+          surfaces. Converts to Apache 2.0 after four years.
         </div>
       </section>
     </>

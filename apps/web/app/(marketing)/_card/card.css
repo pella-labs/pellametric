@@ -1,3 +1,14 @@
+/* Card wrapper — sets the stage for absolutely-positioned children
+   (card-scene, toggles, nav arrows, dots, share-bar). Compact mode is
+   used when embedded inside another layout (e.g. the marketing hero);
+   full mode is used for the standalone /card and /card/[id] pages. */
+.card-root {
+  min-height: max(900px, calc(100vh - 100px));
+}
+.card-root[data-compact="true"] {
+  min-height: 720px;
+}
+
 /* Card Scene */
 .card-scene {
   position: absolute;
@@ -99,7 +110,11 @@
   height: 220px;
   top: 30%;
   right: -60px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.15), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(59, 130, 246, 0.15),
+    transparent 70%
+  );
   animation-duration: 9s;
   animation-delay: -3s;
 }
@@ -108,7 +123,11 @@
   height: 260px;
   bottom: -60px;
   left: 20%;
-  background: radial-gradient(circle, rgba(236, 72, 153, 0.12), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(236, 72, 153, 0.12),
+    transparent 70%
+  );
   animation-duration: 11s;
   animation-delay: -5s;
 }
@@ -672,7 +691,11 @@
   height: 200px;
   bottom: -40px;
   left: -30px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.15), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(59, 130, 246, 0.15),
+    transparent 70%
+  );
   animation-duration: 9s;
   animation-delay: -4s;
 }
@@ -1033,7 +1056,13 @@
 .p2-banner-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(145deg, #7c3aed 0%, #6d28d9 30%, #4338ca 60%, #2563eb 100%);
+  background: linear-gradient(
+    145deg,
+    #7c3aed 0%,
+    #6d28d9 30%,
+    #4338ca 60%,
+    #2563eb 100%
+  );
   z-index: 0;
 }
 .p2-banner-bg::after {
@@ -1041,9 +1070,21 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 75% 20%, rgba(236, 72, 153, 0.3), transparent 50%),
-    radial-gradient(circle at 25% 80%, rgba(56, 189, 248, 0.2), transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(250, 204, 21, 0.08), transparent 40%);
+    radial-gradient(
+      circle at 75% 20%,
+      rgba(236, 72, 153, 0.3),
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 25% 80%,
+      rgba(56, 189, 248, 0.2),
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(250, 204, 21, 0.08),
+      transparent 40%
+    );
 }
 .p2-banner-content {
   position: relative;
@@ -1172,12 +1213,26 @@
 
 /* Cream overrides for page 2 */
 .cream .p2-banner-bg {
-  background: linear-gradient(145deg, #7a6299 0%, #6a5490 30%, #5a80a8 60%, #4a98b8 100%);
+  background: linear-gradient(
+    145deg,
+    #7a6299 0%,
+    #6a5490 30%,
+    #5a80a8 60%,
+    #4a98b8 100%
+  );
 }
 .cream .p2-banner-bg::after {
   background:
-    radial-gradient(circle at 75% 20%, rgba(196, 122, 32, 0.15), transparent 50%),
-    radial-gradient(circle at 25% 80%, rgba(58, 154, 122, 0.12), transparent 50%);
+    radial-gradient(
+      circle at 75% 20%,
+      rgba(196, 122, 32, 0.15),
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 25% 80%,
+      rgba(58, 154, 122, 0.12),
+      transparent 50%
+    );
 }
 .cream .p2-wave path {
   fill: #f5f2ec;
@@ -1948,7 +2003,13 @@
 
 /* ═══ Cream Theme ═══ */
 .cream .card-bg {
-  background: linear-gradient(160deg, #f5f2ec, #ede9e0 40%, #e5e0d5 70%, #f0ede6);
+  background: linear-gradient(
+    160deg,
+    #f5f2ec,
+    #ede9e0 40%,
+    #e5e0d5 70%,
+    #f0ede6
+  );
 }
 .cream .card-bg::after {
   background-image: none;
@@ -2014,13 +2075,25 @@
   opacity: 0.4;
 }
 .cream .ab1 {
-  background: radial-gradient(circle, rgba(180, 160, 200, 0.25), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(180, 160, 200, 0.25),
+    transparent 70%
+  );
 }
 .cream .ab2 {
-  background: radial-gradient(circle, rgba(160, 180, 210, 0.2), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(160, 180, 210, 0.2),
+    transparent 70%
+  );
 }
 .cream .ab3 {
-  background: radial-gradient(circle, rgba(170, 200, 185, 0.2), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(170, 200, 185, 0.2),
+    transparent 70%
+  );
 }
 .cream .card-flipper:is(:hover, .is-hovering) .aurora-blob {
   opacity: 0;
@@ -2292,6 +2365,44 @@
 }
 
 /* ═══ Mobile Responsive ═══ */
+
+@media (max-width: 720px) {
+  /* Full-page card: let the root fit in the mobile viewport instead of
+     forcing 900px of vertical real estate. The scene positions itself
+     inside this box, so the surrounding chrome (toggle, dots, share-bar)
+     stays visible without overflow clipping. */
+  .card-root {
+    min-height: min(720px, calc(100vh - 80px));
+  }
+  .card-root[data-compact="true"] {
+    min-height: 560px;
+  }
+  .card-scene {
+    width: min(380px, calc(100vw - 32px));
+    height: min(540px, calc(100vh - 220px));
+  }
+  [data-compact="true"] .card-scene {
+    width: min(340px, calc(100vw - 32px));
+    height: min(500px, 72vh);
+  }
+  /* Anchor the side nav buttons to the card's flank rather than a fixed
+     vw offset, so they never get pushed past the viewport edge. */
+  .card-nav-left {
+    left: 4px;
+  }
+  .card-nav-right {
+    right: 4px;
+  }
+  .card-page-dots {
+    bottom: 80px;
+  }
+  [data-compact="true"] .card-page-dots {
+    bottom: 24px;
+  }
+  .share-bar {
+    bottom: 20px;
+  }
+}
 
 /* Tablets and small laptops */
 @media (max-width: 500px) {

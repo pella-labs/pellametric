@@ -808,8 +808,16 @@
   border-radius: 16px;
   overflow: hidden;
   background:
-    radial-gradient(140% 90% at 20% 0%, rgba(110, 138, 111, 0.18), transparent 55%),
-    radial-gradient(100% 80% at 90% 100%, rgba(176, 123, 62, 0.22), transparent 55%),
+    radial-gradient(
+      140% 90% at 20% 0%,
+      rgba(110, 138, 111, 0.18),
+      transparent 55%
+    ),
+    radial-gradient(
+      100% 80% at 90% 100%,
+      rgba(176, 123, 62, 0.22),
+      transparent 55%
+    ),
     linear-gradient(160deg, #14161a, #0a0b0d 60%);
   box-shadow:
     0 40px 80px -40px rgba(0, 0, 0, 0.8),
@@ -937,7 +945,11 @@
 
 .bematist-marketing .wrapped-card-bar {
   flex: 1;
-  background: linear-gradient(180deg, var(--mk-accent), rgba(110, 138, 111, 0.3));
+  background: linear-gradient(
+    180deg,
+    var(--mk-accent),
+    rgba(110, 138, 111, 0.3)
+  );
   border-radius: 2px 2px 0 0;
   min-height: 4px;
 }
@@ -1140,7 +1152,9 @@
   flex-shrink: 0;
 }
 
-.bematist-marketing .mk-getstarted-entry-card > div:not(.mk-getstarted-entry-chevron) {
+.bematist-marketing
+  .mk-getstarted-entry-card
+  > div:not(.mk-getstarted-entry-chevron) {
   flex: 1;
   min-width: 0;
 }
@@ -1224,7 +1238,9 @@
   transition: transform 0.18s;
 }
 
-.bematist-marketing .mk-getstarted-entry-primary:hover .mk-getstarted-entry-chevron {
+.bematist-marketing
+  .mk-getstarted-entry-primary:hover
+  .mk-getstarted-entry-chevron {
   transform: translateX(2px);
 }
 
@@ -1269,6 +1285,18 @@
   }
   .bematist-marketing .mk-getstarted-entry-sub {
     font-size: 11px;
+  }
+}
+
+/* ─── Shared-card page (/card/[id]) ────────────────────────────── */
+.bematist-marketing .mk-card-by-id {
+  padding: 40px 24px;
+  min-height: 80vh;
+}
+
+@media (max-width: 640px) {
+  .bematist-marketing .mk-card-by-id {
+    padding: 16px 0;
   }
 }
 
@@ -1495,7 +1523,11 @@
 
 .bematist-marketing .mk-dashboard-shot-chart-bar {
   flex: 1;
-  background: linear-gradient(180deg, var(--mk-accent), rgba(110, 138, 111, 0.2));
+  background: linear-gradient(
+    180deg,
+    var(--mk-accent),
+    rgba(110, 138, 111, 0.2)
+  );
   border-radius: 3px 3px 0 0;
 }
 
@@ -1516,16 +1548,23 @@
     border-left: none;
   }
   .bematist-marketing .mk-hero {
-    padding: 100px var(--mk-grid-size) 80px;
+    padding: 96px var(--mk-grid-size) 72px;
   }
   .bematist-marketing .mk-hero-grid,
   .bematist-marketing .mk-demo {
     grid-template-columns: 1fr;
-    gap: 64px;
+    gap: 48px;
+  }
+  .bematist-marketing .mk-hero-card-slot {
+    min-height: 620px;
   }
   .bematist-marketing .wrapped-card-wrap {
     justify-self: center;
     max-width: 360px;
+  }
+  .bematist-marketing .mk-dashboard-shot {
+    padding: 72px var(--mk-grid-size);
+    gap: 32px;
   }
   .bematist-marketing .mk-dashboard-shot-body {
     grid-template-columns: 1fr;
@@ -1536,45 +1575,132 @@
   .bematist-marketing .mk-dashboard-shot-kpis {
     grid-template-columns: 1fr 1fr;
   }
+  .bematist-marketing .mk-dashboard-shot-main {
+    padding: 20px;
+  }
   .bematist-marketing .mk-monolith {
-    min-height: 560px;
-    padding: 80px var(--mk-grid-size);
+    min-height: 480px;
+    padding: 72px var(--mk-grid-size);
+  }
+  .bematist-marketing .mk-demo {
+    padding: 48px var(--mk-grid-size);
+  }
+  .bematist-marketing .mk-demo-card-host {
+    min-height: 640px;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+
+  /* Adapter table: stack as cards on narrow viewports. The three-column
+     layout with long "captures" copy otherwise forces a horizontal scroll
+     and breaks the dense grid aesthetic on mobile. */
+  .bematist-marketing .mk-table,
+  .bematist-marketing .mk-table thead,
+  .bematist-marketing .mk-table tbody,
+  .bematist-marketing .mk-table tr,
+  .bematist-marketing .mk-table th,
+  .bematist-marketing .mk-table td {
+    display: block;
+    width: 100%;
+  }
+  .bematist-marketing .mk-table thead {
+    display: none;
+  }
+  .bematist-marketing .mk-table tr {
+    padding: 14px var(--mk-grid-size);
+    border-bottom: 1px solid var(--mk-border);
+  }
+  .bematist-marketing .mk-table tbody tr:hover td {
+    background: transparent;
+  }
+  .bematist-marketing .mk-table td {
+    padding: 2px 0;
+    border-bottom: none;
+  }
+  .bematist-marketing .mk-table tr td:first-child {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .bematist-marketing .mk-table tr td + td::before {
+    content: attr(data-label);
+    display: inline-block;
+    color: var(--mk-ink-faint);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-right: 8px;
   }
 }
 
 @media (max-width: 640px) {
+  /* Tighten the default grid on phones so section padding feels right. */
+  .bematist-marketing {
+    --mk-grid-size: 18px;
+  }
+  /* Side container borders cost real estate on phones with zero visual
+     benefit. Drop them to let content use the full viewport width. */
+  .bematist-marketing .mk-container {
+    border-left: none;
+    border-right: none;
+  }
+
   /* Nav: drop middle links, tighten buttons */
   .bematist-marketing .mk-nav {
     padding: 12px 16px;
+    gap: 8px;
   }
   .bematist-marketing .mk-nav-link {
     display: none;
   }
   .bematist-marketing .mk-nav-links {
-    gap: 8px;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .bematist-marketing .mk-wordmark {
+    font-size: 15px;
+    flex-shrink: 0;
   }
   .bematist-marketing .mk-btn {
     height: 32px;
-    padding: 0 12px;
+    padding: 0 10px;
     font-size: 11px;
     white-space: nowrap;
+  }
+  .bematist-marketing .mk-btn-icon {
+    padding: 0 10px;
+    gap: 6px;
   }
 
   /* Hero + demo column center-align on small viewports */
   .bematist-marketing .mk-hero {
-    padding: 64px 20px 48px;
+    padding: 48px 18px 40px;
     text-align: center;
+  }
+  .bematist-marketing .mk-hero h1 {
+    font-size: clamp(30px, 9vw, 44px);
+    margin-bottom: 20px;
+  }
+  .bematist-marketing .mk-hero p {
+    font-size: 15px;
+    margin-bottom: 28px;
   }
   .bematist-marketing .mk-hero h1,
   .bematist-marketing .mk-hero p {
     margin-left: auto;
     margin-right: auto;
   }
-  .bematist-marketing .mk-hero-eyebrow {
+  .bematist-marketing .mk-hero-eyebrow,
+  .bematist-marketing .mk-hero-actions {
     justify-content: center;
+  }
+  .bematist-marketing .mk-hero-card-slot {
+    min-height: 560px;
   }
   .bematist-marketing .mk-getstarted {
     align-items: stretch;
+  }
+  .bematist-marketing .mk-getstarted-panel {
+    padding: 22px 20px;
   }
   .bematist-marketing .mk-getstarted-note,
   .bematist-marketing .mk-getstarted-panel,
@@ -1585,17 +1711,171 @@
     justify-content: flex-start;
   }
 
+  /* Section inner padding: knock it down a step on phones so cards
+     aren't swimming in whitespace. */
+  .bematist-marketing .mk-section-header {
+    padding: 16px 18px;
+  }
+  .bematist-marketing .mk-feature,
+  .bematist-marketing .mk-score-cell,
+  .bematist-marketing .mk-tier {
+    padding: 28px 18px;
+    min-height: auto;
+  }
+  .bematist-marketing .mk-metric-visual,
+  .bematist-marketing .mk-metric-details {
+    padding: 36px 18px;
+  }
+  .bematist-marketing .mk-license {
+    padding: 28px 18px;
+  }
+  .bematist-marketing .mk-closing {
+    padding: 56px 18px;
+  }
+  .bematist-marketing .mk-closing-quote {
+    font-size: clamp(20px, 6vw, 26px);
+  }
+  .bematist-marketing .mk-closing-body {
+    font-size: 14px;
+  }
+
+  /* Demo page on phones: the card host must not enforce a huge aspect
+     ratio, and the card scene inside it must fit the viewport. */
+  .bematist-marketing .mk-demo {
+    padding: 32px 18px 48px;
+    gap: 32px;
+  }
+  .bematist-marketing .mk-demo h1 {
+    font-size: clamp(28px, 7vw, 36px);
+  }
+  .bematist-marketing .mk-demo-card-host {
+    min-height: 620px;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+  .bematist-marketing .mk-demo-card-host .card-scene {
+    width: min(360px, calc(100% - 24px));
+    height: min(540px, calc(100% - 80px));
+  }
+
+  /* Brand monolith: shrink so it fits in one viewport and the copy below
+     breathes without forcing the user to scroll through dead space. */
+  .bematist-marketing .mk-monolith {
+    min-height: 360px;
+    padding: 48px 18px;
+  }
+  .bematist-marketing .mk-monolith-stage {
+    max-width: 420px;
+  }
+  .bematist-marketing .mk-monolith-copy {
+    bottom: 24px;
+    padding: 0 16px;
+  }
+
+  /* Dashboard mockup: tighten chrome + chart on small viewports. */
+  .bematist-marketing .mk-dashboard-shot {
+    padding: 48px 18px;
+    gap: 24px;
+  }
+  .bematist-marketing .mk-dashboard-shot-kpis {
+    gap: 8px;
+  }
+  .bematist-marketing .mk-dashboard-shot-kpi {
+    padding: 12px;
+  }
+  .bematist-marketing .mk-dashboard-shot-kpi-value {
+    font-size: 18px;
+  }
+  .bematist-marketing .mk-dashboard-shot-chart {
+    padding: 14px;
+    min-height: 200px;
+  }
+  .bematist-marketing .mk-dashboard-shot-main {
+    padding: 16px;
+  }
+
+  /* Metric value: keep it from overflowing a 360px viewport */
+  .bematist-marketing .mk-metric-value {
+    font-size: clamp(48px, 14vw, 72px);
+  }
+
+  /* Terminal: allow horizontal scroll instead of overflowing the grid */
+  .bematist-marketing .mk-terminal-wrap {
+    padding: 24px 18px;
+  }
+  .bematist-marketing .mk-terminal {
+    font-size: 12px;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .bematist-marketing .mk-terminal::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Footer stacks vertically, centered */
   .bematist-marketing .mk-footer {
     flex-direction: column;
     align-items: center;
     text-align: center;
     gap: 16px;
-    padding: 32px 20px;
+    padding: 32px 18px;
   }
   .bematist-marketing .mk-footer > div {
     justify-content: center;
     flex-wrap: wrap;
+  }
+  .bematist-marketing footer.mk-footer a {
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  /* Very small phones — make the nav actually fit without clipping the
+     wordmark. Ditch the follow button label and shrink GitHub to an icon
+     hit target so "bematist" stays on screen. */
+  .bematist-marketing .mk-nav-links {
+    gap: 4px;
+  }
+  .bematist-marketing .mk-btn {
+    padding: 0 8px;
+    font-size: 10px;
+    height: 30px;
+  }
+  .bematist-marketing .mk-btn-icon .mk-btn-icon-label {
+    display: none;
+  }
+  .bematist-marketing .mk-wordmark {
+    font-size: 14px;
+  }
+
+  .bematist-marketing .mk-hero {
+    padding: 40px 14px 32px;
+  }
+  .bematist-marketing .mk-hero-card-slot {
+    min-height: 520px;
+  }
+  .bematist-marketing .mk-demo-card-host {
+    min-height: 600px;
+  }
+  .bematist-marketing .mk-demo-card-host .card-scene {
+    width: min(340px, calc(100% - 16px));
+    height: min(520px, calc(100% - 72px));
+  }
+  .bematist-marketing .mk-monolith {
+    min-height: 320px;
+    padding: 40px 14px;
+  }
+  .bematist-marketing .mk-monolith-stage {
+    max-width: 360px;
+  }
+  .bematist-marketing .mk-hero h1 {
+    font-size: 30px;
+  }
+  .bematist-marketing .mk-hero p {
+    font-size: 14px;
   }
 }
 

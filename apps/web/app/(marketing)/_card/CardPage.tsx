@@ -37,7 +37,13 @@ import "./holo.css";
 import "./card-bematist.css";
 
 /* ── Icons ── */
-const FlameIcon = ({ size = 14, color = "#ff9f43" }: { size?: number; color?: string }) => (
+const FlameIcon = ({
+  size = 14,
+  color = "#ff9f43",
+}: {
+  size?: number;
+  color?: string;
+}) => (
   <svg
     style={{ width: size, height: size, color }}
     viewBox="0 0 24 24"
@@ -173,7 +179,13 @@ const CopyIcon = () => (
   </svg>
 );
 
-function AchievementSvg({ icon, color }: { icon: AchievementIcon; color: string }) {
+function AchievementSvg({
+  icon,
+  color,
+}: {
+  icon: AchievementIcon;
+  color: string;
+}) {
   switch (icon) {
     case "flame":
       return <FlameIcon size={14} color={color} />;
@@ -202,13 +214,15 @@ function shortModelName(name: string): string {
   if (name.includes("opus-4-6")) return "Opus 4.6";
   if (name.includes("opus-4-5")) return "Opus 4.5";
   if (name.includes("opus-4")) return "Opus 4";
-  if (name.includes("3-opus") || name.includes("claude-3-opus")) return "Opus 3";
+  if (name.includes("3-opus") || name.includes("claude-3-opus"))
+    return "Opus 3";
   if (name.includes("opus")) return "Opus";
   if (name.includes("sonnet-4-7")) return "Sonnet 4.7";
   if (name.includes("sonnet-4-6")) return "Sonnet 4.6";
   if (name.includes("sonnet-4-5")) return "Sonnet 4.5";
   if (name.includes("sonnet-4")) return "Sonnet 4";
-  if (name.includes("3-5-sonnet") || name.includes("3.5-sonnet")) return "Sonnet 3.5";
+  if (name.includes("3-5-sonnet") || name.includes("3.5-sonnet"))
+    return "Sonnet 3.5";
   if (name.includes("sonnet")) return "Sonnet";
   if (name.includes("haiku-4-5")) return "Haiku 4.5";
   if (name.includes("haiku-4")) return "Haiku 4";
@@ -274,10 +288,15 @@ function getToolDisplay(rawName: string): { name: string; desc: string } {
   const mcpMatch = rawName.match(/^mcp__([^_]+)__(.+)$/);
   if (mcpMatch?.[1] && mcpMatch[2]) {
     const tool = mcpMatch[2].replace(/_/g, " ");
-    return { name: tool.charAt(0).toUpperCase() + tool.slice(1), desc: `${mcpMatch[1]} MCP` };
+    return {
+      name: tool.charAt(0).toUpperCase() + tool.slice(1),
+      desc: `${mcpMatch[1]} MCP`,
+    };
   }
   // Fallback: clean up snake_case/camelCase
-  const cleaned = rawName.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
+  const cleaned = rawName
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2");
   return { name: cleaned.charAt(0).toUpperCase() + cleaned.slice(1), desc: "" };
 }
 
@@ -292,7 +311,8 @@ function getDailyColor(
   _hasCodex: boolean,
   isCream = false,
 ): string {
-  if (intensity === 0) return isCream ? "rgba(0,0,0,.03)" : "rgba(255,255,255,.02)";
+  if (intensity === 0)
+    return isCream ? "rgba(0,0,0,.03)" : "rgba(255,255,255,.02)";
   if (intensity > 0.75) return "#b8d8a1";
   if (intensity > 0.5) return "#8fb078";
   if (intensity > 0.25) return "#6e8a6f";
@@ -312,9 +332,16 @@ export function CardPage({
   const [data, setData] = useState<CardData | null>(demoData ?? null);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const [exitingPage] = useState<{ page: number; direction: "left" | "right" } | null>(null);
-  const [enteringFrom, setEnteringFrom] = useState<"left" | "right" | null>(null);
-  const [statView, setStatView] = useState<"combined" | "claude" | "codex">("combined");
+  const [exitingPage] = useState<{
+    page: number;
+    direction: "left" | "right";
+  } | null>(null);
+  const [enteringFrom, setEnteringFrom] = useState<"left" | "right" | null>(
+    null,
+  );
+  const [statView, setStatView] = useState<"combined" | "claude" | "codex">(
+    "combined",
+  );
   const [cardTheme] = useState<"cream" | "dark">("dark");
   const [phase, setPhase] = useState(0);
   const [showShare, setShowShare] = useState(false);
@@ -357,8 +384,14 @@ export function CardPage({
     if (!flipper) return;
     const onMove = (e: PointerEvent) => {
       const rect = flipper.getBoundingClientRect();
-      const px = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-      const py = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+      const px = Math.max(
+        0,
+        Math.min(100, ((e.clientX - rect.left) / rect.width) * 100),
+      );
+      const py = Math.max(
+        0,
+        Math.min(100, ((e.clientY - rect.top) / rect.height) * 100),
+      );
       // target .card-holo directly; setting on .card-flipper loses to .card-holo's declared rule
       const holo = flipper.querySelector<HTMLElement>(".card-holo");
       const el = holo ?? flipper;
@@ -465,7 +498,13 @@ export function CardPage({
 
   // Navigate: next card slides in from the right
   const handleNextPage = useCallback(() => {
-    if (phase < 2 || exitingPage || enteringFrom || currentPage >= TOTAL_PAGES - 1) return;
+    if (
+      phase < 2 ||
+      exitingPage ||
+      enteringFrom ||
+      currentPage >= TOTAL_PAGES - 1
+    )
+      return;
     setCurrentPage((p) => p + 1);
     setEnteringFrom("right");
     requestAnimationFrame(() => {
@@ -587,7 +626,10 @@ export function CardPage({
     face.style.transform = "none";
 
     try {
-      const dataUrl = await toPng(face, { pixelRatio: 2, backgroundColor: "#0d1117" });
+      const dataUrl = await toPng(face, {
+        pixelRatio: 2,
+        backgroundColor: "#0d1117",
+      });
       flipper.style.transform = origFlipper;
       face.style.transform = origFace;
       const res = await fetch(dataUrl);
@@ -630,7 +672,9 @@ export function CardPage({
         showToast("Failed to capture card");
         return;
       }
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
       showToast("Image copied to clipboard!");
     } catch {
       // Fallback: copy URL if image clipboard not supported
@@ -709,7 +753,10 @@ export function CardPage({
     .slice(0, 5);
 
   // Merge projects
-  const projectMap = new Map<string, { sessions: number; cost: number; source: string }>();
+  const projectMap = new Map<
+    string,
+    { sessions: number; cost: number; source: string }
+  >();
   for (const p of s.claude.projects ?? []) {
     const n = cleanProjectName(p.name);
     projectMap.set(n, { sessions: p.sessions, cost: p.cost, source: "claude" });
@@ -721,7 +768,12 @@ export function CardPage({
       ex.sessions += p.sessions;
       ex.cost += p.cost;
       ex.source = "both";
-    } else projectMap.set(n, { sessions: p.sessions, cost: p.cost, source: "codex" });
+    } else
+      projectMap.set(n, {
+        sessions: p.sessions,
+        cost: p.cost,
+        source: "codex",
+      });
   }
   const topProjects = Array.from(projectMap.entries())
     .map(([name, d]) => ({ name, ...d }))
@@ -760,7 +812,9 @@ export function CardPage({
         ? (s.codex.activeDays ?? 0)
         : activeDays;
   const viewStreak =
-    statView === "codex" ? (s.codex.activeDays ?? 0) : (hl?.longestStreak ?? s.claude.activeDays);
+    statView === "codex"
+      ? (s.codex.activeDays ?? 0)
+      : (hl?.longestStreak ?? s.claude.activeDays);
 
   // View-specific models
   const viewModels =
@@ -776,7 +830,10 @@ export function CardPage({
   const viewProjects =
     statView === "combined"
       ? topProjects
-      : (statView === "claude" ? (s.claude.projects ?? []) : (s.codex.projects ?? []))
+      : (statView === "claude"
+          ? (s.claude.projects ?? [])
+          : (s.codex.projects ?? [])
+        )
           .map((p) => ({
             name: cleanProjectName(p.name),
             sessions: p.sessions,
@@ -798,10 +855,15 @@ export function CardPage({
               <div className="brand">BEMATIST</div>
               <div className="tier">{tier}</div>
             </div>
-            <div className={`reveal ${show ? "show" : ""}`} style={{ transitionDelay: "130ms" }}>
+            <div
+              className={`reveal ${show ? "show" : ""}`}
+              style={{ transitionDelay: "130ms" }}
+            >
               <div className="user-name">{userName}</div>
               <div className="user-sub">
-                {data.user?.githubUsername ? `@${data.user.githubUsername}` : ""}
+                {data.user?.githubUsername
+                  ? `@${data.user.githubUsername}`
+                  : ""}
               </div>
             </div>
             <div
@@ -814,7 +876,10 @@ export function CardPage({
                 <span className="hero-unit">tokens</span>
               </div>
             </div>
-            <div className={`reveal ${show ? "show" : ""}`} style={{ transitionDelay: "390ms" }}>
+            <div
+              className={`reveal ${show ? "show" : ""}`}
+              style={{ transitionDelay: "390ms" }}
+            >
               <div className="streak-level">
                 <div className="streak">
                   <FlameIcon /> {viewStreak} day streak
@@ -847,7 +912,8 @@ export function CardPage({
                   gridEnd.setDate(endDate.getDate() + (6 - endDate.getDay()));
                   const gridStart = new Date(gridEnd);
                   gridStart.setDate(gridEnd.getDate() - (WEEKS * 7 - 1));
-                  const rangeStartKey = gridStart.toISOString().split("T")[0] ?? "";
+                  const rangeStartKey =
+                    gridStart.toISOString().split("T")[0] ?? "";
                   const rangeEndKey = endDate.toISOString().split("T")[0] ?? "";
                   const dayMap = new Map(dailyDist.map((d) => [d.date, d]));
                   const cells: Array<{
@@ -894,17 +960,25 @@ export function CardPage({
                             const cell = cells[col * 7 + row];
                             if (!cell) return null;
                             const intensity = cell.sessions / maxS;
-                            const hasClaude = statView !== "codex" && cell.claude > 0;
-                            const hasCodex = statView !== "claude" && cell.codex > 0;
-                            const label = new Date(`${cell.date}T12:00:00`).toLocaleDateString(
-                              "en-US",
-                              { month: "short", day: "numeric" },
-                            );
+                            const hasClaude =
+                              statView !== "codex" && cell.claude > 0;
+                            const hasCodex =
+                              statView !== "claude" && cell.codex > 0;
+                            const label = new Date(
+                              `${cell.date}T12:00:00`,
+                            ).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            });
                             return (
                               <div
                                 key={`${col}-${row}`}
                                 className="gh-cell"
-                                title={cell.inRange ? `${label}: ${cell.sessions} sessions` : ""}
+                                title={
+                                  cell.inRange
+                                    ? `${label}: ${cell.sessions} sessions`
+                                    : ""
+                                }
                                 style={{
                                   background:
                                     cell.sessions === 0
@@ -958,14 +1032,19 @@ export function CardPage({
               <div className="wrap-lead">You are a</div>
               <div className="wrap-hero">{personality.name}</div>
               {personality.desc && (
-                <div className="wrap-sub" style={{ color: "#64748b", fontSize: 12 }}>
+                <div
+                  className="wrap-sub"
+                  style={{ color: "#64748b", fontSize: 12 }}
+                >
                   {personality.desc}
                 </div>
               )}
             </div>
             <div className="p2-stats">
               <div className="p2-stat">
-                <span className="p2-stat-val purple">{formatTokens(viewTokens)}</span>
+                <span className="p2-stat-val purple">
+                  {formatTokens(viewTokens)}
+                </span>
                 <span className="p2-stat-lbl">tokens</span>
               </div>
               <div className="p2-stat-sep" />
@@ -1008,7 +1087,10 @@ export function CardPage({
                   title="Activity by Hour"
                   sub="When you code the most throughout the day"
                 />
-                <div className="hour-chart" style={{ height: 100, marginBottom: 4 }}>
+                <div
+                  className="hour-chart"
+                  style={{ height: 100, marginBottom: 4 }}
+                >
                   {hourBars.map((val, i) => (
                     <div
                       key={i}
@@ -1035,7 +1117,10 @@ export function CardPage({
                 </div>
                 <div
                   className="stats"
-                  style={{ gridTemplateColumns: "repeat(3, 1fr)", marginBottom: 8 }}
+                  style={{
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    marginBottom: 8,
+                  }}
                 >
                   <div className="sc">
                     <div className="sc-l">Tool Calls</div>
@@ -1094,7 +1179,10 @@ export function CardPage({
             </div>
             {activityCategories.length > 0 && (
               <>
-                <SectionHead title="How You Use AI" sub="What type of work your AI agent does" />
+                <SectionHead
+                  title="How You Use AI"
+                  sub="What type of work your AI agent does"
+                />
                 <div className="tb go" style={{ height: 10 }}>
                   {activityCategories.map((cat, i) => (
                     <div
@@ -1151,7 +1239,10 @@ export function CardPage({
                     style={{
                       padding: "20px 0",
                       textAlign: "center",
-                      color: cardTheme === "cream" ? "rgba(26,26,46,.25)" : "rgba(255,255,255,.25)",
+                      color:
+                        cardTheme === "cream"
+                          ? "rgba(26,26,46,.25)"
+                          : "rgba(255,255,255,.25)",
                       fontSize: 11,
                     }}
                   >
@@ -1164,13 +1255,20 @@ export function CardPage({
               const rest = viewTools.slice(1);
               return (
                 <>
-                  <SectionHead title="Top Tools" sub="Most used capabilities by your AI agent" />
+                  <SectionHead
+                    title="Top Tools"
+                    sub="Most used capabilities by your AI agent"
+                  />
                   {/* Hero: #1 tool */}
                   <div className="tool-hero">
                     <div className="tool-hero-rank">#1</div>
                     <div className="tool-hero-name">{topDisplay.name}</div>
-                    <div className="tool-hero-count">{formatTokens(top.count)}</div>
-                    <div className="tool-hero-desc">{topDisplay.desc || "calls"}</div>
+                    <div className="tool-hero-count">
+                      {formatTokens(top.count)}
+                    </div>
+                    <div className="tool-hero-desc">
+                      {topDisplay.desc || "calls"}
+                    </div>
                   </div>
                   {/* Rest as grid */}
                   <div className="tool-grid">
@@ -1180,8 +1278,12 @@ export function CardPage({
                         <div className="tool-card" key={t.name}>
                           <div className="tool-card-rank">#{i + 2}</div>
                           <div className="tool-card-name">{display.name}</div>
-                          <div className="tool-card-count">{formatTokens(t.count)}</div>
-                          {display.desc && <div className="tool-card-desc">{display.desc}</div>}
+                          <div className="tool-card-count">
+                            {formatTokens(t.count)}
+                          </div>
+                          {display.desc && (
+                            <div className="tool-card-desc">{display.desc}</div>
+                          )}
                         </div>
                       );
                     })}
@@ -1199,11 +1301,19 @@ export function CardPage({
           topModelName.includes("opus") ||
           topModelName.includes("sonnet") ||
           topModelName.includes("haiku");
-        const isCodex = topModelName.includes("codex") || topModelName.includes("gpt");
-        const agentLogo = isClaude ? "/claudecode-color.svg" : isCodex ? "/codex-color.svg" : null;
+        const isCodex =
+          topModelName.includes("codex") || topModelName.includes("gpt");
+        const agentLogo = isClaude
+          ? "/claudecode-color.svg"
+          : isCodex
+            ? "/codex-color.svg"
+            : null;
 
         return (
-          <div className="card-content" style={{ position: "relative", overflow: "hidden" }}>
+          <div
+            className="card-content"
+            style={{ position: "relative", overflow: "hidden" }}
+          >
             {/* Agent logo overlay — big, centered, transparent */}
             {agentLogo && (
               <img
@@ -1227,7 +1337,10 @@ export function CardPage({
                 <div className="brand">BEMATIST</div>
                 <div className="page-title">Models</div>
               </div>
-              <SectionHead title="Your Favorite Model" sub="The AI model you used the most" />
+              <SectionHead
+                title="Your Favorite Model"
+                sub="The AI model you used the most"
+              />
               {/* Hero model */}
               <div className="wrap-insight">
                 <div className="wrap-emoji">
@@ -1238,7 +1351,11 @@ export function CardPage({
                       style={{ width: 32, height: 32 }}
                     />
                   ) : isCodex ? (
-                    <img src="/codex-color.svg" alt="Codex" style={{ width: 32, height: 32 }} />
+                    <img
+                      src="/codex-color.svg"
+                      alt="Codex"
+                      style={{ width: 32, height: 32 }}
+                    />
                   ) : (
                     <svg
                       width="32"
@@ -1258,10 +1375,13 @@ export function CardPage({
                 </div>
                 <div className="wrap-lead">You love to work with</div>
                 <div className="wrap-hero">
-                  {viewModels[0] ? shortModelName(viewModels[0].name) : "Unknown"}
+                  {viewModels[0]
+                    ? shortModelName(viewModels[0].name)
+                    : "Unknown"}
                 </div>
                 <div className="wrap-sub">
-                  {viewModels[0]?.sessions.toLocaleString() ?? 0} sessions {"\u00B7"}{" "}
+                  {viewModels[0]?.sessions.toLocaleString() ?? 0} sessions{" "}
+                  {"\u00B7"}{" "}
                   {viewModels[0] ? formatCost(viewModels[0].cost) : "$0"} spent
                 </div>
               </div>
@@ -1274,28 +1394,51 @@ export function CardPage({
                     mLower.includes("opus") ||
                     mLower.includes("sonnet") ||
                     mLower.includes("haiku");
-                  const mIsCodex = mLower.includes("codex") || mLower.includes("gpt");
+                  const mIsCodex =
+                    mLower.includes("codex") || mLower.includes("gpt");
                   return (
                     <div className="wrap-other" key={m.name}>
                       <div
                         className="wrap-other-rank"
-                        style={{ fontSize: 14, color: "#6e8a6f", fontWeight: 800 }}
+                        style={{
+                          fontSize: 14,
+                          color: "#6e8a6f",
+                          fontWeight: 800,
+                        }}
                       >
                         #{i + 2}
                       </div>
                       {mIsClaude ? (
-                        <img src="/claudecode-color.svg" alt="" style={{ width: 10, height: 10 }} />
+                        <img
+                          src="/claudecode-color.svg"
+                          alt=""
+                          style={{ width: 10, height: 10 }}
+                        />
                       ) : mIsCodex ? (
-                        <img src="/codex-color.svg" alt="" style={{ width: 10, height: 10 }} />
+                        <img
+                          src="/codex-color.svg"
+                          alt=""
+                          style={{ width: 10, height: 10 }}
+                        />
                       ) : (
                         <div
                           className="mdot"
-                          style={{ background: getModelColors(m.name), width: 8, height: 8 }}
+                          style={{
+                            background: getModelColors(m.name),
+                            width: 8,
+                            height: 8,
+                          }}
                         />
                       )}
-                      <span className="wrap-other-name">{shortModelName(m.name)}</span>
-                      <span className="wrap-other-val">{formatCost(m.cost)}</span>
-                      <span className="wrap-other-sessions">{m.sessions.toLocaleString()}</span>
+                      <span className="wrap-other-name">
+                        {shortModelName(m.name)}
+                      </span>
+                      <span className="wrap-other-val">
+                        {formatCost(m.cost)}
+                      </span>
+                      <span className="wrap-other-sessions">
+                        {m.sessions.toLocaleString()}
+                      </span>
                     </div>
                   );
                 })}
@@ -1312,7 +1455,10 @@ export function CardPage({
               <div className="brand">BEMATIST</div>
               <div className="page-title">Projects</div>
             </div>
-            <SectionHead title="Your Top Project" sub="Where you spent the most time with AI" />
+            <SectionHead
+              title="Your Top Project"
+              sub="Where you spent the most time with AI"
+            />
             <div className="wrap-insight" style={{ paddingBottom: 16 }}>
               <div className="wrap-emoji">
                 <svg
@@ -1329,10 +1475,14 @@ export function CardPage({
                 </svg>
               </div>
               <div className="wrap-lead">You built the most in</div>
-              <div className="wrap-hero">{viewProjects[0]?.name ?? "Unknown"}</div>
+              <div className="wrap-hero">
+                {viewProjects[0]?.name ?? "Unknown"}
+              </div>
               <div className="wrap-sub">
-                {viewProjects[0]?.sessions.toLocaleString() ?? 0} sessions {"\u00B7"}{" "}
-                {viewProjects[0] ? formatCost(viewProjects[0].cost) : "$0"} spent
+                {viewProjects[0]?.sessions.toLocaleString() ?? 0} sessions{" "}
+                {"\u00B7"}{" "}
+                {viewProjects[0] ? formatCost(viewProjects[0].cost) : "$0"}{" "}
+                spent
               </div>
             </div>
             {/* <SectionHead title="Also worked on" sub="" /> */}
@@ -1412,17 +1562,22 @@ export function CardPage({
                 })
                 .join(" ")
             : "";
-        const areaPath = linePath ? `${linePath} L${chartW},${chartH} L0,${chartH} Z` : "";
+        const areaPath = linePath
+          ? `${linePath} L${chartW},${chartH} L0,${chartH} Z`
+          : "";
         const projBars = viewProjects.slice(0, 5);
         const projMax = Math.max(...projBars.map((p) => p.cost), 0.001);
         const peakCost = Math.max(...daily.map((d) => d.cost), 0);
         const peakIdx = daily.findIndex((d) => d.cost === peakCost);
         const peakDate =
           peakIdx >= 0 && daily[peakIdx]?.date
-            ? new Date(`${daily[peakIdx].date}T12:00:00`).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })
+            ? new Date(`${daily[peakIdx].date}T12:00:00`).toLocaleDateString(
+                "en-US",
+                {
+                  month: "short",
+                  day: "numeric",
+                },
+              )
             : "";
         return (
           <div className="card-content">
@@ -1430,10 +1585,15 @@ export function CardPage({
               <div className="brand">BEMATIST</div>
               <div className="page-title">Analytics</div>
             </div>
-            <SectionHead title="Analytics" sub="Session costs and activity patterns" />
+            <SectionHead
+              title="Analytics"
+              sub="Session costs and activity patterns"
+            />
             <div className="an-stats">
               <div className="an-stat">
-                <span className="an-stat-val">{viewSessions.toLocaleString()}</span>
+                <span className="an-stat-val">
+                  {viewSessions.toLocaleString()}
+                </span>
                 <span className="an-stat-lbl">Sessions</span>
               </div>
               <div className="an-stat">
@@ -1441,11 +1601,15 @@ export function CardPage({
                 <span className="an-stat-lbl">Cost</span>
               </div>
               <div className="an-stat">
-                <span className="an-stat-val purple">{formatTokens(viewTokens)}</span>
+                <span className="an-stat-val purple">
+                  {formatTokens(viewTokens)}
+                </span>
                 <span className="an-stat-lbl">Tokens</span>
               </div>
               <div className="an-stat">
-                <span className="an-stat-val green">{formatTokens(viewToolCalls)}</span>
+                <span className="an-stat-val green">
+                  {formatTokens(viewToolCalls)}
+                </span>
                 <span className="an-stat-lbl">Tool Calls</span>
               </div>
             </div>
@@ -1469,8 +1633,16 @@ export function CardPage({
                   >
                     <defs>
                       <linearGradient id="an-fill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8fb078" stopOpacity="0.35" />
-                        <stop offset="100%" stopColor="#8fb078" stopOpacity="0" />
+                        <stop
+                          offset="0%"
+                          stopColor="#8fb078"
+                          stopOpacity="0.35"
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="#8fb078"
+                          stopOpacity="0"
+                        />
                       </linearGradient>
                     </defs>
                     <path d={areaPath} fill="url(#an-fill)" />
@@ -1495,7 +1667,9 @@ export function CardPage({
             <div className="an-section">
               <div className="an-section-head">
                 <span className="an-section-title">Cost by Project</span>
-                <span className="an-section-meta">{projectMap.size} projects</span>
+                <span className="an-section-meta">
+                  {projectMap.size} projects
+                </span>
               </div>
               <div className="an-bars">
                 {projBars.map((p) => (
@@ -1505,14 +1679,18 @@ export function CardPage({
                       <div
                         className={`an-bar-fill ${show ? "go" : ""}`}
                         style={
-                          { "--an-bar-pct": `${(p.cost / projMax) * 100}%` } as React.CSSProperties
+                          {
+                            "--an-bar-pct": `${(p.cost / projMax) * 100}%`,
+                          } as React.CSSProperties
                         }
                       />
                     </div>
                     <span className="an-bar-val">{formatCost(p.cost)}</span>
                   </div>
                 ))}
-                {projBars.length === 0 && <div className="an-chart-empty">No projects yet</div>}
+                {projBars.length === 0 && (
+                  <div className="an-chart-empty">No projects yet</div>
+                )}
               </div>
             </div>
           </div>
@@ -1526,12 +1704,17 @@ export function CardPage({
               <div className="brand">BEMATIST</div>
               <div className="page-title">Summary</div>
             </div>
-            <SectionHead title="Your Coding Journey" sub="Everything at a glance" />
+            <SectionHead
+              title="Your Coding Journey"
+              sub="Everything at a glance"
+            />
             <div className="sum-grid">
               <div className="sum-card">
                 <div
                   className="sum-val"
-                  style={{ color: cardTheme === "cream" ? "#1a1a2e" : "#e2e8f0" }}
+                  style={{
+                    color: cardTheme === "cream" ? "#1a1a2e" : "#e2e8f0",
+                  }}
                 >
                   {formatTokens(viewTokens)}
                 </div>
@@ -1559,9 +1742,12 @@ export function CardPage({
             {mostExpensive && (
               <div className="sum-callout">
                 <div className="sum-callout-label">Biggest single session</div>
-                <div className="sum-callout-val">{formatCost(mostExpensive.cost)}</div>
+                <div className="sum-callout-val">
+                  {formatCost(mostExpensive.cost)}
+                </div>
                 <div className="sum-callout-project">
-                  {cleanProjectName(mostExpensive.project)} {"\u00B7"} {mostExpensive.date}
+                  {cleanProjectName(mostExpensive.project)} {"\u00B7"}{" "}
+                  {mostExpensive.date}
                 </div>
               </div>
             )}
@@ -1591,15 +1777,12 @@ export function CardPage({
 
   return (
     <div
+      className="card-root"
       style={{
         fontFamily: "'Inter', sans-serif",
         background: "transparent",
         overflow: "hidden",
         width: "100%",
-        // Compact mode is used when embedded inside another layout (e.g.
-        // the hero column). Full mode is used for the standalone /card
-        // and /card/[id] pages where the card is the whole main pane.
-        minHeight: compact ? 720 : "max(900px, calc(100vh - 100px))",
         WebkitFontSmoothing: "antialiased",
         position: "relative",
       }}
@@ -1710,7 +1893,10 @@ export function CardPage({
       {/* Page dots — below card */}
       <div className={`card-page-dots ${showShare ? "show" : ""}`}>
         {Array.from({ length: TOTAL_PAGES }, (_, i) => (
-          <div key={i} className={`card-page-dot ${i === currentPage ? "active" : ""}`} />
+          <div
+            key={i}
+            className={`card-page-dot ${i === currentPage ? "active" : ""}`}
+          />
         ))}
       </div>
 
@@ -1722,7 +1908,11 @@ export function CardPage({
           <button className="sb" title="Download PNG" onClick={handleDownload}>
             <DownloadIcon />
           </button>
-          <button className="sb" title="Copy image to clipboard" onClick={copyImage}>
+          <button
+            className="sb"
+            title="Copy image to clipboard"
+            onClick={copyImage}
+          >
             <CopyIcon />
           </button>
           <button className="sb" title="Share on X" onClick={shareOnTwitter}>
