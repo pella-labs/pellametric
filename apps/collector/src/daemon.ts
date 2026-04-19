@@ -104,16 +104,28 @@ function launchdStart(): DaemonResult {
       detail: boot.stderr,
     };
   }
-  // Kickstart forces a restart — picks up config.env edits.
-  run("launchctl", ["kickstart", "-k", `${launchdDomain()}/${LAUNCHD_LABEL}`]);
-  const running = launchdIsRunning();
+  // Kickstart forces a restart — picks up config.env edits. `-s` makes
+  // kickstart synchronous (wait for the service to respond before
+  // returning) — otherwise `launchctl print` below can race the agent's
+  // startup and report `state=stopped` for a process that's about to be
+  // running.
+  run("launchctl", ["kickstart", "-k", "-s", `${launchdDomain()}/${LAUNCHD_LABEL}`]);
+  // Belt-and-suspenders: poll briefly for running state (max ~1s) to
+  // absorb the remaining kickstart→print race window on slower machines.
+  let running = false;
+  for (let i = 0; i < 5; i++) {
+    running = launchdIsRunning();
+    if (running) break;
+    const until = Date.now() + 200;
+    while (Date.now() < until) {} // brief busy-wait; spawnSync is blocking so no event loop to await
+  }
   return {
     state: running ? "running" : "stopped",
     platform: "darwin",
     unitPath,
     summary: running
       ? `bematist started (launchd: ${LAUNCHD_LABEL})`
-      : "launchd loaded the unit but the process isn't running yet — check `bematist logs`",
+      : "launchd loaded the unit but the process isn't confirmed running — check `bematist logs` / `bematist status`",
   };
 }
 

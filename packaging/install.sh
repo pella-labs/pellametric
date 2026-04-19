@@ -134,11 +134,11 @@ main() {
   fi
 
   say "installed: $target/bematist"
-  if [ -n "$endpoint" ] || [ -n "$token" ]; then
-    say "next: run \`bematist start\` to launch the background service."
-  else
-    say "next: \`bematist config set endpoint <url>\` + \`bematist config set token <bearer>\` + \`bematist start\`."
-  fi
+  # Intentionally no "next:" hints — the device-auth flow (`bematist login`)
+  # and chained one-liners (`… | sh && bematist login && bematist start`)
+  # handle their own onboarding messaging. Printing legacy config-set
+  # instructions here was confusing users who were already chaining the
+  # right commands.
 }
 
 # Persist config to ~/.bematist/config.env with mode 0600 (token is a bearer
