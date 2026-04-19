@@ -2,11 +2,7 @@ import { Badge, Card, CardHeader, CardTitle } from "@bematist/ui";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import {
-  openWelcomeBearer,
-  WELCOME_BEARER_COOKIE_NAME,
-  WELCOME_BEARER_COOKIE_PATH,
-} from "@/lib/welcome-bearer-cookie";
+import { openWelcomeBearer, WELCOME_BEARER_COOKIE_NAME } from "@/lib/welcome-bearer-cookie";
 import { CopyCommandButton } from "./CopyCommandButton";
 
 /**
@@ -42,12 +38,11 @@ export default async function WelcomePage() {
   const raw = ck.get(WELCOME_BEARER_COOKIE_NAME)?.value ?? null;
   const opened = openWelcomeBearer(raw, BETTER_AUTH_SECRET);
 
-  // Delete the cookie after reading — one-time handoff. Doing this during
-  // an RSC render is supported by Next.js and emits a Set-Cookie header
-  // with Max-Age=0.
-  if (raw) {
-    ck.delete({ name: WELCOME_BEARER_COOKIE_NAME, path: WELCOME_BEARER_COOKIE_PATH });
-  }
+  // Next.js 16 disallows cookies().delete() inside Server Components. The
+  // cookie has a ~120s Max-Age so it self-expires; a reload within that
+  // window re-shows the bearer, which is acceptable for the signed+HttpOnly
+  // envelope (no client exfiltration path). Proper single-read handoff
+  // wants a Server Action or a Route Handler wrapper — follow-up.
 
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-16">
