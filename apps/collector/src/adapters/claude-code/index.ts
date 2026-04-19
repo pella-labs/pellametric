@@ -118,6 +118,23 @@ export class ClaudeCodeAdapter implements Adapter {
 }
 
 async function findSessionFiles(root: string): Promise<string[]> {
+  // Walks the full tree, including `subagents/` subdirectories. Claude Code
+  // writes one JSONL per Task-tool invocation under
+  // `<project>/<sessionId>/subagents/agent-<agentId>.jsonl`, but crucially
+  // the `sessionId` field inside every line of those files is the PARENT
+  // conversation's sessionId — not a fresh one. normalizeSession pulls
+  // session_id from the JSONL content, so subagent events flow into the
+  // parent's session_id automatically. That means:
+  //
+  //   - Token usage and cost from subagent LLM turns are correctly
+  //     attributed to the originating conversation (what we want — those
+  //     are real tokens the dev spent).
+  //   - Subagent files do NOT inflate `countDistinct(session_id)` because
+  //     they share the parent's sessionId.
+  //
+  // An earlier iteration (57e8c02) skipped `subagents/` on the mistaken
+  // theory that subagents had fresh sessionIds and were inflating counts.
+  // Reverted — we want the cost data.
   const out: string[] = [];
   async function walk(dir: string) {
     let entries: Array<{ name: string; isDirectory(): boolean; isFile(): boolean }>;
@@ -132,20 +149,8 @@ async function findSessionFiles(root: string): Promise<string[]> {
     }
     for (const e of entries) {
       const p = join(dir, e.name);
-      if (e.isDirectory()) {
-        // Skip `subagents/` subdirectories. Every Claude Code Task-tool
-        // invocation writes a subagent JSONL with its own fresh sessionId;
-        // walking into these directories inflates session counts drastically
-        // (observed ratio ~1.6× subagent files per parent session on real
-        // ~/.claude/projects/ installs). The subagent LLM turn *cost* is
-        // tiny (~$0.02/session in the M4 rehearsal sample — ~1% of total),
-        // and the parent session's tool_call events already attribute the
-        // delegation, so skipping them here trades a rounding-error of cost
-        // for a session count that matches "conversations a human would
-        // recognize as distinct."
-        if (e.name === "subagents") continue;
-        await walk(p);
-      } else if (e.isFile() && e.name.endsWith(".jsonl")) out.push(p);
+      if (e.isDirectory()) await walk(p);
+      else if (e.isFile() && e.name.endsWith(".jsonl")) out.push(p);
     }
   }
   await walk(root);

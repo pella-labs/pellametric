@@ -145,11 +145,17 @@ test("poll() skips files whose (size, mtime) signature is unchanged since last e
   }
 });
 
-test("poll() skips subagents/ subdirectories", async () => {
-  // Regression test for M4 rehearsal: a teammate's dashboard showed ~5700
-  // "sessions" (versus ~1300 real conversations) because every Claude Code
-  // Task-tool spawn writes a subagent JSONL with its own sessionId. The
-  // adapter now skips any `subagents/` subtree during the walk.
+test("poll() walks into subagents/ subdirectories so their token cost is attributed", async () => {
+  // Claude Code Task-tool spawns write subagent JSONL files under
+  // <project>/<sessionId>/subagents/agent-*.jsonl. The `sessionId` field
+  // inside every subagent line is the PARENT conversation's sessionId — so
+  // the events produced share the parent's session_id and add tokens + cost
+  // to that session rather than creating fresh ones.
+  //
+  // This test guards against accidentally re-introducing the skip that
+  // landed in 57e8c02 (and got reverted when we realized the cost data was
+  // being lost). It asserts both that subagent files are visited AND that
+  // the emitted events carry the parent's session_id.
   const fs = require("node:fs") as typeof import("node:fs");
   const path = require("node:path") as typeof import("node:path");
   const os = require("node:os") as typeof import("node:os");
@@ -159,15 +165,17 @@ test("poll() skips subagents/ subdirectories", async () => {
   const subagents = path.join(proj, "subagents");
   fs.mkdirSync(subagents, { recursive: true });
 
-  // Parent session file.
+  // Parent file + subagent file — both use the same real-session fixture,
+  // which has sessionId "55e2a90f-3c02-4ede-a2ad-95ad7c8cb01d" baked in.
+  // That mirrors the on-disk reality: every subagent JSONL's sessionId ==
+  // its parent's sessionId.
   fs.copyFileSync(
     path.join(__dirname, "fixtures", "real-session.jsonl"),
     path.join(proj, "parent.jsonl"),
   );
-  // Subagent file — same fixture, different path. Must be ignored.
   fs.copyFileSync(
     path.join(__dirname, "fixtures", "real-session.jsonl"),
-    path.join(subagents, "sub-1.jsonl"),
+    path.join(subagents, "agent-abc123.jsonl"),
   );
 
   const prev = process.env.CLAUDE_CONFIG_DIR;
@@ -187,17 +195,21 @@ test("poll() skips subagents/ subdirectories", async () => {
     await a.init(ctx);
     const events = await a.poll(ctx, new AbortController().signal);
 
-    // Only the parent file's events should be emitted. If we'd walked into
-    // subagents/ we'd have double the events (same fixture parsed twice).
-    const parentEventCount = events.length;
-    expect(parentEventCount).toBeGreaterThan(0);
+    // Both files should have produced events (the adapter walked into
+    // subagents/). Each file emits >0 events from the real-session fixture.
+    expect(events.length).toBeGreaterThan(0);
 
-    // Cursor should have a signature for parent.jsonl but NOT for the
-    // subagent path — proves the subagent dir wasn't traversed.
+    // The cursor should have signatures for BOTH files — proves the walk
+    // descended into the subagents/ subdirectory.
     const signatureKeys = Array.from(store.keys()).filter((k) => k.startsWith("signature:"));
-    expect(signatureKeys.length).toBe(1);
-    expect(signatureKeys[0]).toContain("parent.jsonl");
-    expect(signatureKeys[0]).not.toContain("subagents");
+    expect(signatureKeys.length).toBe(2);
+    expect(signatureKeys.some((k) => k.includes("parent.jsonl"))).toBe(true);
+    expect(signatureKeys.some((k) => k.includes("subagents"))).toBe(true);
+
+    // All emitted events share the same session_id (the parent's), since
+    // both files' JSONL content contains the same sessionId field.
+    const uniqueSessionIds = new Set(events.map((e) => e.session_id));
+    expect(uniqueSessionIds.size).toBe(1);
   } finally {
     if (prev === undefined) delete process.env.CLAUDE_CONFIG_DIR;
     else process.env.CLAUDE_CONFIG_DIR = prev;
