@@ -12,7 +12,7 @@
  *
  * Branch + time-window match covers the common case: the session happened
  * on the same branch the PR was open on, and within the PR's open-to-merged
- * window. This produces a link with match_reason='branch_time_match' and
+ * window. This produces a link with match_reason='pr_link' and
  * confidence=60 — lower than SHA/PR intersection links because branch+time
  * is circumstantial, but good enough to unblock cost-per-merged-PR numbers
  * that otherwise stay null.
@@ -163,14 +163,14 @@ async function main() {
                (tenant_id, session_id, repo_id_hash, match_reason,
                 provider_repo_id, evidence, confidence, inputs_sha256,
                 computed_at, stale_at)
-             SELECT $1::uuid, $2, $3::bytea, 'branch_time_match',
+             SELECT $1::uuid, $2, $3::bytea, 'pr_link',
                     $4, $5::jsonb, 60, $6::bytea, now(), NULL
              WHERE NOT EXISTS (
                SELECT 1 FROM session_repo_links
                 WHERE tenant_id = $1::uuid
                   AND session_id = $2
                   AND repo_id_hash = $3::bytea
-                  AND match_reason = 'branch_time_match'
+                  AND match_reason = 'pr_link'
                   AND stale_at IS NULL
              )
              RETURNING session_id`,
