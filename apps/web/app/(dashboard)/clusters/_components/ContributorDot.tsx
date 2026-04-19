@@ -1,4 +1,5 @@
 import type { schemas } from "@bematist/api";
+import Image from "next/image";
 
 /**
  * Color-dot pseudonymization for cluster contributors.
@@ -28,13 +29,15 @@ export interface ContributorDotProps {
 
 export function ContributorDot({ hash, size = 10, developer }: ContributorDotProps) {
   if (developer?.image) {
+    const dim = size + 6;
     return (
-      <img
+      <Image
         src={developer.image}
         alt=""
         aria-hidden="true"
+        width={dim}
+        height={dim}
         className="inline-block rounded-full ring-1 ring-border"
-        style={{ width: size + 6, height: size + 6 }}
       />
     );
   }

@@ -47,6 +47,7 @@ export function RedactedChip({ type, hash, className }: RedactedChipProps) {
         )}
         data-redaction-type={type}
         data-redaction-hash={hash}
+        role="img"
         aria-label={`${label} redacted`}
       >
         {label.toLowerCase()}
@@ -65,11 +66,11 @@ export function renderWithRedactions(text: string): ReactNode[] {
 
   const out: ReactNode[] = [];
   let cursor = 0;
-  markers.forEach((m, i) => {
+  markers.forEach((m) => {
     if (m.start > cursor) {
       out.push(text.slice(cursor, m.start));
     }
-    out.push(<RedactedChip key={`redacted-${i}-${m.start}`} type={m.type} hash={m.hash} />);
+    out.push(<RedactedChip key={`redacted-${m.start}-${m.hash}`} type={m.type} hash={m.hash} />);
     cursor = m.end;
   });
   if (cursor < text.length) {

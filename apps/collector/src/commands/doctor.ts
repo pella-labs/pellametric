@@ -17,7 +17,7 @@ import { createHash } from "node:crypto";
 import { createReadStream, existsSync, mkdirSync } from "node:fs";
 import { access, constants } from "node:fs/promises";
 import { buildRegistry } from "../adapters";
-import { type ConfigSource, loadConfigWithSources } from "../config";
+import { COLLECTOR_VERSION, type ConfigSource, loadConfigWithSources } from "../config";
 import { harden } from "../harden";
 
 interface Check {
@@ -98,7 +98,7 @@ function checkCoreDumps(): Check {
   };
 }
 
-function _annotate(source: ConfigSource): string {
+function annotate(source: ConfigSource): string {
   return `(from ${source})`;
 }
 
@@ -170,6 +170,24 @@ export async function runDoctor(_args: string[]): Promise<void> {
   }
 
   const anyCritical = checks.some((c) => !c.ok && c.severity === "critical");
+
+  console.log(
+    JSON.stringify(
+      {
+        version: COLLECTOR_VERSION,
+        endpoint: `${config.endpoint} ${annotate(sources.endpoint)}`,
+        token: config.token
+          ? `<set, ${config.token.length} chars> ${annotate(sources.token)}`
+          : `<unset> ${annotate(sources.token)}`,
+        dataDir: `${config.dataDir} ${annotate(sources.dataDir)}`,
+        logLevel: `${config.logLevel} ${annotate(sources.logLevel)}`,
+        tier: `${config.tier} ${annotate(sources.tier)}`,
+        checks,
+      },
+      null,
+      2,
+    ),
+  );
 
   process.exit(anyCritical ? 1 : 0);
 }

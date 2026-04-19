@@ -87,6 +87,7 @@ export function RevealDialog({ sessionId, revealAction, trigger, onSuccess }: Re
             active legal hold. Without one, the server will refuse.
           </div>
 
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: <label> wraps the <Textarea> custom component which renders a <textarea> — biome can't statically detect that across the component boundary. */}
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-foreground">
               Reason (min {MIN_REASON} characters)

@@ -306,9 +306,18 @@ function getDailyColor(
 export function CardPage({
   demoData,
   compact = false,
+  autoAdvanceMs,
 }: {
   demoData?: CardData;
   compact?: boolean;
+  /**
+   * When set, automatically advances through the 8 card pages on a
+   * timer with wrap-around. Used by the deck's final slide so the
+   * audience sees every card face without keyboard input. Kicks in
+   * only after phase >= 2 (card has entered) and skips ticks while
+   * a page transition is in flight.
+   */
+  autoAdvanceMs?: number;
 } = {}) {
   const params = useParams<{ id?: string }>();
   const id = params?.id;
@@ -510,6 +519,30 @@ export function CardPage({
       });
     });
   }, [phase, exitingPage, enteringFrom, currentPage]);
+
+  // Auto-advance (deck mode): cycle through all 8 pages on a timer with
+  // wrap-around. Gated on `phase >= 2` so the intro animation plays first.
+  // `animLockRef` mirrors the in-flight transition state so the interval
+  // doesn't have to re-subscribe on every rAF tick.
+  const animLockRef = useRef(false);
+  useEffect(() => {
+    animLockRef.current = Boolean(exitingPage || enteringFrom);
+  }, [exitingPage, enteringFrom]);
+
+  useEffect(() => {
+    if (!autoAdvanceMs || phase < 2) return;
+    const id = setInterval(() => {
+      if (animLockRef.current) return;
+      setCurrentPage((p) => (p + 1) % TOTAL_PAGES);
+      setEnteringFrom("right");
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setEnteringFrom(null);
+        });
+      });
+    }, autoAdvanceMs);
+    return () => clearInterval(id);
+  }, [autoAdvanceMs, phase]);
 
   // Nudge hint: wiggle the top card after idle
   const resetNudgeTimer = useCallback(() => {

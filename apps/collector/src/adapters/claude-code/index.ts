@@ -34,13 +34,24 @@ export class ClaudeCodeAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, _signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, signal: AbortSignal): Promise<Event[]> {
     const s = this.sources ?? discoverSources();
     if (!s.jsonlDirExists) return [];
 
     const files = await findSessionFiles(s.jsonlDir);
     const out: Event[] = [];
     for (const path of files) {
+      // Early-exit on abort so the orchestrator's timeout doesn't cause us
+      // to keep parsing + updating cursors past the deadline. Returning
+      // what we've emitted so far lets the next poll pick up from exactly
+      // where this one left off (signature cache does the rest).
+      if (signal.aborted) {
+        const remaining = files.length - files.indexOf(path);
+        ctx.log.info(
+          `claude-code: poll aborted mid-scan — emitted ${out.length}, ${remaining} files unprocessed`,
+        );
+        break;
+      }
       // Two-stage dedup:
       //
       // 1. Signature skip — if (size, mtime) hasn't changed since last

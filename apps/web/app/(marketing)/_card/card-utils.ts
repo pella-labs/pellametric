@@ -295,7 +295,7 @@ export function getToolColor(idx: number): string {
     "#c9a66a",
     "#b8d8a1",
   ];
-  return colors[idx % colors.length] ?? colors[0]!;
+  return colors[idx % colors.length] ?? colors[0] ?? "#52715a";
 }
 
 // Normalize hourDistribution to 0-1 range for bar heights

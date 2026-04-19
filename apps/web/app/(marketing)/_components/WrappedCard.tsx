@@ -53,7 +53,7 @@ export function WrappedCard({ data }: { data: CardData }) {
 
   return (
     <div className="wrapped-card-wrap">
-      <div ref={rootRef} className="wrapped-card" aria-label="Sample shareable card">
+      <div ref={rootRef} className="wrapped-card" role="img" aria-label="Sample shareable card">
         <div className="wrapped-card-shine" aria-hidden />
         <div className="wrapped-card-inner">
           <div className="wrapped-card-top">
@@ -81,7 +81,13 @@ export function WrappedCard({ data }: { data: CardData }) {
             {data.stats.claude.hourDistribution.map((v, i) => {
               const max = Math.max(...data.stats.claude.hourDistribution, 1);
               const h = 4 + (v / max) * 36;
-              return <span key={i} style={{ height: `${h}px` }} className="wrapped-card-bar" />;
+              return (
+                <span
+                  key={`hour-${i}-${v}`}
+                  style={{ height: `${h}px` }}
+                  className="wrapped-card-bar"
+                />
+              );
             })}
           </div>
 

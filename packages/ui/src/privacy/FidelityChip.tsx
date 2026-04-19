@@ -59,6 +59,7 @@ export function FidelityChip({ fidelity, className, compact = false }: FidelityC
           TONE_CLASSES[fidelity],
           className,
         )}
+        role="img"
         aria-label={LABELS[fidelity]}
       >
         {visible}

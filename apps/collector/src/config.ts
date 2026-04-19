@@ -230,11 +230,22 @@ export function loadConfigWithSources(overrides: Partial<CollectorConfig> = {}):
   const engineerId = resolveStr("BEMATIST_ENGINEER", fileVars, "me");
   const deviceId = resolveStr("BEMATIST_DEVICE", fileVars, "localhost");
   const tier = resolveTier("BEMATIST_TIER", fileVars);
-  const batchSize = resolveInt("BEMATIST_BATCH_SIZE", fileVars, 10);
+  // Defaults match what the M5 handoff had manually exported in Sebastian's
+  // shell (BEMATIST_BATCH_SIZE=500, BEMATIST_POLL_TIMEOUT_MS=1800000).
+  // Without these, fresh installs hit the 30s-per-poll race in the
+  // orchestrator and silently dropped events on heavy first-poll backfills
+  // (Walid had 4,971 JSONL files / 2.8 GB and lost all history).
+  //
+  // The orchestrator now also honors signal.aborted so even if the timeout
+  // fires mid-backfill, adapters return what they've emitted so far instead
+  // of the old discard-everything behavior. 1 hour gives room for
+  // multi-GB first-poll scans; subsequent polls hit the signature cache
+  // and finish in milliseconds.
+  const batchSize = resolveInt("BEMATIST_BATCH_SIZE", fileVars, 500);
   const pollIntervalMs = resolveInt("BEMATIST_POLL_INTERVAL_MS", fileVars, 5_000);
   const flushIntervalMs = resolveInt("BEMATIST_FLUSH_INTERVAL_MS", fileVars, 1_000);
   const adapterConcurrency = resolveInt("BEMATIST_CONCURRENCY", fileVars, 4);
-  const perPollTimeoutMs = resolveInt("BEMATIST_POLL_TIMEOUT_MS", fileVars, 30_000);
+  const perPollTimeoutMs = resolveInt("BEMATIST_POLL_TIMEOUT_MS", fileVars, 3_600_000);
 
   const config: CollectorConfig = {
     endpoint: endpoint.value,

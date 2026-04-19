@@ -14,6 +14,7 @@ export function CostEstimatedChip({ className }: { className?: string }) {
           "inline-flex items-center rounded-sm border border-warning/40 px-1 py-0 font-mono text-[0.6rem] uppercase tracking-wide text-warning",
           className,
         )}
+        role="img"
         aria-label="Cost estimated"
       >
         est.

@@ -298,6 +298,12 @@ function windowsInstall(bin: string): string {
   return path;
 }
 
+/**
+ * Detect whether the Windows scheduled task `WINDOWS_TASK` is currently
+ * running. Reserved for the upcoming `bematist status` Windows path; not
+ * yet wired up. Underscore prefix suppresses unused-symbol warnings until
+ * then.
+ */
 function _windowsIsRunning(): boolean {
   const r = run("schtasks", ["/Query", "/TN", WINDOWS_TASK, "/FO", "CSV", "/NH"]);
   if (r.status !== 0) return false;

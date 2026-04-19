@@ -43,6 +43,7 @@ export function ConfidenceBadge({
           TONES[confidence],
           className,
         )}
+        role="img"
         aria-label={`Confidence: ${LABELS[confidence]}`}
       >
         {LABELS[confidence]}

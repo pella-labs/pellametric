@@ -81,19 +81,38 @@ test("adapter throwing in poll does not crash the orchestrator", async () => {
   expect(events[0]?.client_event_id).toContain("g");
 });
 
-test("adapter exceeding perPollTimeoutMs is aborted, orchestrator continues", async () => {
-  const slow = mkAdapter(
-    "slow",
-    () =>
-      new Promise<Event[]>((resolve) => {
-        setTimeout(() => resolve([ev("late")]), 500);
-      }),
-  );
+test("adapter exceeding perPollTimeoutMs is signaled; honoring the signal returns partial", async () => {
+  // New contract (v0.1.7): the orchestrator fires ac.abort() when the
+  // timeout elapses and then AWAITS the adapter's promise — it no longer
+  // races with a "resolve([])" discard path. Adapters that honor the
+  // signal return what they've emitted so far; whatever they return is
+  // what the orchestrator collects. Adapters that ignore the signal keep
+  // running (acceptable trade-off vs. the old silent event-dropping).
+  const respectful: Adapter = {
+    id: "respectful",
+    label: "respectful",
+    version: "0.0.0",
+    supportedSourceVersions: "*",
+    async init() {},
+    async poll(_ctx, signal) {
+      const emitted: Event[] = [ev("early")];
+      // Pretend we're in the middle of a backfill when the signal fires:
+      // spin until abort, then return what we've emitted so far.
+      await new Promise<void>((resolve) => {
+        if (signal.aborted) return resolve();
+        signal.addEventListener("abort", () => resolve(), { once: true });
+      });
+      return emitted;
+    },
+    async health() {
+      return { status: "ok", fidelity: "full" };
+    },
+  };
   const fast = mkAdapter("fast", async () => [ev("ok")]);
-  const events = await runOnce([slow, fast], () => mkCtx(), {
+  const events = await runOnce([respectful, fast], () => mkCtx(), {
     concurrency: 2,
     perPollTimeoutMs: 50,
   });
   expect(events.map((e) => e.client_event_id).some((id) => id.includes("ok"))).toBe(true);
-  expect(events.map((e) => e.client_event_id).some((id) => id.includes("late"))).toBe(false);
+  expect(events.map((e) => e.client_event_id).some((id) => id.includes("early"))).toBe(true);
 });

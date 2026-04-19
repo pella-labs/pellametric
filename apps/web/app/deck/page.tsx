@@ -12,12 +12,15 @@ import { Slide07Platform } from "./slides/07-platform";
 import { Slide08Demo } from "./slides/08-demo";
 import { Slide09Outcomes } from "./slides/09-outcomes";
 import { Slide10TwoReaders } from "./slides/10-two-readers";
-import { Slide11EngineerCard } from "./slides/11-engineer-card";
 import { Slide12QuestionsAnswered } from "./slides/12-questions-answered";
 import { Slide13DataWasYours } from "./slides/13-data-was-yours";
 import { Slide14Cta } from "./slides/14-cta";
 import { useDeckNav } from "./use-deck-nav";
 
+// The former "Engineer Card" slide (slide 11) merged into the CTA slide —
+// the card now shows alongside the QR so developers who scan it see the
+// artifact they're about to get. `Slide11EngineerCard` is left in the
+// slides/ directory for reference but no longer rendered.
 const SLIDE_LABELS = [
   "Cover",
   "Thesis",
@@ -29,7 +32,6 @@ const SLIDE_LABELS = [
   "Demo",
   "Outcomes",
   "Two Readers",
-  "Engineer Card",
   "Answers",
   "Closing Thesis",
   "Call to Action",
@@ -40,7 +42,7 @@ const TOTAL = SLIDE_LABELS.length;
 export default function DeckPage() {
   const nav = useDeckNav(TOTAL);
 
-  const renderSlide = (i: number, active: boolean) => {
+  const renderSlide = (i: number, _active: boolean) => {
     switch (i) {
       case 0:
         return <Slide01Cover totalPages={TOTAL} />;
@@ -63,12 +65,10 @@ export default function DeckPage() {
       case 9:
         return <Slide10TwoReaders totalPages={TOTAL} />;
       case 10:
-        return <Slide11EngineerCard totalPages={TOTAL} active={active} />;
-      case 11:
         return <Slide12QuestionsAnswered totalPages={TOTAL} />;
-      case 12:
+      case 11:
         return <Slide13DataWasYours totalPages={TOTAL} />;
-      case 13:
+      case 12:
         return <Slide14Cta totalPages={TOTAL} />;
       default:
         return null;

@@ -61,7 +61,8 @@ test("loadConfig has sensible defaults", () => {
   expect(cfg.dryRun).toBe(false);
   expect(cfg.tier).toBe("B");
   expect(cfg.logLevel).toBe("warn");
-  expect(cfg.batchSize).toBe(10);
+  expect(cfg.batchSize).toBe(500);
+  expect(cfg.perPollTimeoutMs).toBe(3_600_000);
 });
 
 test("BEMATIST_ENDPOINT overrides default", () => {
@@ -100,9 +101,9 @@ test("BEMATIST_BATCH_SIZE parses int", () => {
   expect(loadConfig().batchSize).toBe(25);
 });
 
-test("invalid BEMATIST_BATCH_SIZE falls back to 10", () => {
+test("invalid BEMATIST_BATCH_SIZE falls back to default", () => {
   process.env.BEMATIST_BATCH_SIZE = "not-a-number";
-  expect(loadConfig().batchSize).toBe(10);
+  expect(loadConfig().batchSize).toBe(500);
 });
 
 test("overrides arg wins over env", () => {

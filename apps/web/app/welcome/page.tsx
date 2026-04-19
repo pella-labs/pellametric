@@ -41,9 +41,7 @@ export default async function WelcomePage() {
         </p>
       </header>
 
-      <InstallCard os="macos" />
-      <InstallCard os="linux" />
-      <InstallCard os="windows" />
+      <InstallCard />
 
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-5">
         <h2 className="text-base font-semibold">What `bematist login` does</h2>
@@ -80,7 +78,7 @@ export default async function WelcomePage() {
             >
               Open your dashboard
             </Link>{" "}
-            — first events land within a minute of `bematist start`.
+            — first events land within a minute of `bematist login`.
           </li>
           <li>
             <Link
@@ -106,40 +104,17 @@ export default async function WelcomePage() {
   );
 }
 
-type OS = "macos" | "linux" | "windows";
+// bematist.dev/install.sh 302s to the GH release `latest/download/install.sh`
+// so this resolves to the newest signed script + binary. `bematist login`
+// auto-starts the daemon as of v0.1.7 — no separate `bematist start` needed.
+const INSTALL_LINE = "curl -fsSL https://bematist.dev/install.sh | sh && bematist login";
 
-function installLineFor(os: OS): { label: string; line: string } {
-  switch (os) {
-    case "macos":
-      return {
-        label: "macOS (Homebrew)",
-        line: "brew install pella-labs/tap/bematist && bematist login && bematist start",
-      };
-    case "linux":
-      return {
-        label: "Linux (apt / curl)",
-        // bematist.dev doesn't serve install.sh today — point at the GH
-        // release `/latest/download/` redirect so `curl | sh` resolves to
-        // the newest signed script + binary. `set -o pipefail` guards
-        // against a 404 downloading install.sh silently succeeding the
-        // rest of the chain (the v0.1.0 muscle-memory bug Sandesh hit).
-        line: "set -o pipefail; curl -fsSL https://github.com/pella-labs/bematist/releases/latest/download/install.sh | sh && bematist login && bematist start",
-      };
-    case "windows":
-      return {
-        label: "Windows (Chocolatey)",
-        line: "choco install bematist && bematist login && bematist start",
-      };
-  }
-}
-
-function InstallCard({ os }: { os: OS }) {
-  const { label, line } = installLineFor(os);
+function InstallCard() {
   return (
     <Card className="flex flex-col gap-4">
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <CardTitle>{label}</CardTitle>
+          <CardTitle>macOS / Linux</CardTitle>
           <p className="text-xs text-muted-foreground">
             Paste this into your terminal. Your browser opens to confirm.
           </p>
@@ -147,10 +122,10 @@ function InstallCard({ os }: { os: OS }) {
       </CardHeader>
       <div className="flex flex-col gap-2">
         <div className="overflow-x-auto rounded-md border border-border bg-muted/40 p-4 font-mono text-xs leading-relaxed text-foreground">
-          {line}
+          {INSTALL_LINE}
         </div>
         <div className="flex items-center justify-end">
-          <CopyCommandButton command={line} />
+          <CopyCommandButton command={INSTALL_LINE} />
         </div>
       </div>
     </Card>

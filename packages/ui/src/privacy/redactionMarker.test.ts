@@ -14,7 +14,8 @@ describe("findMarkers", () => {
     expect(m).toBeDefined();
     expect(m?.type).toBe("secret");
     expect(m?.hash).toBe("0123456789abcdef");
-    expect(text.slice(m?.start, m?.end)).toBe("<REDACTED:secret:0123456789abcdef>");
+    if (!m) throw new Error("expected marker");
+    expect(text.slice(m.start, m.end)).toBe("<REDACTED:secret:0123456789abcdef>");
   });
 
   test("parses multiple markers in one string", () => {

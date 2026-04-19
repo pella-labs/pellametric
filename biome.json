@@ -57,7 +57,8 @@
       "recommended": true,
       "style": {
         "noNonNullAssertion": "warn",
-        "useImportType": "error"
+        "useImportType": "error",
+        "noDescendingSpecificity": "off"
       },
       "suspicious": {
         "noExplicitAny": "warn",
@@ -65,14 +66,19 @@
           "level": "warn",
           "options": { "allow": ["warn", "error", "info"] }
         },
-        "noArrayIndexKey": "warn"
+        "noArrayIndexKey": "warn",
+        "noEmptyBlock": "off"
       },
       "correctness": {
         "noUnusedVariables": "warn",
         "noUnusedImports": "warn"
       },
       "complexity": {
-        "noUselessSwitchCase": "warn"
+        "noUselessSwitchCase": "warn",
+        "noImportantStyles": "off"
+      },
+      "performance": {
+        "noImgElement": "off"
       },
       "a11y": {
         "useAriaPropsSupportedByRole": "warn",
@@ -87,5 +93,26 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "apps/collector/scripts/**",
+        "apps/collector/src/cli.ts",
+        "apps/collector/src/commands/**",
+        "apps/ingest/src/smoke.ts",
+        "apps/worker/src/index.ts",
+        "apps/web/integration-tests/**",
+        "packages/scoring/src/v1/eval/**",
+        "packages/schema/scripts/**"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    }
+  ]
 }

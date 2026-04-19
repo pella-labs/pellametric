@@ -57,7 +57,12 @@ function activeDaysFromTimestamps(tss: string[]): number {
   return days.size;
 }
 
+// In CH mode the cache MUST be keyed per (org, engineer) — otherwise one
+// user's rendered data leaks to the next request because module-level
+// state is shared across the whole Node process. In filesystem mode
+// there's only one local user so a single-entry cache is fine.
 let memoryCache: { at: number; data: LocalData } | null = null;
+const memoryCacheByKey = new Map<string, { at: number; data: LocalData }>();
 const MEMORY_TTL_MS = 60_000;
 // Disk cache survives `bun run dev` restarts; serve-stale-while-revalidate so
 // a cold page is instant and the background refresh catches real changes.
@@ -86,6 +91,7 @@ function writeDiskCache(data: LocalData): void {
 }
 
 let inFlight: Promise<LocalData> | null = null;
+const inFlightByKey = new Map<string, Promise<LocalData>>();
 
 async function readFresh(): Promise<LocalData> {
   // Single pass: read each source once, feed mergeAll + buildAnalytics.
@@ -181,19 +187,19 @@ function rehydrateLive(data: LocalData, now: number): LocalData {
 
 const USE_CH = process.env.BEMATIST_USE_CH === "1";
 
-async function readFreshFromCh(): Promise<LocalData> {
-  const { ensureBackfill } = await import("./ch-backfill");
-  const { readAnalyticsForEngineer } = await import("./ch-analytics");
+async function resolveCurrentIdentity(): Promise<{ orgId: string; engineerId: string }> {
   const { getSessionCtx } = await import("./session");
   const { resolveEngineerId } = await import("./resolve-engineer-id");
-
-  // Identity alignment: ingest writes events with engineer_id = developer.id
-  // (the row in `developers` keyed off the mint token). Session gives us
-  // ctx.actor_id = user_id. Resolve the developer row so CH queries match.
   const ctx = await getSessionCtx();
   const orgId = ctx.tenant_id;
   const resolved = await resolveEngineerId(orgId, ctx.actor_id).catch(() => null);
   const engineerId = resolved ?? ctx.actor_id;
+  return { orgId, engineerId };
+}
+
+async function readFreshFromCh(orgId: string, engineerId: string): Promise<LocalData> {
+  const { ensureBackfill } = await import("./ch-backfill");
+  const { readAnalyticsForEngineer } = await import("./ch-analytics");
 
   // Auto-backfill — on dev's local machine, grammata reads their filesystem
   // and writes into CH under this engineerId. On Railway this is a no-op
@@ -389,23 +395,34 @@ async function readFreshFromCh(): Promise<LocalData> {
     }
     bucket.activeDays = days.size;
   }
-  memoryCache = { at: Date.now(), data };
+  memoryCacheByKey.set(`${orgId}|${engineerId}`, { at: Date.now(), data });
   return data;
 }
 
 export async function getLocalData(): Promise<LocalData> {
   const now = Date.now();
-  if (memoryCache && now - memoryCache.at < MEMORY_TTL_MS)
-    return rehydrateLive(memoryCache.data, now);
 
   if (USE_CH) {
-    if (!inFlight) {
-      inFlight = readFreshFromCh().finally(() => {
-        inFlight = null;
+    // Identity must be resolved BEFORE hitting any cache, otherwise one
+    // user's data leaks to another user's render. Key cache by
+    // (org, engineer) so each viewer sees only their own rows.
+    const { orgId, engineerId } = await resolveCurrentIdentity();
+    const key = `${orgId}|${engineerId}`;
+    const hit = memoryCacheByKey.get(key);
+    if (hit && now - hit.at < MEMORY_TTL_MS) return rehydrateLive(hit.data, now);
+
+    let pending = inFlightByKey.get(key);
+    if (!pending) {
+      pending = readFreshFromCh(orgId, engineerId).finally(() => {
+        inFlightByKey.delete(key);
       });
+      inFlightByKey.set(key, pending);
     }
-    return inFlight;
+    return pending;
   }
+
+  if (memoryCache && now - memoryCache.at < MEMORY_TTL_MS)
+    return rehydrateLive(memoryCache.data, now);
 
   // Hydrate from disk on cold start so a fresh `bun run dev` doesn't eat the
   // 9-second grammata walk.

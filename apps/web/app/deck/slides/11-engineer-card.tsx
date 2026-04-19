@@ -1,23 +1,19 @@
 "use client";
 
-import { DeveloperCard } from "../components/developer-card";
+import { CardMount } from "../../(marketing)/_card/CardMount";
+import { DEMO_CARD } from "../../(marketing)/_card/demo-data";
 import { SlideShell } from "../components/slide-shell";
 
 /**
  * Slide 11 — The Engineer's Artifact.
- * Replaces the standalone deck's static PNG screenshot with the live
- * DeveloperCard component. Counter animates up from 0 and streak cells
- * reveal when the slide is active.
+ * Embeds the real shareable card (same component the public /card/[id]
+ * route renders) with the shipped DEMO_CARD fixture. `compact` suppresses
+ * the download / copy / share bar for in-deck framing. The card runs its
+ * own mount animation — `active` is no longer used.
  */
-export function Slide11EngineerCard({
-  totalPages,
-  active,
-}: {
-  totalPages: number;
-  active: boolean;
-}) {
+export function Slide11EngineerCard(_props: { totalPages: number; active: boolean }) {
   return (
-    <SlideShell sectionLabel="ENGINEER VIEW" pageNumber={11} totalPages={totalPages}>
+    <SlideShell sectionLabel="ENGINEER VIEW">
       <div className="eyebrow">08.5 / THE ENGINEER'S ARTIFACT</div>
 
       <div
@@ -90,8 +86,23 @@ export function Slide11EngineerCard({
               zIndex: 0,
             }}
           />
-          <div style={{ position: "relative", zIndex: 2 }}>
-            <DeveloperCard active={active} />
+          <div
+            style={{
+              position: "relative",
+              zIndex: 2,
+              // .card-root uses `width: 100%` with no intrinsic width, so
+              // the wrapper must establish the card's canvas size itself
+              // — otherwise the card collapses to 0 inside a shrinkwrap
+              // parent while the surrounding aura still renders. 720px
+              // matches the compact min-height for a roughly square
+              // framing; scale(0.86) brings rendered width back under the
+              // slide's 620px right column.
+              width: 720,
+              transform: "scale(0.86)",
+              transformOrigin: "center",
+            }}
+          >
+            <CardMount demoData={DEMO_CARD} compact />
           </div>
         </div>
       </div>
