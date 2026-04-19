@@ -3,8 +3,19 @@ import { expect, test } from "@playwright/test";
 /**
  * PRD §13 Phase G1 step 2b — admin/github UI surface smoke test.
  *
- * Dev-mode session defaults to `role=admin` (see `apps/web/lib/session-resolver.ts`)
- * so we don't need Better Auth cookie plumbing. We verify:
+ * H2 — the admin surfaces live behind `middleware.ts`, which bounces to
+ * `/auth/sign-in` when no session cookie is present. The in-process
+ * session resolver has a dev-mode fallback (role=admin when
+ * NODE_ENV !== "production") but it runs at the RSC layer, AFTER the
+ * middleware redirect. We therefore pre-seed a legacy
+ * `bematist-session` cookie via Playwright's `storageState` fixture;
+ * the cookie value does not need to map to a real Redis row — the
+ * session resolver's Redis lookup returns null on this synthetic token
+ * and the code path falls through to the dev-mode admin fallback. This
+ * is closer to the production shape than setting
+ * `BEMATIST_DEV_TENANT_ID` because it exercises the middleware gate.
+ *
+ * We verify:
  *   1. `/admin/github` renders its heading + the connection card (either the
  *      install CTA or a bound installation block).
  *   2. `/admin/github/repos` renders its heading + the repos table chrome,
@@ -14,6 +25,8 @@ import { expect, test } from "@playwright/test";
  * is bound it shows the "Install GitHub App" CTA; when one is bound via the
  * test seed, it shows the status card.
  */
+
+test.use({ storageState: "./tests/e2e/fixtures/admin.storageState.json" });
 
 test.describe("/admin/github", () => {
   test("renders connection card + Start sync affordance", async ({ page }) => {

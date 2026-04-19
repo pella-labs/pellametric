@@ -1,0 +1,15 @@
+{
+  "cookies": [
+    {
+      "name": "bematist-session",
+      "value": "e2e-admin-fixture",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}

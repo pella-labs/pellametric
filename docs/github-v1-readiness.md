@@ -57,7 +57,7 @@ to a distinct PR with its own contract tests:
 | B9 | Redis token-bucket for `redeliverWebhooks` (D59) | **Landed** — `packages/api/src/github/tokenBucket.ts` (shared) + redeliver pacer wired + Redis-backed in `apps/web/lib/github/redeliveryDeps.ts` |
 | B10 | Recursive allowlist for `assertEvidenceSafe` | **Landed** |
 | B11 | Honest commutativity count + per-scenario D53 witness | **Landed** |
-| H2 | Playwright `admin-github` storageState fixture | **Pending follow-up** — 4 tests currently red under default harness invocation |
+| H2 | Playwright `admin-github` storageState fixture | **Landed** — `apps/web/tests/e2e/fixtures/admin.storageState.json` seeds a legacy `bematist-session` cookie; middleware passes; session resolver's Redis lookup returns null and falls through to the dev-mode admin fallback |
 | H3 | Fail-closed boot (Kafka / PG / GITHUB_APP_ID) | **Landed** |
 | H6 | Strict installation-status allowlist w/ distinct codes | **Landed** |
 | M1 | `repos.full_name` column + ILIKE search path | **Landed** — migration 0010 + schema column + initial-sync persistence + rename/transfer webhook sync + admin search ILIKE |
