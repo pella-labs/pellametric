@@ -128,13 +128,29 @@ export async function runInitialSync(input: InitialSyncInput): Promise<InitialSy
   try {
     // Upsert the progress row up front. Resumability: read existing
     // next_page_cursor so we continue from there.
+    //
+    // Counter reset: when the prior run completed (next_page_cursor IS NULL),
+    // zero out fetched_repos + pages_fetched so a re-sync shows a truthful
+    // "N/N" progress instead of "2N/N". If next_page_cursor is non-null, we
+    // are resuming a mid-run sync and must preserve the counters.
     await input.sql.unsafe(
       `INSERT INTO github_sync_progress
          (tenant_id, installation_id, status, started_at, last_progress_at, updated_at, requested_by)
        VALUES ($1, $2, 'running', now(), now(), now(), $3)
        ON CONFLICT (tenant_id, installation_id) DO UPDATE
          SET status = 'running',
-             started_at = COALESCE(github_sync_progress.started_at, now()),
+             started_at = CASE
+               WHEN github_sync_progress.next_page_cursor IS NULL THEN now()
+               ELSE github_sync_progress.started_at
+             END,
+             fetched_repos = CASE
+               WHEN github_sync_progress.next_page_cursor IS NULL THEN 0
+               ELSE github_sync_progress.fetched_repos
+             END,
+             pages_fetched = CASE
+               WHEN github_sync_progress.next_page_cursor IS NULL THEN 0
+               ELSE github_sync_progress.pages_fetched
+             END,
              last_progress_at = now(),
              updated_at = now(),
              last_error = NULL,
