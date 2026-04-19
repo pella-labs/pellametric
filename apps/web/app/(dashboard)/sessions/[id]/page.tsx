@@ -9,11 +9,11 @@ import {
   FidelityChip,
   InsufficientData,
   RevealDialog,
-  renderWithRedactions,
 } from "@bematist/ui";
 import type { Metadata } from "next";
 import { revealSessionAction } from "@/lib/actions/session";
 import { getRevealedCtx } from "@/lib/session";
+import { PromptBody } from "./_PromptBody";
 
 export const metadata: Metadata = {
   title: "Session detail",
@@ -89,9 +89,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           <CardTitle>Prompt</CardTitle>
         </CardHeader>
         {session.prompt_text !== null ? (
-          <div className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-foreground">
-            {renderWithRedactions(session.prompt_text)}
-          </div>
+          <PromptBody text={session.prompt_text} />
         ) : complianceOn ? (
           <div className="flex flex-col items-start gap-4">
             <div className="flex items-center gap-2">
