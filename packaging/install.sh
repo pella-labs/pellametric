@@ -14,6 +14,14 @@
 #   curl -fsSL https://bematist.dev/install.sh | sh -s -- --version v0.1.0
 #   curl -fsSL https://bematist.dev/install.sh | sh -s -- --prefix "$HOME/.local"
 #   curl -fsSL https://bematist.dev/install.sh | sh -s -- --verify-cosign
+#
+# Persist-config variant — the welcome-page one-liner feeds this:
+#   curl -fsSL .../install.sh | sh -s -- \
+#     --endpoint https://ingest.example.test --token bm_orgslug_keyid_secret
+#
+# `--config-only` skips the binary download and writes config.env only; used
+# by the installer integration tests and by re-runs that just want to update
+# the endpoint/token on an already-installed machine.
 
 set -eu
 
@@ -25,6 +33,9 @@ main() {
   prefix="${BEMATIST_PREFIX:-$PREFIX_DEFAULT}"
   version=""
   verify_cosign=0
+  endpoint="${BEMATIST_ENDPOINT:-}"
+  token="${BEMATIST_TOKEN:-}"
+  config_only=0
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -34,11 +45,29 @@ main() {
       --prefix=*) prefix="${1#*=}"; shift ;;
       --repo) repo="$2"; shift 2 ;;
       --repo=*) repo="${1#*=}"; shift ;;
+      --endpoint) endpoint="$2"; shift 2 ;;
+      --endpoint=*) endpoint="${1#*=}"; shift ;;
+      --token) token="$2"; shift 2 ;;
+      --token=*) token="${1#*=}"; shift ;;
       --verify-cosign) verify_cosign=1; shift ;;
+      --config-only) config_only=1; shift ;;
       --help|-h) usage; return 0 ;;
       *) err "unknown flag: $1"; usage; return 2 ;;
     esac
   done
+
+  if [ -n "$endpoint" ] || [ -n "$token" ]; then
+    write_config "$endpoint" "$token"
+  fi
+
+  if [ "$config_only" -eq 1 ]; then
+    if [ -z "$endpoint" ] && [ -z "$token" ]; then
+      err "--config-only requires --endpoint and/or --token"
+      return 2
+    fi
+    say "config-only mode — skipping binary download."
+    return 0
+  fi
 
   require curl
   require uname
@@ -105,7 +134,57 @@ main() {
   fi
 
   say "installed: $target/bematist"
-  say "next: run \`bematist doctor\` — and see https://bematist.dev/docs for setup"
+  if [ -n "$endpoint" ] || [ -n "$token" ]; then
+    say "next: run \`bematist start\` to launch the background service."
+  else
+    say "next: \`bematist config set endpoint <url>\` + \`bematist config set token <bearer>\` + \`bematist start\`."
+  fi
+}
+
+# Persist config to ~/.bematist/config.env with mode 0600 (token is a bearer
+# secret, CLAUDE.md §Security Rules). Atomic via tmp-file + rename so a
+# truncated write never lands on disk.
+write_config() {
+  _endpoint="$1"
+  _token="$2"
+  # Respect BEMATIST_DATA_DIR override for tests; fall back to $HOME/.bematist.
+  _dir="${BEMATIST_DATA_DIR:-$HOME/.bematist}"
+  _path="${BEMATIST_CONFIG_ENV_PATH:-$_dir/config.env}"
+
+  # ensure parent dir, private mode. 0700 matches what `bematist config set`
+  # uses — collector state (egress journal, policy cache) is not world-readable.
+  (umask 077; mkdir -p "$_dir")
+
+  # Preserve prior keys we aren't overwriting — so `install.sh --endpoint X`
+  # doesn't wipe out a pre-existing token and vice versa.
+  _new=""
+  if [ -f "$_path" ]; then
+    _new=$(awk -v ep="$_endpoint" -v tk="$_token" '
+      /^BEMATIST_ENDPOINT=/ { if (ep != "") next; else print; next }
+      /^BEMATIST_TOKEN=/    { if (tk != "") next; else print; next }
+      { print }
+    ' "$_path")
+  else
+    _new="# bematist collector config — written by install.sh.
+# See dev-docs/m5-installer-plan.md. Safe to hand-edit; preserve KEY=VALUE form."
+  fi
+  if [ -n "$_endpoint" ]; then
+    _new="$_new
+BEMATIST_ENDPOINT=$_endpoint"
+  fi
+  if [ -n "$_token" ]; then
+    _new="$_new
+BEMATIST_TOKEN=$_token"
+  fi
+
+  _tmp="$_path.tmp.$$.$(date +%s)"
+  (
+    umask 077
+    printf '%s\n' "$_new" > "$_tmp"
+  )
+  chmod 600 "$_tmp"
+  mv "$_tmp" "$_path"
+  say "wrote config to $_path"
 }
 
 usage() {
@@ -116,12 +195,17 @@ Options:
   --version <vX.Y.Z>      install a specific tag (default: latest)
   --prefix <path>         install prefix (default: /usr/local)
   --repo <owner/name>     override GH release source
+  --endpoint <url>        persist ingest endpoint to ~/.bematist/config.env
+  --token <bearer>        persist ingest token to ~/.bematist/config.env (0600)
+  --config-only           write config.env only, skip binary download
   --verify-cosign         also verify the keyless Sigstore signature
   -h, --help              show this help
 
 Environment:
   BEMATIST_REPO           same as --repo
   BEMATIST_PREFIX         same as --prefix
+  BEMATIST_ENDPOINT       same as --endpoint
+  BEMATIST_TOKEN          same as --token
 
 Recommended (distro packages are the PRIMARY path):
   brew install bematist-org/tap/bematist        # macOS

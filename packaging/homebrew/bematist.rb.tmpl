@@ -3,35 +3,58 @@
 
 # Bematist — Homebrew formula (rendered from template at release time).
 # See packaging/homebrew/bematist.rb.tmpl for the source and
-# packaging/homebrew/render.sh for the substitution step.
+# packaging/homebrew/render.sh for the substitution step. The OS-block
+# placeholder below is replaced with zero or more on-macos / on-linux
+# blocks depending on which binaries were built for the release. See
+# tests/packaging/render-resilience.sh for coverage.
 class Bematist < Formula
   desc "Open-source, self-hostable AI-engineering analytics platform"
   homepage "https://bematist.dev"
   version "@VERSION@"
   license "Apache-2.0"
 
-  on_macos do
-    if Hardware::CPU.arm?
-      url "https://github.com/@REPO@/releases/download/v#{version}/bematist-v#{version}-darwin-arm64"
-      sha256 "@SHA256_DARWIN_ARM64@"
-    else
-      url "https://github.com/@REPO@/releases/download/v#{version}/bematist-v#{version}-darwin-x64"
-      sha256 "@SHA256_DARWIN_X64@"
-    end
-  end
-
-  on_linux do
-    if Hardware::CPU.arm?
-      url "https://github.com/@REPO@/releases/download/v#{version}/bematist-v#{version}-linux-arm64"
-      sha256 "@SHA256_LINUX_ARM64@"
-    else
-      url "https://github.com/@REPO@/releases/download/v#{version}/bematist-v#{version}-linux-x64"
-      sha256 "@SHA256_LINUX_X64@"
-    end
-  end
+@OS_BLOCKS@
 
   def install
     bin.install Dir["bematist-*"].first => "bematist"
+    # Collector data dir (egress journal, config.env, SQLite state, logs).
+    # 0700 — CLAUDE.md §Security Rules — no world-read on token-bearing state.
+    (var/"bematist/logs").mkpath
+  end
+
+  # `brew services start bematist` loads this LaunchAgent (macOS) / systemd
+  # user unit (linux). `KeepAlive` + `RunAtLoad` are Homebrew's equivalents of
+  # what packaging/launchd/…plist.tmpl sets; the two stay in sync so folks
+  # running `brew services` see the same behavior as folks running
+  # `bematist start` directly.
+  service do
+    run [opt_bin/"bematist", "serve"]
+    keep_alive true
+    run_type :immediate
+    working_dir Dir.home + "/.bematist"
+    log_path Dir.home + "/.bematist/logs/out.log"
+    error_log_path Dir.home + "/.bematist/logs/err.log"
+    environment_variables PATH: std_service_path_env
+  end
+
+  def caveats
+    <<~EOS
+      Bematist is installed but needs an ingest endpoint + bearer token before
+      it can send events. One-time setup:
+
+        bematist config set endpoint https://ingest.<your-domain>
+        bematist config set token    bm_<orgslug>_<keyid>_<secret>
+
+      Then start the collector as a background service:
+
+        brew services start bematist        # or: bematist start
+
+      Your config lives at ~/.bematist/config.env (mode 0600). Re-run
+      `bematist config set` to rotate values without restarting the service
+      (send SIGHUP to pick up changes mid-run).
+
+      See https://bematist.dev/docs/install for details + troubleshooting.
+    EOS
   end
 
   test do

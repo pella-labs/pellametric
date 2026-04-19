@@ -3,10 +3,16 @@
 // Commands per CLAUDE.md §Commands:
 //   status, audit --tail, dry-run, doctor, serve, --version.
 import { runAudit } from "./commands/audit";
+import { runConfig } from "./commands/config";
 import { runDoctor } from "./commands/doctor";
 import { runDryRun } from "./commands/dryRun";
+import { runLogin } from "./commands/login";
+import { runLogout } from "./commands/logout";
+import { runLogs } from "./commands/logs";
 import { runServe } from "./commands/serve";
+import { runStart } from "./commands/start";
 import { runStatus } from "./commands/status";
+import { runStop } from "./commands/stop";
 import { COLLECTOR_VERSION } from "./config";
 import { harden } from "./harden";
 
@@ -26,6 +32,24 @@ async function main() {
       return;
     case "doctor":
       await runDoctor(args);
+      return;
+    case "config":
+      await runConfig(args);
+      return;
+    case "login":
+      await runLogin(args);
+      return;
+    case "logout":
+      await runLogout(args);
+      return;
+    case "start":
+      await runStart();
+      return;
+    case "stop":
+      await runStop();
+      return;
+    case "logs":
+      await runLogs();
       return;
     case "serve":
       await runServe();
@@ -52,11 +76,17 @@ function printHelp() {
   console.log(`bematist ${COLLECTOR_VERSION} — collector CLI
 
 Commands:
-  serve               Run the collector daemon (reads BEMATIST_* env)
-  status              Active adapters, last event, queue depth, version
+  login               Authorize this machine against your Bematist org (browser flow)
+  logout              Clear credentials from ~/.bematist/config.env
+  start               Install + start the OS service (launchd / systemd / schtasks)
+  stop                Stop the OS service
+  status              Active adapters, last event, queue depth, daemon state
+  logs                Tail the collector's stdout/err (or journalctl on Linux)
+  serve               Run the collector daemon in foreground (blocks the terminal)
   dry-run             Poll once + log what would be sent, send nothing
   audit --tail [-n N] Stream the egress journal (Bill of Rights #1)
   doctor              Pre-flight checks: core dumps, ingest, adapters, sha256
+  config <sub>        get/set/list persisted config (~/.bematist/config.env)
   --version           Print version
 
 Environment (see CLAUDE.md §Environment Variables):

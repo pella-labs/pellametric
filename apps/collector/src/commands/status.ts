@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 import { egressSqlite } from "@bematist/config";
 import { buildRegistry } from "../adapters";
 import { COLLECTOR_VERSION, loadConfig } from "../config";
+import { daemonStatus } from "../daemon";
 import { EgressLog } from "../egress/egressLog";
 import { Journal } from "../egress/journal";
 import { migrate } from "../egress/migrations";
@@ -65,6 +66,7 @@ export async function runStatus(): Promise<void> {
   );
 
   const active = health.filter((h) => h.health.status === "ok").map((h) => h.id);
+  const daemon = daemonStatus();
 
   console.log(
     JSON.stringify(
@@ -74,6 +76,12 @@ export async function runStatus(): Promise<void> {
         dataDir: config.dataDir,
         tier: config.tier,
         dryRun: config.dryRun,
+        daemon: {
+          state: daemon.state,
+          platform: daemon.platform,
+          unitPath: daemon.unitPath,
+          summary: daemon.summary,
+        },
         activeAdapters: active,
         egressDb: { path: dbPath, exists: dbExists, pending: pendingCount },
         egressJournal: {

@@ -239,6 +239,34 @@ export const ingestKeys = pgTable(
   }),
 );
 
+/**
+ * OAuth 2.0 Device Authorization Grant (RFC 8628) — backs `bematist login`.
+ * See packages/schema/postgres/custom/0006_device_codes.sql for column docs,
+ * unique-index invariants, and the one-shot claim semantics.
+ */
+export const deviceCodes = pgTable(
+  "device_codes",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    device_code_hash: text("device_code_hash").notNull(),
+    user_code: text("user_code").notNull(),
+    user_id: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    org_id: uuid("org_id").references(() => orgs.id, { onDelete: "cascade" }),
+    ingest_key_id: text("ingest_key_id").references(() => ingestKeys.id, { onDelete: "set null" }),
+    approved_at: timestamp("approved_at", { withTimezone: true }),
+    denied_at: timestamp("denied_at", { withTimezone: true }),
+    claimed_at: timestamp("claimed_at", { withTimezone: true }),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    user_agent: text("user_agent"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    hashIdx: uniqueIndex("device_codes_device_code_hash_idx").on(table.device_code_hash),
+    expiresIdx: index("device_codes_expires_at_idx").on(table.expires_at),
+  }),
+);
+
 // Paired with migration 0002_sprint1_policies.sql (shipped shape) + D1-05 additive
 // fields (tier_c_signed_config, tier_c_activated_at) for Ed25519 signed-config (D20).
 // One row per org; auto-inserted by the `orgs_insert_default_policy` trigger.

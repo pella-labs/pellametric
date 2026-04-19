@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Bematist collector — macOS LaunchAgent.
+  Rendered at install time with @HOME@ and @BIN@ substituted for the user's
+  $HOME and the resolved `bematist` binary path.
+
+  Why LaunchAgent (not LaunchDaemon): the collector observes a developer's
+  own sessions (Claude Code, Cursor, Codex live under $HOME). It must run
+  as the user, triggered at GUI-login, not as root at boot.
+
+  KeepAlive + RunAtLoad ensures the process restarts on crash and survives
+  logout→login. SoftResourceLimits.Core=0 enforces CLAUDE.md §Security
+  Rules (no crash dumps; matches the in-process harden() belt+suspenders).
+
+  Environment comes from ~/.bematist/config.env via a bootstrap shell.
+  launchd doesn't support EnvironmentFile, so we wrap the binary in `sh -c`
+  that sources the config file first. Keep this aligned with the systemd
+  EnvironmentFile=%h/.bematist/config.env directive.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.bematist.collector</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>[ -f "@HOME@/.bematist/config.env" ] &amp;&amp; . "@HOME@/.bematist/config.env"; exec "@BIN@" serve</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>StandardOutPath</key>
+  <string>@HOME@/.bematist/logs/out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>@HOME@/.bematist/logs/err.log</string>
+
+  <key>WorkingDirectory</key>
+  <string>@HOME@/.bematist</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>@HOME@</string>
+  </dict>
+
+  <key>SoftResourceLimits</key>
+  <dict>
+    <key>Core</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>HardResourceLimits</key>
+  <dict>
+    <key>Core</key>
+    <integer>0</integer>
+  </dict>
+
+  <!-- Throttle restarts so a crash loop doesn't hog CPU. -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>

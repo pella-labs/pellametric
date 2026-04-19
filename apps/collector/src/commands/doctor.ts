@@ -17,7 +17,7 @@ import { createHash } from "node:crypto";
 import { createReadStream, existsSync, mkdirSync } from "node:fs";
 import { access, constants } from "node:fs/promises";
 import { buildRegistry } from "../adapters";
-import { COLLECTOR_VERSION, loadConfig } from "../config";
+import { type ConfigSource, COLLECTOR_VERSION, loadConfigWithSources } from "../config";
 import { harden } from "../harden";
 
 interface Check {
@@ -98,8 +98,12 @@ function checkCoreDumps(): Check {
   };
 }
 
+function annotate(source: ConfigSource): string {
+  return `(from ${source})`;
+}
+
 export async function runDoctor(_args: string[]): Promise<void> {
-  const config = loadConfig();
+  const { config, sources } = loadConfigWithSources();
   const checks: Check[] = [];
 
   checks.push(checkCoreDumps());
@@ -171,8 +175,13 @@ export async function runDoctor(_args: string[]): Promise<void> {
     JSON.stringify(
       {
         version: COLLECTOR_VERSION,
-        endpoint: config.endpoint,
-        dataDir: config.dataDir,
+        endpoint: `${config.endpoint} ${annotate(sources.endpoint)}`,
+        token: config.token
+          ? `<set, ${config.token.length} chars> ${annotate(sources.token)}`
+          : `<unset> ${annotate(sources.token)}`,
+        dataDir: `${config.dataDir} ${annotate(sources.dataDir)}`,
+        logLevel: `${config.logLevel} ${annotate(sources.logLevel)}`,
+        tier: `${config.tier} ${annotate(sources.tier)}`,
         checks,
       },
       null,

@@ -1,0 +1,41 @@
+# Bematist collector — systemd user unit.
+# Installed to ~/.config/systemd/user/bematist.service by `bematist start`
+# (or by the .deb/AUR post-install hook — see packaging/deb/build.sh,
+# packaging/aur/PKGBUILD.tmpl).
+#
+# User-level (not system-level) because the collector observes a developer's
+# own sessions, which live under $HOME. Enable with:
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now bematist.service
+# and `loginctl enable-linger $USER` if the service should survive logout
+# (headless dev boxes / CI hosts). `bematist start` handles all three.
+#
+# @BIN@ is substituted at render time with the resolved `bematist` binary
+# path (typically /usr/local/bin/bematist or /usr/bin/bematist).
+
+[Unit]
+Description=Bematist collector
+Documentation=https://bematist.dev/docs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=@BIN@ serve
+Restart=on-failure
+RestartSec=5
+# CLAUDE.md §Security Rules — no crash dumps, defense-in-depth with the
+# in-process harden() RLIMIT_CORE=0 call.
+LimitCORE=0
+# Env comes from ~/.bematist/config.env (BEMATIST_ENDPOINT, BEMATIST_TOKEN,
+# …). The `-` prefix makes it non-fatal if the file is missing — in that
+# case env vars from the parent shell still apply.
+EnvironmentFile=-%h/.bematist/config.env
+WorkingDirectory=%h/.bematist
+# Logs go to the journal; tail via `journalctl --user -u bematist.service`
+# or `bematist logs`.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, renameSync, writeFileSync } from "node:fs";
 
 /**
  * Atomically write `content` to `path`. If `path` already exists, its prior
@@ -9,10 +9,21 @@ import { copyFileSync, existsSync, renameSync, writeFileSync } from "node:fs";
  * Cross-platform: relies on same-volume rename semantics. Callers should
  * ensure `path` and its directory are on the same filesystem (true for all
  * collector-side users of this function).
+ *
+ * When `options.mode` is set, chmod runs on the staged tmp file before
+ * rename — bypasses process umask, which matters for secret-bearing files
+ * like `~/.bematist/config.env` (token stored at 0600).
  */
-export async function atomicWrite(path: string, content: string): Promise<void> {
+export async function atomicWrite(
+  path: string,
+  content: string,
+  options: { mode?: number } = {},
+): Promise<void> {
   const tmp = `${path}.tmp.${process.pid}.${Date.now()}`;
   writeFileSync(tmp, content, "utf8");
+  if (options.mode !== undefined) {
+    chmodSync(tmp, options.mode);
+  }
   if (existsSync(path)) {
     copyFileSync(path, `${path}.bak`);
   }

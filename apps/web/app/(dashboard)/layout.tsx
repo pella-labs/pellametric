@@ -1,9 +1,16 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { getSessionCtx } from "@/lib/session";
 import { DashboardNav } from "./_nav";
 import "./dashboard.css";
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  // Role gate is decorative on the sidebar — the authoritative check lives
+  // in apps/web/app/admin/layout.tsx (requireAdmin) + in every mutation via
+  // assertRole(). This just decides whether to render the Admin group.
+  const ctx = await getSessionCtx();
+  const isAdmin = ctx.role === "admin";
+
   return (
     <div className="bematist-dashboard">
       <div className="dash-shell">
@@ -12,7 +19,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <span className="dash-wordmark-dot" aria-hidden />
             bematist
           </Link>
-          <DashboardNav />
+          <DashboardNav isAdmin={isAdmin} />
         </aside>
         <main className="dash-main">{children}</main>
       </div>

@@ -369,12 +369,14 @@ jobs:
 
   release:
     name: publish GH release
-    # `package` temporarily dropped from the needs list — distro-package
-    # rendering (Homebrew / AUR / Chocolatey templates) still hard-codes
-    # darwin-x64, which we skip in v0.1.x. Re-add once render scripts handle
-    # a missing arch gracefully OR once darwin-x64 is back in the matrix.
-    # Distro publishing itself is still `if: false` on every channel.
-    needs: [meta, build, verify, collect-hashes, provenance, sbom]
+    # `package` renders the Homebrew formula + AUR PKGBUILD + Chocolatey
+    # nuspec and uploads them as the `distro-packages` artifact. Render
+    # scripts now skip missing arches gracefully (see
+    # tests/packaging/render-resilience.sh), so v0.1.x releases work even
+    # with darwin-x64 temporarily dropped from the build matrix. Distro
+    # publishing itself is still `if: false` on every channel until upstream
+    # provisioning completes — see dev-docs/m5-installer-plan.md §Rollout.
+    needs: [meta, build, verify, collect-hashes, provenance, sbom, package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -483,16 +485,22 @@ jobs:
     name: publish Homebrew formula
     needs: [meta, release]
     runs-on: ubuntu-latest
-    # TODO(distro): flip guard once bematist-org/homebrew-tap exists and
-    # HOMEBREW_TAP_TOKEN (PAT with push rights to that tap) is set.
-    # See dev-docs/release-audit-m3.md §Homebrew.
-    # When ready: `if: ${{ !contains(needs.meta.outputs.tag, '-') }}`.
+    # TODO(distro): to flip this on, complete Day-1 provisioning per
+    # dev-docs/m5-installer-plan.md §Channel 1:
+    #   1. Create pella-labs/homebrew-tap repo (standalone; name MUST start
+    #      with `homebrew-`). Seed with Formula/bematist.rb placeholder +
+    #      README + a `brew test-bot` workflow.
+    #   2. Mint a fine-grained PAT on an account with Contents:read-write
+    #      on the tap repo only. Store as GH Actions secret HOMEBREW_TAP_TOKEN.
+    # Then change `if: ${{ false && … }}` → `if: ${{ !contains(… , '-') }}`.
+    # Every other step is ready; the formula is rendered by `package`
+    # and flows in via the distro-packages artifact.
     if: ${{ false && !contains(needs.meta.outputs.tag, '-') }}
     steps:
       - name: Checkout tap
         uses: actions/checkout@v4
         with:
-          repository: bematist-org/homebrew-tap
+          repository: pella-labs/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
 
@@ -506,11 +514,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p tap/Formula
           cp pkg/bematist.rb tap/Formula/bematist.rb
           cd tap
           git config user.name 'bematist-release-bot'
           git config user.email 'release-bot@bematist.dev'
           git add Formula/bematist.rb
+          # Skip if the tag already landed (re-run safety).
+          if git diff --cached --quiet; then
+            echo "formula unchanged — nothing to push"
+            exit 0
+          fi
           git commit -m "bematist ${{ needs.meta.outputs.tag }}"
           git push
 

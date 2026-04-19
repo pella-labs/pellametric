@@ -13,6 +13,10 @@ export function policyPath(): string {
   return process.env.BEMATIST_POLICY_PATH || join(dataDir(), "policy.yaml");
 }
 
+export function configEnvPath(): string {
+  return process.env.BEMATIST_CONFIG_ENV_PATH || join(dataDir(), "config.env");
+}
+
 export function claudeProjectsDir(): string {
   const base = process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude");
   return join(base, "projects");

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<!--
+  Bematist collector — Windows Scheduled Task definition.
+  Consumed by Register-ScheduledTask via `schtasks /Create /XML` in the
+  Chocolatey install script (packaging/choco/chocolateyInstall.ps1.tmpl)
+  and by `bematist start` via the PowerShell dispatch.
+
+  Runs at user logon, hidden, restarts on failure (up to 3 times), runs as
+  the interactive user (not SYSTEM — the collector observes a developer's
+  own sessions).
+
+  @USER@ and @BIN@ are substituted at install time.
+-->
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <URI>\Bematist\Collector</URI>
+    <Description>Bematist collector — captures LLM/coding-agent usage and ships it to your configured ingest endpoint.</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <LogonTrigger>
+      <UserId>@USER@</UserId>
+      <Enabled>true</Enabled>
+    </LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>@USER@</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <Hidden>true</Hidden>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <RestartOnFailure>
+      <Interval>PT5S</Interval>
+      <Count>3</Count>
+    </RestartOnFailure>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>@BIN@</Command>
+      <Arguments>serve</Arguments>
+      <WorkingDirectory>%USERPROFILE%\.bematist</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>

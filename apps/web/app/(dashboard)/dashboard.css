@@ -169,6 +169,24 @@
   background: var(--mk-accent);
 }
 
+/* Admin section divider + eyebrow — visually separates IC nav from admin
+   links without introducing a collapsible submenu (two items isn't worth
+   the interaction cost). */
+.bematist-dashboard .dash-nav-divider {
+  height: 1px;
+  margin: 12px 10px 6px 10px;
+  background: var(--mk-border);
+}
+
+.bematist-dashboard .dash-nav-eyebrow {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mk-ink-faint);
+  padding: 4px 10px 2px 10px;
+}
+
 /* ─── Main content ─────────────────────────────────────────────── */
 .bematist-dashboard .dash-main {
   padding: 32px;

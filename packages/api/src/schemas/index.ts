@@ -3,6 +3,7 @@ export * from "./audit";
 export * from "./cluster";
 export * from "./common";
 export * from "./dashboard";
+export * from "./deviceAuth";
 export * from "./ingestKey";
 export * from "./insights";
 export * from "./invite";

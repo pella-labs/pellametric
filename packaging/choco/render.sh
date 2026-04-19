@@ -2,6 +2,12 @@
 # packaging/choco/render.sh
 # Write `$dist/bematist.nuspec` and `$dist/tools/chocolateyInstall.ps1` with
 # substituted values.
+#
+# Resilience: Chocolatey is windows-only. If `bematist-v<ver>-windows-x64.exe`
+# is not in $dist (e.g. the windows build was skipped for this release), we
+# exit 0 with a "skipping" message — the release workflow then has no choco
+# artifacts to publish, which is the honest state, not an error. See
+# tests/packaging/render-resilience.sh.
 set -euo pipefail
 
 version="$1"
@@ -18,7 +24,13 @@ digest() {
   fi
 }
 
-wx=$(digest "$dist/bematist-v${version}-windows-x64.exe")
+win_binary="$dist/bematist-v${version}-windows-x64.exe"
+if [[ ! -f "$win_binary" ]]; then
+  echo "render.sh: skipping choco — no windows binary ($win_binary)" >&2
+  exit 0
+fi
+
+wx=$(digest "$win_binary")
 
 mkdir -p "$dist/tools"
 

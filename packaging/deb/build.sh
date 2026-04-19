@@ -17,7 +17,8 @@ out="$3"
 arch="$4"
 
 if [[ ! -f "$binary" ]]; then
-  echo "build.sh: missing binary $binary" >&2
+  echo "build.sh: missing binary $binary — cannot build $arch .deb" >&2
+  echo "build.sh: use packaging/deb/render.sh to iterate + skip missing arches" >&2
   exit 1
 fi
 

@@ -1,24 +1,27 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 /**
- * Middleware composes three orthogonal concerns — dashboard auth gating
- * (M4 PR 1), the `/` dashboard-vs-marketing rewrite (pre-M4), and a
- * logged-in redirect off `/auth/*`. Runs on the Edge runtime so we
- * CANNOT hit Postgres directly; we check auth state by cookie presence
- * only. The authoritative session validation happens in
- * `apps/web/lib/session.ts` via `getSessionCtx` — middleware just decides
- * whether to bounce to the sign-in page.
+ * Proxy composes three orthogonal concerns — dashboard auth gating (M4
+ * PR 1), the `/` dashboard-vs-marketing rewrite (pre-M4), and a logged-in
+ * redirect off `/auth/*`. Runs on the Edge runtime so we CANNOT hit
+ * Postgres directly; we check auth state by cookie presence only. The
+ * authoritative session validation happens in `apps/web/lib/session.ts`
+ * via `getSessionCtx` — proxy just decides whether to bounce to the
+ * sign-in page.
  *
  * Cookie-presence-only is a deliberate trade-off: it's defense-in-depth
  * (RSC pages re-check via `getSessionCtx`), cheap (no DB per request),
  * and edge-safe. A stolen-but-revoked cookie still gets a 401 on first
  * RSC render because the DB check catches it.
+ *
+ * Renamed from `middleware.ts` in Next.js 16 — see
+ * https://nextjs.org/docs/app/api-reference/file-conventions/proxy.
  */
 
 // Better Auth names the session cookie `better-auth.session_token` by
 // default. In production (`secure: true` cookie attr) it automatically
 // adds the `__Secure-` prefix per RFC 6265bis §4.1.3.1 — same value,
-// stricter browser constraints. Check both so middleware works in local
+// stricter browser constraints. Check both so proxy works in local
 // HTTP dev and HTTPS deploys.
 const BETTER_AUTH_COOKIE_NAMES = [
   "better-auth.session_token",
@@ -28,7 +31,7 @@ const LEGACY_SESSION_COOKIE_NAME = "bematist-session";
 
 /**
  * Paths that are always allowed for logged-out visitors. Everything else
- * under `/` that reaches middleware (after the matcher) redirects to
+ * under `/` that reaches proxy (after the matcher) redirects to
  * `/auth/sign-in` when no session cookie is present.
  */
 const PUBLIC_PATH_PREFIXES = [
@@ -59,8 +62,8 @@ function hasSessionCookie(request: NextRequest): boolean {
 
 function isDevModeTenantPinned(): boolean {
   // The perf harness + local dev pins via `BEMATIST_DEV_TENANT_ID`. Treat
-  // that as equivalent to "there will be a session" for middleware
-  // purposes so the existing dev loop doesn't get bounced to sign-in.
+  // that as equivalent to "there will be a session" for proxy purposes so
+  // the existing dev loop doesn't get bounced to sign-in.
   const pin = process.env.BEMATIST_DEV_TENANT_ID;
   return Boolean(pin && pin.length > 0);
 }
@@ -73,7 +76,7 @@ function marketingMode(): boolean {
   return process.env.NEXT_PUBLIC_IS_CLOUD === "1" || process.env.VERCEL === "1";
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const loggedIn = hasSessionCookie(request) || isDevModeTenantPinned();
 
@@ -90,8 +93,15 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // 2. Logged-in visitors bounce off `/auth/*` back to the dashboard.
-  if (loggedIn && pathname.startsWith("/auth/")) {
+  // 2. Logged-in visitors bounce off `/auth/*` back to the dashboard —
+  // EXCEPT `/auth/device`, which IS the post-login landing for the
+  // `bematist login` flow (RFC 8628 Device Authorization Grant). Bouncing
+  // an already-signed-in user off that page defeats the whole flow.
+  if (
+    loggedIn &&
+    pathname.startsWith("/auth/") &&
+    !pathname.startsWith("/auth/device")
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";
@@ -112,9 +122,9 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = {
+export const proxyConfig = {
   // Keep the same broad matcher as before but expand to cover the auth
   // routes. Skip `_next/*` and any file with a dot (static assets) so
-  // middleware doesn't run per-request on every chunk.
+  // proxy doesn't run per-request on every chunk.
   matcher: ["/((?!_next/static|_next/image|.*\\..*).*)"],
 };
