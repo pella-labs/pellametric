@@ -1,5 +1,5 @@
 {
   "X-GitHub-Event": "deployment_status",
   "X-GitHub-Delivery": "fixture-deployment_status-failure",
-  "X-Hub-Signature-256": "sha256=0000000000000000000000000000000000000000000000000000000000000000"
+  "X-Hub-Signature-256": "sha256=a1277717bbb7d23061bc92c9da218e61dd40b403728df97043c3cb46afbe9baa"
 }
