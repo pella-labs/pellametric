@@ -14,7 +14,8 @@
     "./mutations/*": "./src/mutations/*.ts",
     "./schemas/github/*": "./src/schemas/github/*.ts",
     "./queries/github/*": "./src/queries/github/*.ts",
-    "./mutations/github/*": "./src/mutations/github/*.ts"
+    "./mutations/github/*": "./src/mutations/github/*.ts",
+    "./github/*": "./src/github/*.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

@@ -12,6 +12,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@bematist/api": "workspace:*",
     "@bematist/schema": "workspace:*",
     "@clickhouse/client": "^1.7.0",
     "drizzle-orm": "0.36.4",
