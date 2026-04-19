@@ -1,4 +1,6 @@
+import { isComplianceEnabled } from "@bematist/api";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { BILL_OF_RIGHTS, BILL_OF_RIGHTS_VERSION } from "./bill-of-rights";
 
 export const metadata: Metadata = {
@@ -8,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default function BillOfRightsPage() {
+  if (!isComplianceEnabled()) notFound();
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-12">
       <header className="flex flex-col gap-2">

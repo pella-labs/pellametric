@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Card, CardHeader, CardTitle } from "@bematist/ui";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { signIn } from "@/lib/auth-client";
 
@@ -10,13 +11,26 @@ import { signIn } from "@/lib/auth-client";
  * On click → `authClient.signIn.social({ provider: "github" })` redirects
  * the browser to GitHub's OAuth consent page. Better Auth handles the
  * callback at `/api/auth/callback/github` and sets the signed session
- * cookie. After callback, we navigate to `/` (the dashboard home).
+ * cookie.
+ *
+ * Intent-based post-auth routing via `?intent=new-org`:
+ *   - `intent=new-org` → `callbackURL=/post-auth/new-org`, which upgrades
+ *     the user into their own brand-new org as admin and mints a fresh
+ *     ingest key. This is the "Sign up with GitHub" branch on the landing
+ *     page.
+ *   - No intent / anything else → `callbackURL=/` (existing behavior):
+ *     dashboard home under the shared `default` org as role=ic. Back-compat
+ *     for any pre-existing call site that didn't pass ?intent.
  *
  * Error handling: surface the Better Auth error message inline so the dev
  * sees "OAuth not configured" style failures when `GITHUB_CLIENT_ID` is
  * unset. Reset on the next click.
  */
-export function SignInClient() {
+export function SignInClient({ showBillOfRightsLink = false }: { showBillOfRightsLink?: boolean }) {
+  const searchParams = useSearchParams();
+  const intent = searchParams?.get("intent") ?? null;
+  const callbackURL = intent === "new-org" ? "/post-auth/new-org" : "/";
+
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
@@ -26,7 +40,7 @@ export function SignInClient() {
     try {
       const result = await signIn.social({
         provider: "github",
-        callbackURL: "/",
+        callbackURL,
       });
       // Better Auth returns `{ error }` on failure; a successful flow
       // triggers a browser redirect and we never see a response.
@@ -72,13 +86,15 @@ export function SignInClient() {
           </p>
         ) : null}
 
-        <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          By continuing you agree to the{" "}
-          <a href="/privacy" className="underline underline-offset-2 hover:text-foreground">
-            Bill of Rights
-          </a>
-          .
-        </p>
+        {showBillOfRightsLink ? (
+          <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            By continuing you agree to the{" "}
+            <a href="/privacy" className="underline underline-offset-2 hover:text-foreground">
+              Bill of Rights
+            </a>
+            .
+          </p>
+        ) : null}
       </div>
     </Card>
   );

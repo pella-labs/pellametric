@@ -1,3 +1,4 @@
+import { isComplianceEnabled } from "@bematist/api";
 import type { Metadata } from "next";
 import { SignInClient } from "./SignInClient";
 
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
 export default function SignInPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <SignInClient />
+      <SignInClient showBillOfRightsLink={isComplianceEnabled()} />
     </div>
   );
 }

@@ -14,6 +14,7 @@ export {
   type RedisClient,
   type Role,
 } from "./auth";
+export { isComplianceEnabled, useFixtures } from "./env";
 export {
   applyDisplayGate,
   Display,
@@ -45,6 +46,13 @@ export {
   revokeIngestKey,
 } from "./queries/ingestKeys";
 export { filterByConfidence, getWeeklyDigest } from "./queries/insights";
+export {
+  acceptInviteByToken,
+  createInvite,
+  getInvitePreview,
+  listInvites,
+  revokeInvite,
+} from "./queries/invites";
 export {
   perCommitOutcomes,
   perDevOutcomes,
