@@ -31,7 +31,8 @@
     "db:migrate:ch": "bun --env-file=.env --filter='@bematist/schema' migrate:ch",
     "db:seed": "bun --env-file=.env --filter='@bematist/schema' seed",
     "generate:otel": "bun --filter='@bematist/otel' generate",
-    "check:otel-generated": "bun --filter='@bematist/otel' check:generated"
+    "check:otel-generated": "bun --filter='@bematist/otel' check:generated",
+    "ci:local": "bash scripts/ci-local.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

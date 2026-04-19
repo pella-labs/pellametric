@@ -44,6 +44,32 @@ try {
   process.exit(2);
 }
 
+// H3 — fail-closed GitHub-integration boot check. GITHUB_APP_ID is the
+// one env var required before installation-token minting + webhook
+// HMAC-verify paths can function. Without it the process must refuse to
+// serve — silently accepting webhooks on a misconfigured node would drop
+// production installs on the floor (PRD §10 non-negotiable).
+//
+// BEMATIST_INGEST_FAILCLOSED_FATAL_ONLY short-circuits the rest of the
+// boot after this gate for the child-process regression test in
+// github-app/failClosedBoot.test.ts — it lets the test hit the gate
+// without requiring a live Redis/PG/Kafka under the test harness.
+if (process.env.NODE_ENV !== "test" && !process.env.GITHUB_APP_ID) {
+  logger.error(
+    {
+      code: "BOOT_FAILED_GITHUB_APP_ID_MISSING",
+      severity: "FATAL",
+    },
+    "GITHUB_APP_ID env var is required — refusing to serve webhooks",
+  );
+  process.exit(1);
+}
+if (process.env.BEMATIST_INGEST_FAILCLOSED_FATAL_ONLY === "1") {
+  // The gate above is the only one the test cares about. If GITHUB_APP_ID
+  // *is* set but the flag is on, we still exit 0 — any non-1 is fine.
+  process.exit(0);
+}
+
 // Sprint-1 follow-up A: wire real runtime adapters (node-redis for Lua +
 // streams, Bun.redis for dedup, @clickhouse/client for writes) when not
 // running under bun test. Test boots keep the in-memory test doubles from
@@ -88,13 +114,19 @@ if (process.env.NODE_ENV !== "test") {
         setDeps({ githubWebhookBus: kafkaBus });
         logger.info({ brokers }, "kafka webhook bus wired (kafkajs → github.webhooks)");
       } catch (err) {
+        // H3 — fail closed. Previously fell back to in-memory, which
+        // silently accepted webhooks on a bus that would drop them on
+        // process exit. In production a Kafka wiring failure is a
+        // refuse-to-serve condition.
         logger.error(
           {
             err: err instanceof Error ? err.message : String(err),
             code: "KAFKA_BUS_WIRING_FAILED",
+            severity: "FATAL",
           },
-          "kafka webhook bus wiring failed; falling back to in-memory (webhooks will accumulate in-process)",
+          "kafka webhook bus wiring failed — refusing to serve",
         );
+        process.exit(1);
       }
     } else {
       logger.info(
@@ -151,19 +183,32 @@ if (process.env.NODE_ENV !== "test") {
         );
       }
     } catch (err) {
+      // H3 — fail closed. Without pg-backed stores, /v1/events would
+      // 401/500 on every request and tier enforcement would fall back
+      // to permissive defaults. Both are production-broken states.
       logger.error(
         {
           err: err instanceof Error ? err.message : String(err),
           code: "PG_STORE_WIRING_FAILED",
+          severity: "FATAL",
         },
-        "pg-backed store wiring failed; ingest will 401/500 on /v1/events until fixed",
+        "pg-backed store wiring failed — refusing to serve",
       );
+      process.exit(1);
     }
   } catch (err) {
+    // H3 — fail closed. Outer wrapper failure means Redis or the
+    // ClickHouse writer or one of the shared adapters couldn't come up.
+    // We can't serve webhooks without them.
     logger.error(
-      { err: err instanceof Error ? err.message : String(err), code: "ADAPTER_WIRING_FAILED" },
-      "runtime adapter wiring failed; falling back to in-memory defaults",
+      {
+        err: err instanceof Error ? err.message : String(err),
+        code: "ADAPTER_WIRING_FAILED",
+        severity: "FATAL",
+      },
+      "runtime adapter wiring failed — refusing to serve",
     );
+    process.exit(1);
   }
 }
 

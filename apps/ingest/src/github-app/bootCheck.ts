@@ -19,15 +19,18 @@
 // distinguish "table absent" from "unreachable" mid-boot anyway, and either
 // is a refusal-to-serve condition).
 //
-// G1 wires this into apps/ingest/src/index.ts so the process `exit(2)`s on
-// failure. G0 lands the module + tests; actual call-site wiring is left to
-// G1 (the ingest boot path already has flag-coherence exit(2) for precedent).
+// H3 — apps/ingest/src/index.ts now enforces the GITHUB_APP_ID subset of
+// this contract at startup with process.exit(1). The full structural check
+// (installations probe + reconciler signal + webhook secret ref) runs via
+// `assertGitHubBootDeps` when wired by the service orchestrator; tests
+// call it directly. Any failure yields BOOT_FAILED_* + FATAL severity.
 
 export type GitHubBootErrorCode =
   | "BOOT_FAILED_GIT_EVENTS_STORE_MISSING"
   | "BOOT_FAILED_GITHUB_INSTALLATIONS_MISSING"
   | "BOOT_FAILED_GITHUB_RECONCILER_MISSING"
-  | "BOOT_FAILED_GITHUB_WEBHOOK_SECRET_MISSING";
+  | "BOOT_FAILED_GITHUB_WEBHOOK_SECRET_MISSING"
+  | "BOOT_FAILED_GITHUB_APP_ID_MISSING";
 
 export class BootCheckFailedError extends Error {
   readonly code: GitHubBootErrorCode;
