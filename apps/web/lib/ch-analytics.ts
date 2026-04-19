@@ -14,7 +14,7 @@ const CH_DATABASE = process.env.CLICKHOUSE_DATABASE ?? "bematist";
 
 interface SessionRow {
   session_id: string;
-  ts: string;
+  ts_iso: string;
   source: string;
   source_version: string;
   cost_usd: number;
@@ -53,7 +53,7 @@ export async function readAnalyticsForEngineer(
       query: `
         SELECT
           session_id,
-          toString(min(ts))                                      AS ts,
+          toString(min(ts))                                      AS ts_iso,
           any(source)                                            AS source,
           any(source_version)                                    AS source_version,
           sumIf(cost_usd, event_kind = 'llm_response')           AS cost_usd,
@@ -61,7 +61,7 @@ export async function readAnalyticsForEngineer(
           sumIf(output_tokens, event_kind = 'llm_response')      AS output_tokens,
           sumIf(cache_read_input_tokens, event_kind = 'llm_response')     AS cache_read,
           sumIf(cache_creation_input_tokens, event_kind = 'llm_response') AS cache_create,
-          toUInt32(dateDiff('millisecond', min(ts), max(ts)))    AS duration_ms,
+          toUInt32(toUnixTimestamp64Milli(max(ts)) - toUnixTimestamp64Milli(min(ts))) AS duration_ms,
           anyIf(gen_ai_system, gen_ai_system != '')              AS provider,
           anyIf(gen_ai_response_model, gen_ai_response_model != '') AS model,
           anyIf(branch, branch IS NOT NULL AND branch != '')     AS branch,
@@ -72,7 +72,7 @@ export async function readAnalyticsForEngineer(
         WHERE org_id = {orgId:String}
           AND engineer_id = {engineerId:String}
         GROUP BY session_id
-        ORDER BY ts
+        ORDER BY min(ts)
       `,
       query_params: { orgId, engineerId },
       format: "JSONEachRow",
@@ -88,7 +88,7 @@ export async function readAnalyticsForEngineer(
       const cacheCreate = Number(r.cache_create) || 0;
       const errs = Number(r.errs) || 0;
       const oks = Number(r.oks) || 0;
-      const d = new Date(r.ts.replace(" ", "T") + "Z");
+      const d = new Date(r.ts_iso.replace(" ", "T") + "Z");
       return {
         id: r.session_id,
         name: (attrs.name as string) || r.session_id.slice(0, 8),
