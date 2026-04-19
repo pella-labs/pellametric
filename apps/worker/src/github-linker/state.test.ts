@@ -275,3 +275,81 @@ describe("assertEvidenceSafe — D57 forbidden-field gate", () => {
     expect(() => assertEvidenceSafe({ generic: long })).toThrow(/exceeds 256-char budget/);
   });
 });
+
+describe("assertEvidenceSafe — B10 recursive allowlist", () => {
+  // Known-safe shapes produced by computeLinkerState; tightening the
+  // validator must NOT reject them.
+  test("accepts direct_repo evidence", () => {
+    expect(() => assertEvidenceSafe({ source: "direct_repo" })).not.toThrow();
+  });
+  test("accepts pr_commit_intersection evidence", () => {
+    expect(() =>
+      assertEvidenceSafe({
+        source: "pr_commit_intersection",
+        pr_number: 42,
+        matched_sha_count: 2,
+        title_hash_hex: "a".repeat(64),
+        author_login_hash_hex: "b".repeat(64),
+      }),
+    ).not.toThrow();
+  });
+  test("accepts session_pr_number evidence", () => {
+    expect(() =>
+      assertEvidenceSafe({
+        source: "session_pr_number",
+        pr_number: 7,
+        state: "merged",
+        from_fork: false,
+        additions: 120,
+        deletions: 18,
+        changed_files: 4,
+      }),
+    ).not.toThrow();
+  });
+  test("accepts deployment_sha_intersection evidence", () => {
+    expect(() =>
+      assertEvidenceSafe({
+        source: "deployment_sha_intersection",
+        deployment_id: "1234567890",
+        environment: "production",
+        status: "success",
+      }),
+    ).not.toThrow();
+  });
+
+  // Attack vectors the shallow top-level regex denylist misses.
+  test("rejects nested branch_name (deeply buried raw string)", () => {
+    expect(() =>
+      assertEvidenceSafe({
+        source: "pr_commit_intersection",
+        extra: { branch_name: "feature/acq-sensitive" },
+      }),
+    ).toThrow(/FORBIDDEN_FIELD/);
+  });
+  test("rejects top-level summary (PR body content)", () => {
+    expect(() => assertEvidenceSafe({ summary: "raw PR body" })).toThrow(/FORBIDDEN_FIELD/);
+  });
+  test("rejects title_hash value that is not a 64-hex sha256", () => {
+    expect(() => assertEvidenceSafe({ title_hash: "not-actually-a-hash" })).toThrow(
+      /FORBIDDEN_FIELD|FORBIDDEN_STRING/,
+    );
+  });
+  test("rejects nested object with forbidden key even in arrays", () => {
+    expect(() =>
+      assertEvidenceSafe({
+        prs: [{ pr_number: 1, login: "octocat" }],
+      }),
+    ).toThrow(/FORBIDDEN_FIELD/);
+  });
+  test("rejects raw string value in otherwise-allowed key", () => {
+    // `environment` is an allowed key, but the value must be a short
+    // structural token — a 200-char essay smuggled through must fail.
+    const essay = "a b c d e f ".repeat(40);
+    expect(() => assertEvidenceSafe({ environment: essay })).toThrow(
+      /FORBIDDEN_STRING|exceeds 256-char budget/,
+    );
+  });
+  test("rejects unknown top-level key even if value is harmless", () => {
+    expect(() => assertEvidenceSafe({ secret_metric_value: 42 })).toThrow(/FORBIDDEN_FIELD/);
+  });
+});
