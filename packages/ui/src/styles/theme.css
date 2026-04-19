@@ -1,6 +1,16 @@
 @import "tailwindcss";
 
 /*
+ * Explicitly register UI-package sources with Tailwind v4's content scanner.
+ * Without this, workspace consumers (apps/web) resolve @bematist/ui through
+ * node_modules, which Tailwind ignores — so utility classes used *only*
+ * inside packages/ui components (p-5 on Card, mb-3 on CardHeader, table
+ * cell padding, etc.) never land in the generated CSS, and cards render
+ * with zero internal padding. Paths are relative to this file.
+ */
+@source "../**/*.{ts,tsx}";
+
+/*
  * Bematist theme — tokens ported from ~/dev/gauntlet/bematist-theme
  * (shadcn base-lyra style, zinc base color, OKLCH color space).
  *
