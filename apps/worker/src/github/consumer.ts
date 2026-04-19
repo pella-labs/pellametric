@@ -264,10 +264,21 @@ async function handleParsed(
          ON CONFLICT (tenant_id, old_hash, new_hash) DO NOTHING`,
         [payload.tenant_id, oldHash, newHash, parsed.reason],
       );
-      // NOTE: the existing `repos` table does not have `name` / `updated_at`
-      // columns (migration 0002). G1-admin-sync owns the repo-table
-      // enrichment path; here we only land the alias row so the linker's
-      // commutativity invariant sees the rename/transfer.
+      // M1 — keep repos.full_name in sync on rename/transfer so the
+      // admin UI shows the current identifier without waiting for the
+      // next initial-sync pass. Skipped when the webhook did not carry
+      // a new full_name (shouldn't happen for rename/transfer, but we
+      // defend against partial payloads).
+      if (parsed.new_full_name) {
+        await tx.unsafe(
+          `UPDATE repos
+              SET full_name = $3
+            WHERE org_id = $1
+              AND provider = 'github'
+              AND provider_repo_id = $2`,
+          [payload.tenant_id, parsed.provider_repo_id, parsed.new_full_name],
+        );
+      }
     });
     const msg = buildRecomputeMessage("webhook_repository_rename_or_transfer", payload, {
       provider_repo_id: parsed.provider_repo_id,

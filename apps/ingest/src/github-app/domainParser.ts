@@ -37,6 +37,10 @@ export type DomainParseResult =
       reason: "rename" | "transfer";
       new_name?: string;
       new_owner_login?: string;
+      /** Human-readable "owner/repo" identifier from the webhook's
+       *  `repository.full_name` — persisted to `repos.full_name` (M1)
+       *  so the admin UI reflects the current identifier. */
+      new_full_name?: string;
     }
   | { kind: "ignored"; event: string; action?: string };
 
@@ -400,11 +404,15 @@ function parseRepositoryLifecycle(
   const newName = action === "renamed" ? (strOrNull(repo.name) ?? undefined) : undefined;
   const owner = repo.owner as Record<string, unknown> | undefined;
   const newOwner = action === "transferred" ? (strOrNull(owner?.login) ?? undefined) : undefined;
+  // `repository.full_name` is post-rename / post-transfer on both
+  // actions — the authoritative new identifier for our UI.
+  const newFullName = strOrNull(repo.full_name) ?? undefined;
   return {
     kind: "repository_rename_or_transfer",
     provider_repo_id,
     reason,
     ...(newName !== undefined ? { new_name: newName } : {}),
     ...(newOwner !== undefined ? { new_owner_login: newOwner } : {}),
+    ...(newFullName !== undefined ? { new_full_name: newFullName } : {}),
   };
 }

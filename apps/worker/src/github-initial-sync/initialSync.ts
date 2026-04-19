@@ -397,12 +397,13 @@ async function upsertRepo(
   const rows = (await sql.unsafe(
     `INSERT INTO repos
        (id, org_id, repo_id_hash, provider, provider_repo_id,
-        default_branch, first_seen_at, archived_at, tracking_state)
+        full_name, default_branch, first_seen_at, archived_at, tracking_state)
      VALUES
-       ($1, $2, $3, 'github', $4, $5, now(), $6, 'inherit')
+       ($1, $2, $3, 'github', $4, $5, $6, now(), $7, 'inherit')
      ON CONFLICT (provider, provider_repo_id)
        WHERE provider_repo_id IS NOT NULL
        DO UPDATE SET
+         full_name = EXCLUDED.full_name,
          default_branch = EXCLUDED.default_branch,
          archived_at = EXCLUDED.archived_at
      RETURNING (xmax = 0) AS inserted`,
@@ -417,6 +418,7 @@ async function upsertRepo(
       // in-place.
       `gh:pending:${r.tenantId}:${r.providerRepoId}`,
       r.providerRepoId,
+      r.fullName,
       r.defaultBranch,
       r.archived ? new Date() : null,
     ],

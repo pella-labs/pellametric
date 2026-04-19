@@ -60,7 +60,7 @@ to a distinct PR with its own contract tests:
 | H2 | Playwright `admin-github` storageState fixture | **Pending follow-up** — 4 tests currently red under default harness invocation |
 | H3 | Fail-closed boot (Kafka / PG / GITHUB_APP_ID) | **Landed** |
 | H6 | Strict installation-status allowlist w/ distinct codes | **Landed** |
-| M1 | `repos.full_name` column + ILIKE search path | **Pending follow-up** |
+| M1 | `repos.full_name` column + ILIKE search path | **Landed** — migration 0010 + schema column + initial-sync persistence + rename/transfer webhook sync + admin search ILIKE |
 | M7 | F15 10-min CI soak gate (separate job) | **Landed** — `soak-compressed` job in `.github/workflows/ci.yml` |
 | M13 | PR-local lint debt (biome organize-imports + non-null assertions) | **Landed** |
 

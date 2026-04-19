@@ -32,8 +32,14 @@ export async function listGithubRepos(
   const params: unknown[] = [ctx.tenant_id];
   if (!includeArchived) whereClauses.push(`archived_at IS NULL`);
   if (q && q.length > 0) {
+    // M1 — admin search uses `full_name` (case-insensitive). `repo_id_hash`
+    // is an HMAC and never search-exposed; we fall back to prefix-match on
+    // `provider_repo_id` for rows whose full_name is still NULL (pre-M1
+    // syncs, or new installs whose webhook has not fired yet).
     params.push(`%${q}%`);
-    whereClauses.push(`repo_id_hash ILIKE $${params.length}`);
+    whereClauses.push(
+      `(full_name ILIKE $${params.length} OR provider_repo_id ILIKE $${params.length})`,
+    );
   }
   const where = whereClauses.join(" AND ");
 
@@ -49,6 +55,7 @@ export async function listGithubRepos(
     id: string;
     provider_repo_id: string | null;
     repo_id_hash: string;
+    full_name: string | null;
     default_branch: string | null;
     tracking_state: string;
     first_seen_at: unknown;
@@ -57,6 +64,7 @@ export async function listGithubRepos(
     `SELECT id::text AS id,
             provider_repo_id,
             repo_id_hash,
+            full_name,
             default_branch,
             tracking_state,
             first_seen_at,
@@ -75,14 +83,10 @@ export async function listGithubRepos(
       return {
         id: r.id,
         provider_repo_id: r.provider_repo_id ?? "",
-        // `repo_id_hash` is the closest thing we have to a display name
-        // until G1-webhook-ingest writes `full_name` (the webhook payload
-        // carries `full_name` but we don't have its column yet — the PRD
-        // §9.9 addition reuses `repo_id_hash` for the display string when
-        // the placeholder format is `gh:pending:<tenant>:<id>`; strip the
-        // prefix so the UI shows something sensible until the real full_name
-        // materializes).
-        full_name: humanizeHash(r.repo_id_hash),
+        // M1 — prefer the real `full_name` when the sync or webhook has
+        // populated it; fall back to the provider-id humanizer for rows
+        // whose webhook has not fired since the migration landed.
+        full_name: r.full_name ?? humanizeHash(r.repo_id_hash),
         default_branch: r.default_branch,
         tracking_state: trackingState,
         effective_tracked: effectiveTracked(trackingMode, trackingState),

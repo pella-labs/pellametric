@@ -183,6 +183,12 @@ describe("domainParser — 12 G1 fixtures", () => {
     expect(r.reason).toBe("transfer");
   });
 
+  test("M1 — repository.renamed carries new_full_name from webhook payload", () => {
+    const r = parseDomain("repository", body("repository", "renamed"));
+    if (r.kind !== "repository_rename_or_transfer") throw new Error("unreachable");
+    expect(r.new_full_name).toBe("fixture-org/fixture-repo");
+  });
+
   // ---- deployment / deployment_status (G3) --------------------------------
 
   test("deployment.created → deployment_upsert, status=pending, environment=production", () => {

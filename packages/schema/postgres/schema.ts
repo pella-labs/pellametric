@@ -234,6 +234,11 @@ export const repos = pgTable("repos", {
   provider: text("provider").notNull(), // github | gitlab | bitbucket
   /** GitHub's stable numeric repo ID (D33). Nullable until backfilled. */
   provider_repo_id: varchar("provider_repo_id", { length: 32 }),
+  /** Human-readable "owner/repo" identifier (M1). Nullable until the next
+   *  sync or rename/transfer webhook populates it. Search-exposed via
+   *  ILIKE in `packages/api/src/queries/github/repos.ts`; `repo_id_hash`
+   *  remains internal-only (HMAC, never surfaced to admin UI). */
+  full_name: text("full_name"),
   default_branch: text("default_branch"),
   first_seen_at: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
   archived_at: timestamp("archived_at", { withTimezone: true }),
