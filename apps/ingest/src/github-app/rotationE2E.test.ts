@@ -65,8 +65,11 @@ describe("rotation E2E — admin rotate → dual-accept → window expiry", () =
       rawBody: body,
       signature: signGithub(Buffer.from("super-old-secret-bytes"), body),
     };
+    const preRotation = await installationResolver.byInstallationId(INSTALLATION_ID);
+    expect(preRotation).not.toBeNull();
+    if (!preRotation) throw new Error("installation missing pre-rotation");
     const v0 = await verifyWithRotation({
-      installation: (await installationResolver.byInstallationId(INSTALLATION_ID))!,
+      installation: preRotation,
       resolver: secretsResolver,
       delivery,
     });
@@ -136,6 +139,10 @@ describe("rotation E2E — admin rotate → dual-accept → window expiry", () =
     expect(out.new_secret_ref).toBe("sm/new-ref");
     expect(out.installation_id).toBe(INSTALLATION_ID_STR);
 
+    const afterRotation = await installationResolver.byInstallationId(INSTALLATION_ID);
+    expect(afterRotation).not.toBeNull();
+    if (!afterRotation) throw new Error("installation missing after rotation");
+
     // ----- Act 3 — after rotation: NEW verifies via active path -----------
     const bodyNew = new TextEncoder().encode('{"action":"edited"}');
     const deliveryNew: WebhookDelivery = {
@@ -146,7 +153,7 @@ describe("rotation E2E — admin rotate → dual-accept → window expiry", () =
       signature: signGithub(Buffer.from("super-new-secret-bytes"), bodyNew),
     };
     const v1 = await verifyWithRotation({
-      installation: (await installationResolver.byInstallationId(INSTALLATION_ID))!,
+      installation: afterRotation,
       resolver: secretsResolver,
       delivery: deliveryNew,
       now: () => new Date(rotatedAt.getTime() + 2 * 60_000), // 2 min post-rotation
@@ -164,7 +171,7 @@ describe("rotation E2E — admin rotate → dual-accept → window expiry", () =
       signature: signGithub(Buffer.from("super-old-secret-bytes"), bodyOldSigned),
     };
     const v2 = await verifyWithRotation({
-      installation: (await installationResolver.byInstallationId(INSTALLATION_ID))!,
+      installation: afterRotation,
       resolver: secretsResolver,
       delivery: deliveryOldSigned,
       now: () => new Date(rotatedAt.getTime() + 5 * 60_000), // 5 min post-rotation
@@ -174,7 +181,7 @@ describe("rotation E2E — admin rotate → dual-accept → window expiry", () =
 
     // ----- Act 5 — past 10-min window, OLD rejected -----------------------
     const v3 = await verifyWithRotation({
-      installation: (await installationResolver.byInstallationId(INSTALLATION_ID))!,
+      installation: afterRotation,
       resolver: secretsResolver,
       delivery: deliveryOldSigned,
       now: () => new Date(rotatedAt.getTime() + 11 * 60_000), // 11 min post-rotation
