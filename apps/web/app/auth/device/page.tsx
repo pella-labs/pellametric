@@ -1,3 +1,4 @@
+import { isComplianceEnabled } from "@bematist/api";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -102,12 +103,14 @@ function PageShell({ children }: { children: React.ReactNode }) {
             <span aria-hidden className="inline-block h-6 w-6 rounded-md bg-primary" />
             bematist
           </a>
-          <a
-            href="/privacy"
-            className="cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-          >
-            Bill of Rights
-          </a>
+          {isComplianceEnabled() ? (
+            <a
+              href="/privacy"
+              className="cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Bill of Rights
+            </a>
+          ) : null}
         </header>
         <main className="flex flex-1 flex-col items-center justify-center gap-8">{children}</main>
       </div>
