@@ -2,14 +2,15 @@ import type { ReactNode } from "react";
 
 /**
  * Slide chrome — header row (wordmark + section label) and footer
- * (bematist.dev + page number). Matches the standalone deck's visual
- * language exactly. Rendered inside the 1920×1080 stage.
+ * (bematist.dev only). Matches the standalone deck's visual language.
+ * Rendered inside the 1920×1080 stage. The per-slide page-number indicator
+ * was removed — the deck-level counter from `DeckChrome` is the single
+ * source of truth for position, so the props stay accepted (call sites
+ * still pass them) but are no longer rendered here.
  */
 export function SlideShell({
   children,
   sectionLabel,
-  pageNumber,
-  totalPages,
   withChrome = true,
   leftFoot = "bematist.dev",
   gridBg = true,
@@ -17,15 +18,13 @@ export function SlideShell({
 }: {
   children: ReactNode;
   sectionLabel?: string;
-  pageNumber: number;
-  totalPages: number;
+  pageNumber?: number;
+  totalPages?: number;
   withChrome?: boolean;
   leftFoot?: string;
   gridBg?: boolean;
   className?: string;
 }) {
-  const pad = String(pageNumber).padStart(2, "0");
-  const padTotal = String(totalPages).padStart(2, "0");
   return (
     <div className={`slide${withChrome ? " with-chrome" : ""}${className ? ` ${className}` : ""}`}>
       {gridBg ? <div className="grid-bg" /> : null}
@@ -39,9 +38,6 @@ export function SlideShell({
       ) : null}
       <div className="slide-body">{children}</div>
       <div className="pagenum-left">{leftFoot}</div>
-      <div className="pagenum">
-        {pad} <span className="total">/ {padTotal}</span>
-      </div>
     </div>
   );
 }

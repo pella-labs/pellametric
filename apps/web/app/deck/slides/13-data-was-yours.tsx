@@ -1,4 +1,4 @@
-export function Slide13DataWasYours({ totalPages }: { totalPages: number }) {
+export function Slide13DataWasYours(_props: { totalPages: number }) {
   return (
     <div className="quote-slide" style={{ position: "relative" }}>
       <div className="grid-bg" />
@@ -59,9 +59,6 @@ export function Slide13DataWasYours({ totalPages }: { totalPages: number }) {
       </div>
 
       <div className="pagenum-left">bematist.dev</div>
-      <div className="pagenum">
-        13 <span className="total">/ {String(totalPages).padStart(2, "0")}</span>
-      </div>
     </div>
   );
 }

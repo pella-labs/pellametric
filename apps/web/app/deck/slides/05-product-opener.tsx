@@ -1,6 +1,6 @@
 import { RingsBg } from "../components/rings-bg";
 
-export function Slide05ProductOpener({ totalPages }: { totalPages: number }) {
+export function Slide05ProductOpener(_props: { totalPages: number }) {
   return (
     <div className="slide opener">
       <RingsBg
@@ -19,9 +19,6 @@ export function Slide05ProductOpener({ totalPages }: { totalPages: number }) {
         We built the instrument that can.
       </p>
       <div className="pagenum-left">bematist.dev</div>
-      <div className="pagenum">
-        05 <span className="total">/ {String(totalPages).padStart(2, "0")}</span>
-      </div>
     </div>
   );
 }

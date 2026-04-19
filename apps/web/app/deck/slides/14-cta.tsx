@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { RingsBg } from "../components/rings-bg";
 
-export function Slide14Cta({ totalPages }: { totalPages: number }) {
+export function Slide14Cta(_props: { totalPages: number }) {
   return (
     <div
       className="slide"
@@ -102,9 +102,6 @@ export function Slide14Cta({ totalPages }: { totalPages: number }) {
       </div>
 
       <div className="pagenum-left">bematist.dev · hello@bematist.dev</div>
-      <div className="pagenum">
-        14 <span className="total">/ {String(totalPages).padStart(2, "0")}</span>
-      </div>
     </div>
   );
 }
