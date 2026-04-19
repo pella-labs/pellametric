@@ -185,12 +185,15 @@ async function readFreshFromCh(): Promise<LocalData> {
   const { ensureBackfill } = await import("./ch-backfill");
   const { readAnalyticsForEngineer } = await import("./ch-analytics");
   const { getSessionCtx } = await import("./session");
+  const { resolveEngineerId } = await import("./resolve-engineer-id");
 
-  // Server-derived identity — never trusted from client attrs (CLAUDE.md §Security).
-  // actor_id = stable_hash(SSO subject); tenant_id = server-resolved org.
+  // Identity alignment: ingest writes events with engineer_id = developer.id
+  // (the row in `developers` keyed off the mint token). Session gives us
+  // ctx.actor_id = user_id. Resolve the developer row so CH queries match.
   const ctx = await getSessionCtx();
   const orgId = ctx.tenant_id;
-  const engineerId = ctx.actor_id;
+  const resolved = await resolveEngineerId(orgId, ctx.actor_id).catch(() => null);
+  const engineerId = resolved ?? ctx.actor_id;
 
   // Auto-backfill — on dev's local machine, grammata reads their filesystem
   // and writes into CH under this engineerId. On Railway this is a no-op
