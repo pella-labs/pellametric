@@ -83,10 +83,13 @@ The magic: steps 2 and 6 mean the customer never types an ID, downloads a PEM, o
 
 ### 3. Manifest shape
 
+Below is the canonical manifest. It is the single source of truth for both the Manifest Flow and for anyone re-creating the App manually through the GitHub UI. Permissions + events + flags here match exactly what we configured on 2026-04-19 for the Pella Labs dev App (App ID `3433065`, installation on `@pella-labs`, installation_id `125312098`).
+
 ```json
 {
   "name": "Bematist — AI Engineering Analytics",
   "url": "https://bematist.dev",
+  "description": "AI engineering analytics — observe LLM/coding-agent usage across IDEs and correlate with Git outcomes.",
   "hook_attributes": {
     "url": "https://ingest.bematist.dev/v1/webhooks/github",
     "active": true
@@ -95,29 +98,39 @@ The magic: steps 2 and 6 mean the customer never types an ID, downloads a PEM, o
   "callback_urls": [
     "https://<tenant-domain>/admin/github/installed"
   ],
-  "setup_url": "https://<tenant-domain>/admin/github/setup",
+  "request_oauth_on_install": true,
   "setup_on_update": true,
   "public": false,
   "default_permissions": {
+    "actions": "read",
+    "checks": "read",
     "contents": "read",
     "metadata": "read",
     "pull_requests": "read",
     "statuses": "read",
-    "checks": "read",
-    "actions": "read",
+    "webhooks": "read",
     "members": "read"
   },
   "default_events": [
+    "check_suite",
     "pull_request",
     "pull_request_review",
     "push",
-    "workflow_run",
-    "check_suite"
+    "workflow_run"
   ]
 }
 ```
 
-Exact permissions + events must match CLAUDE.md §Outcome Attribution Rules and PRD §11. Keep them in sync with whatever is authoritative at the time this ships.
+Per-field notes (things that tripped us up during the manual setup):
+
+- **`request_oauth_on_install: true`** (maps to the "Request user authorization (OAuth) during installation" checkbox in the UI). Required so we can identify the installing user and bind the installation to their Bematist tenant on first redirect. Also implies "Expire user authorization tokens" is on (ships a `refresh_token` alongside the access token).
+- **`setup_url` is intentionally absent.** GitHub disables Setup URL whenever `request_oauth_on_install=true`; the post-install redirect uses the OAuth `callback_urls` entry instead.
+- **`webhooks: read`** in permissions — needed for the admin redelivery panel (`/app/hook/deliveries` endpoints). Easy to miss from the GitHub docs.
+- **`members: read`** is an Organization-level permission, not Repository. The manifest API doesn't namespace these; GitHub auto-detects by key name.
+- **`public: false`** — the app is private to the tenant that registered it. Do not flip this without explicit org sign-off; it would make the App install surface visible on the GitHub marketplace.
+- **No `account_permissions`.** We identify users via the OAuth-during-install flow, not via long-lived account scopes.
+
+Exact permissions + events must match CLAUDE.md §Outcome Attribution Rules and PRD §11. Keep this manifest in sync with the Bematist Dev / Bematist Prod Apps when either's config changes in the GitHub UI — the manifest is the source of truth, those Apps are snapshots.
 
 ### 4. Secrets handling
 
