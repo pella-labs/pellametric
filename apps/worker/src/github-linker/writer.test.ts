@@ -248,9 +248,7 @@ describe("writeLinkerState — same-txn cascade", () => {
     const state = computeLinkerState(baseInputs(), CLOCK);
     // Smuggle forbidden field
     state.links[0]!.evidence = { title: "leaked title" };
-    await expect(writeLinkerState(sql, state, tenantId)).rejects.toThrow(
-      /forbidden evidence field/,
-    );
+    await expect(writeLinkerState(sql, state, tenantId)).rejects.toThrow(/FORBIDDEN_FIELD/);
     // Nothing persisted
     const links = await sql<
       Array<{ one: number }>

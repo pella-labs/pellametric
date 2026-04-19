@@ -575,26 +575,92 @@ function canonicalInputSet(inputs: LinkerInputs, sortedCandidates: unknown[]): u
 }
 
 /**
- * Extend the forbidden-field server-side validator to include the linker's
- * evidence jsonb. Throws if the evidence object contains any top-level field
- * name on the D57 banlist. Numeric/hex hashes are allowed; anything whose
- * field name matches `/title|message|body|login|email|file|path|diff|prompt/i`
- * is rejected unless suffixed with `_hash`, `_hex`, or `_count`.
+ * B10 — recursive allowlist validator for the `evidence` jsonb written to
+ * `session_repo_links`. D57 forbids raw human content (titles, commit
+ * messages, CODEOWNERS logins, file paths). The previous shallow denylist
+ * only scanned top-level keys and relied on regex suffixes (`_hash` etc.)
+ * which let attack payloads through (nested `branch_name`, fake
+ * `title_hash` values, smuggled `summary`).
  *
- * NOT a crypto defence — the producer already shapes payloads. This is a
- * compile-time-of-record guard for any new match_reason added later.
+ * Design: every key must be on the explicit ALLOWED_KEYS set (no suffix
+ * heuristics). Every string value must match one of the structural shapes
+ * — 64-hex sha256, short enum/identifier token, or ISO-8601 timestamp.
+ * Numbers, booleans, and null pass unconditionally. Arrays/objects recurse.
  */
-export function assertEvidenceSafe(evidence: Record<string, unknown>): void {
-  const banned = /title|message|body|login|email|file|path|diff|prompt/i;
-  for (const [key, value] of Object.entries(evidence)) {
-    if (banned.test(key)) {
-      if (/_hash|_hex|_count/i.test(key)) continue;
-      throw new Error(`forbidden evidence field: ${key}`);
+const ALLOWED_EVIDENCE_KEYS: ReadonlySet<string> = new Set([
+  // emitted by computeLinkerState today
+  "source",
+  "pr_number",
+  "matched_sha_count",
+  "title_hash_hex",
+  "author_login_hash_hex",
+  "state",
+  "from_fork",
+  "additions",
+  "deletions",
+  "changed_files",
+  "deployment_id",
+  "environment",
+  "status",
+  // reserved for upcoming signal modules (commit_size_v1, review_velocity_v1)
+  "match_count",
+  "shas_structural",
+  "prs_count",
+  "deploys_count",
+  "codeowner_teams_hashed",
+  "alias_count",
+  "tombstone_ranges_count",
+  "force_push_excluded_commits_count",
+  "confidence_reason",
+  "count",
+  "hash",
+  "path_prefix_hash",
+  "range_start",
+  "range_end",
+]);
+
+const HEX64_RE = /^[0-9a-f]{64}$/;
+const ISO_TS_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+const STRUCTURAL_TOKEN_RE = /^[a-zA-Z0-9_\-.]{1,64}$/;
+
+function isHex64(s: string): boolean {
+  return HEX64_RE.test(s);
+}
+function isIsoTimestamp(s: string): boolean {
+  return ISO_TS_RE.test(s);
+}
+function isStructuralToken(s: string): boolean {
+  return STRUCTURAL_TOKEN_RE.test(s);
+}
+
+function walkEvidence(node: unknown, path: string): void {
+  if (node === null) return;
+  if (typeof node === "number" || typeof node === "boolean") return;
+  if (typeof node === "string") {
+    if (node.length > 256) {
+      throw new Error(`evidence field "${path}" exceeds 256-char budget (got ${node.length})`);
     }
-    if (typeof value === "string" && value.length > 256) {
-      throw new Error(`evidence field "${key}" exceeds 256-char budget (got ${value.length})`);
-    }
+    if (isHex64(node) || isIsoTimestamp(node) || isStructuralToken(node)) return;
+    throw new Error(`FORBIDDEN_STRING at ${path}: value does not match structural shapes`);
   }
+  if (Array.isArray(node)) {
+    node.forEach((v, i) => walkEvidence(v, `${path}[${i}]`));
+    return;
+  }
+  if (typeof node === "object") {
+    for (const k of Object.keys(node as Record<string, unknown>)) {
+      if (!ALLOWED_EVIDENCE_KEYS.has(k)) {
+        throw new Error(`FORBIDDEN_FIELD: ${path}.${k} not in evidence allowlist`);
+      }
+      walkEvidence((node as Record<string, unknown>)[k], `${path}.${k}`);
+    }
+    return;
+  }
+  throw new Error(`FORBIDDEN_TYPE at ${path}: ${typeof node}`);
+}
+
+export function assertEvidenceSafe(evidence: Record<string, unknown>): void {
+  walkEvidence(evidence, "$");
 }
 
 // --- small utils ----------------------------------------------------------

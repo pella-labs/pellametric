@@ -262,17 +262,17 @@ describe("assertEvidenceSafe — D57 forbidden-field gate", () => {
     ).not.toThrow();
   });
   test("raw title field rejected", () => {
-    expect(() => assertEvidenceSafe({ title: "fix the bug" })).toThrow(/forbidden evidence field/);
+    expect(() => assertEvidenceSafe({ title: "fix the bug" })).toThrow(/FORBIDDEN_FIELD/);
   });
   test("raw login field rejected", () => {
-    expect(() => assertEvidenceSafe({ login: "octocat" })).toThrow(/forbidden evidence field/);
+    expect(() => assertEvidenceSafe({ login: "octocat" })).toThrow(/FORBIDDEN_FIELD/);
   });
-  test("title_hash_hex allowed (suffix)", () => {
-    expect(() => assertEvidenceSafe({ title_hash_hex: "abcd" })).not.toThrow();
+  test("title_hash_hex allowed when value is 64-hex", () => {
+    expect(() => assertEvidenceSafe({ title_hash_hex: "a".repeat(64) })).not.toThrow();
   });
-  test("overly long string rejected", () => {
+  test("overly long string rejected (even on an allowlisted key)", () => {
     const long = "a".repeat(257);
-    expect(() => assertEvidenceSafe({ generic: long })).toThrow(/exceeds 256-char budget/);
+    expect(() => assertEvidenceSafe({ environment: long })).toThrow(/exceeds 256-char budget/);
   });
 });
 
