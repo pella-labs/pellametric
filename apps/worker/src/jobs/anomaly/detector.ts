@@ -43,7 +43,12 @@ function checkSignal(
   opts: { engineer_id: string; org_id: string; hour_bucket: string },
 ): Alert | null {
   // k-anonymity: cohort too small → never emit for this engineer.
-  if (cohortSize > 0 && cohortSize < K_ANONYMITY_FLOOR) {
+  // Bypassed when BEMATIST_SINGLE_TRUST_DOMAIN=1 (small-team / test instance).
+  if (
+    process.env.BEMATIST_SINGLE_TRUST_DOMAIN !== "1" &&
+    cohortSize > 0 &&
+    cohortSize < K_ANONYMITY_FLOOR
+  ) {
     return null;
   }
   const s = stats(history);
@@ -56,7 +61,7 @@ function checkSignal(
     threshold = s.mean + SIGMA_THRESHOLD * s.stddev;
     reason = "sigma3";
     breach = spikeValue > threshold;
-  } else if (cohortSize >= K_ANONYMITY_FLOOR) {
+  } else if (cohortSize >= K_ANONYMITY_FLOOR || process.env.BEMATIST_SINGLE_TRUST_DOMAIN === "1") {
     threshold = cohortValue * COHORT_MULTIPLIER;
     reason = "cohort_p95";
     breach = spikeValue > threshold;

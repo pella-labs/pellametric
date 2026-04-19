@@ -15,6 +15,15 @@ import type {
 /** k>=3 contributor floor per CLAUDE.md Privacy Model Rules + Clio/OpenClio prior art. */
 export const CLUSTER_CONTRIBUTOR_FLOOR = 3;
 
+/**
+ * Effective floor at request time. Returns 0 when
+ * `BEMATIST_SINGLE_TRUST_DOMAIN=1` (small-team / test instance), else the
+ * locked constant. Server-side env only — never derived from client input.
+ */
+function effectiveClusterFloor(): number {
+  return process.env.BEMATIST_SINGLE_TRUST_DOMAIN === "1" ? 0 : CLUSTER_CONTRIBUTOR_FLOOR;
+}
+
 /** Default top-K for Twin Finder — matches `findTwins` default. */
 const TWIN_FINDER_DEFAULT_TOP_K = 10;
 
@@ -47,7 +56,7 @@ async function listClustersFixture(ctx: Ctx, input: ClusterListInput): Promise<C
 
   // Build a fixture universe of clusters, then apply the contributor floor.
   const universe = buildFixtureUniverse(seed);
-  const eligible = universe.filter((c) => c.contributor_count >= CLUSTER_CONTRIBUTOR_FLOOR);
+  const eligible = universe.filter((c) => c.contributor_count >= effectiveClusterFloor());
   const suppressed = universe.length - eligible.length;
 
   return {
@@ -133,7 +142,7 @@ async function listClustersReal(ctx: Ctx, input: ClusterListInput): Promise<Clus
   }));
 
   // Enforce k>=3 server-side. Suppressed count is the difference.
-  const eligible = universe.filter((c) => c.contributor_count >= CLUSTER_CONTRIBUTOR_FLOOR);
+  const eligible = universe.filter((c) => c.contributor_count >= effectiveClusterFloor());
   const suppressed = universe.length - eligible.length;
 
   return {
@@ -397,7 +406,7 @@ async function findSessionTwinsReal(ctx: Ctx, input: TwinFinderInput): Promise<T
     clusterStats,
     selfSessionId: input.session_id,
     topK,
-    kFloor: CLUSTER_CONTRIBUTOR_FLOOR,
+    kFloor: effectiveClusterFloor(),
   });
 
   if (!outcome.ok) {
@@ -550,7 +559,7 @@ function listClusterContributorsFixture(
   const stats = universe.clusterStats.find((s) => s.cluster_id === input.cluster_id);
   if (!stats) return { ok: false, cluster_id: input.cluster_id, reason: "not_found" };
 
-  if (stats.distinct_engineers < CLUSTER_CONTRIBUTOR_FLOOR) {
+  if (stats.distinct_engineers < effectiveClusterFloor()) {
     return {
       ok: false,
       cluster_id: input.cluster_id,
@@ -621,7 +630,7 @@ async function listClusterContributorsReal(
   if (distinctEngineers === 0 && contribRows.length === 0) {
     return { ok: false, cluster_id: input.cluster_id, reason: "not_found" };
   }
-  if (distinctEngineers < CLUSTER_CONTRIBUTOR_FLOOR) {
+  if (distinctEngineers < effectiveClusterFloor()) {
     return {
       ok: false,
       cluster_id: input.cluster_id,

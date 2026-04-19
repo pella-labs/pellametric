@@ -1754,8 +1754,17 @@
     aspect-ratio: auto;
   }
   .bematist-marketing .mk-demo-card-host .card-scene {
+    top: 12px;
+    bottom: 60px;
+    transform: translateX(-50%);
     width: min(360px, calc(100% - 24px));
-    height: min(540px, calc(100% - 80px));
+    height: auto;
+  }
+  .bematist-marketing .mk-demo-card-host .card-page-dots {
+    bottom: 24px;
+  }
+  .bematist-marketing .mk-demo-card-host .share-bar {
+    bottom: -24px;
   }
 
   /* Brand monolith: shrink so it fits in one viewport and the copy below
@@ -1861,8 +1870,11 @@
     min-height: 600px;
   }
   .bematist-marketing .mk-demo-card-host .card-scene {
+    top: 8px;
+    bottom: 56px;
+    transform: translateX(-50%);
     width: min(340px, calc(100% - 16px));
-    height: min(520px, calc(100% - 72px));
+    height: auto;
   }
   .bematist-marketing .mk-monolith {
     min-height: 320px;

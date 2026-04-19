@@ -2370,20 +2370,40 @@
   /* Full-page card: let the root fit in the mobile viewport instead of
      forcing 900px of vertical real estate. The scene positions itself
      inside this box, so the surrounding chrome (toggle, dots, share-bar)
-     stays visible without overflow clipping. */
+     stays visible without overflow clipping.
+
+     Mobile layout is a vertical stack baked into absolute coordinates:
+       - global-toggle (tabs): top:12, ~32px tall
+       - card-scene: top:56 → bottom reserves space for dots/share-bar
+       - card-page-dots: bottom anchored
+       - share-bar: below dots
+     The explicit top/bottom anchors replace the 50%/50% centering so the
+     tabs/dots never visually overlap the card face. */
   .card-root {
     min-height: min(720px, calc(100vh - 80px));
   }
   .card-root[data-compact="true"] {
-    min-height: 560px;
+    min-height: 620px;
   }
   .card-scene {
+    top: 60px;
+    bottom: 96px;
+    left: 50%;
+    transform: translateX(-50%);
     width: min(380px, calc(100vw - 32px));
-    height: min(540px, calc(100vh - 220px));
+    height: auto;
   }
   [data-compact="true"] .card-scene {
+    top: 56px;
+    bottom: 56px;
     width: min(340px, calc(100vw - 32px));
-    height: min(500px, 72vh);
+    height: auto;
+  }
+  .global-toggle {
+    top: 12px;
+  }
+  [data-compact="true"] .global-toggle {
+    top: 12px;
   }
   /* Anchor the side nav buttons to the card's flank rather than a fixed
      vw offset, so they never get pushed past the viewport edge. */
@@ -2394,13 +2414,13 @@
     right: 4px;
   }
   .card-page-dots {
-    bottom: 80px;
+    bottom: 60px;
   }
   [data-compact="true"] .card-page-dots {
-    bottom: 24px;
+    bottom: 18px;
   }
   .share-bar {
-    bottom: 20px;
+    bottom: 16px;
   }
 }
 

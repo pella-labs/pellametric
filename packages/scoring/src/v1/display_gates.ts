@@ -32,6 +32,10 @@ export interface DisplayDecision {
 }
 
 export function evaluateDisplayGates(input: ScoringInput): DisplayDecision {
+  if (process.env.BEMATIST_SINGLE_TRUST_DOMAIN === "1") {
+    return { show: true, failed_gates: [], raw_subscores_available: true };
+  }
+
   const failed_gates: string[] = [];
   let suppression_reason: DisplayDecision["suppression_reason"];
 
