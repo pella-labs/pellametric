@@ -12,7 +12,36 @@ const db = drizzle(client);
 
 const migrationsFolder = join(import.meta.dir, "migrations");
 const customFolder = join(import.meta.dir, "custom");
+const rollbackFolder = join(import.meta.dir, "rollback");
 
+// ---- Rollback path ------------------------------------------------------
+// Invoke: `bun run db:migrate:pg -- --rollback <migration-name>`
+// Applies the matching .down.sql from packages/schema/postgres/rollback/.
+// The rollback file name convention: <migration-name>.down.sql
+// (e.g. 0004_github_integration_g1.down.sql reverses
+//        custom/0004_github_integration_g1.sql).
+const rollbackIdx = process.argv.indexOf("--rollback");
+if (rollbackIdx !== -1) {
+  const target = process.argv[rollbackIdx + 1];
+  if (!target) {
+    console.error(
+      "[pg-migrate] --rollback requires a migration name (e.g. 0004_github_integration_g1)",
+    );
+    process.exit(1);
+  }
+  const rollbackFile = join(rollbackFolder, `${target}.down.sql`);
+  if (!existsSync(rollbackFile)) {
+    console.error(`[pg-migrate] rollback file not found: ${rollbackFile}`);
+    process.exit(1);
+  }
+  const sql = readFileSync(rollbackFile, "utf8");
+  await client.unsafe(sql);
+  console.log(`[pg-migrate] rollback — applied ${target}.down.sql`);
+  await client.end();
+  process.exit(0);
+}
+
+// ---- Forward path -------------------------------------------------------
 await migrate(db, { migrationsFolder });
 console.log(`[pg-migrate] drizzle — applied migrations from ${migrationsFolder}`);
 
