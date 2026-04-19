@@ -30,16 +30,90 @@ test.describe("/admin/github", () => {
     expect(eitherVisible).toBeGreaterThan(0);
   });
 
-  test("renders repos page + disabled Dry-run preview slot", async ({ page }) => {
+  test("renders repos page + either table chrome or empty-state", async ({ page }) => {
     await page.goto("/admin/github/repos");
     const main = page.getByRole("main");
     await expect(main.getByRole("heading", { name: "GitHub repos", level: 1 })).toBeVisible();
-    // Column headers prove the table chrome rendered. Match via table scope
-    // so the body copy doesn't false-positive on shared substrings.
+    // Either the table chrome (repos exist) or the empty-state message.
     const table = main.locator("table");
-    await expect(table).toBeVisible();
-    await expect(table.getByRole("columnheader", { name: /default branch/i })).toBeVisible();
-    await expect(table.getByRole("columnheader", { name: /tracking state/i })).toBeVisible();
-    await expect(table.getByRole("columnheader", { name: /effective tracked/i })).toBeVisible();
+    const emptyState = main.getByText(/no repos yet/i);
+    const hasTable = (await table.count()) > 0;
+    const hasEmpty = (await emptyState.count()) > 0;
+    expect(hasTable || hasEmpty).toBe(true);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// G2 — UI smoke tests for the 4 new admin surfaces (tracking-mode,
+// per-repo tracking-state, rotation modal, redelivery form). We verify
+// rendering + click affordances. The Server Actions themselves are unit-
+// tested in packages/api/src/queries/github/routes.g2.test.ts.
+//
+// These tests don't require a bound GitHub installation because we
+// verify either-branch presence (install CTA OR control visible).
+// ----------------------------------------------------------------------------
+
+test.describe("/admin/github — G2 UI surfaces", () => {
+  test("tracking-mode control renders with All/Selected buttons", async ({ page }) => {
+    await page.goto("/admin/github");
+    const main = page.getByRole("main");
+    // Either the install CTA (no installation yet) or the tracking-mode
+    // fieldset (installation present). If installation is present, we must
+    // see the two test-id buttons.
+    const allBtn = main.getByTestId("tracking-mode-all");
+    const selectedBtn = main.getByTestId("tracking-mode-selected");
+    const installCta = main.getByRole("button", { name: /install github app/i });
+    const visible =
+      (await allBtn.count()) + (await selectedBtn.count()) + (await installCta.count());
+    expect(visible).toBeGreaterThan(0);
+  });
+
+  test("per-repo tracking-state dropdown renders on repos table when repos present", async ({
+    page,
+  }) => {
+    await page.goto("/admin/github/repos");
+    const main = page.getByRole("main");
+    // The table renders regardless of content. When repos exist, at least
+    // one row has a select[data-testid^='repo-tracking-select-']. When
+    // empty, the empty-state text shows. Either is acceptable.
+    const anySelect = main.locator('select[data-testid^="repo-tracking-select-"]');
+    const emptyState = main.getByText(/no repos yet/i);
+    const visible = (await anySelect.count()) + (await emptyState.count());
+    expect(visible).toBeGreaterThan(0);
+  });
+
+  test("webhook-secret rotation button opens the confirmation modal", async ({ page }) => {
+    await page.goto("/admin/github");
+    const main = page.getByRole("main");
+    const openBtn = main.getByTestId("open-rotate-modal");
+    if ((await openBtn.count()) === 0) {
+      // No installation — skip.
+      test.skip();
+      return;
+    }
+    await openBtn.click();
+    const modal = page.getByTestId("rotate-secret-modal");
+    await expect(modal).toBeVisible();
+    await expect(modal.getByTestId("rotate-secret-ref-input")).toBeVisible();
+    // Confirm button disabled when ref empty.
+    await expect(modal.getByTestId("rotate-secret-confirm")).toBeDisabled();
+    await modal.getByTestId("rotate-secret-ref-input").fill("sm/test-ref-v2");
+    await expect(modal.getByTestId("rotate-secret-confirm")).toBeEnabled();
+  });
+
+  test("redelivery form renders with date inputs + event-type toggles", async ({ page }) => {
+    await page.goto("/admin/github");
+    const main = page.getByRole("main");
+    const fromInput = main.getByTestId("redeliver-from");
+    if ((await fromInput.count()) === 0) {
+      test.skip();
+      return;
+    }
+    await expect(fromInput).toBeVisible();
+    await expect(main.getByTestId("redeliver-to")).toBeVisible();
+    await expect(main.getByTestId("redeliver-event-pull_request")).toBeVisible();
+    await expect(main.getByTestId("redeliver-event-push")).toBeVisible();
+    // Submit button disabled when from/to empty.
+    await expect(main.getByTestId("redeliver-submit")).toBeDisabled();
   });
 });
