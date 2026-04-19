@@ -26,8 +26,8 @@
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { computeHubSignature256, readFixtureSecret } from "./sign";
 import { redactionCheck } from "./redactCheck";
+import { computeHubSignature256, readFixtureSecret } from "./sign";
 
 interface Args {
   event: string;
@@ -36,14 +36,23 @@ interface Args {
   fixturesRoot?: string;
 }
 
+function nextArg(argv: string[], i: number): string {
+  const v = argv[i];
+  if (v === undefined) {
+    process.stderr.write("fixtures:github:record — missing value for option\n");
+    process.exit(2);
+  }
+  return v;
+}
+
 function parseArgs(argv: string[]): Args {
   const out: Partial<Args> = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--event") out.event = argv[++i];
-    else if (a === "--scenario") out.scenario = argv[++i];
-    else if (a === "--delivery-id") out.deliveryId = argv[++i];
-    else if (a === "--fixtures-root") out.fixturesRoot = argv[++i];
+    if (a === "--event") out.event = nextArg(argv, ++i);
+    else if (a === "--scenario") out.scenario = nextArg(argv, ++i);
+    else if (a === "--delivery-id") out.deliveryId = nextArg(argv, ++i);
+    else if (a === "--fixtures-root") out.fixturesRoot = nextArg(argv, ++i);
     else if (a === "--help" || a === "-h") {
       process.stdout.write(HELP);
       process.exit(0);
@@ -152,12 +161,7 @@ export function record(input: RecordInput): RecordOutput {
   const signature = computeHubSignature256(canonical, secret);
   const deliveryId = input.deliveryId ?? deterministicDeliveryId(input.event, input.scenario);
 
-  const payloadPath = resolve(
-    input.fixturesRoot,
-    "github",
-    input.event,
-    `${input.scenario}.json`,
-  );
+  const payloadPath = resolve(input.fixturesRoot, "github", input.event, `${input.scenario}.json`);
   const headersPath = resolve(
     input.fixturesRoot,
     "github",

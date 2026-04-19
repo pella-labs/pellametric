@@ -50,9 +50,7 @@ export interface GitHubBootDeps {
    */
   gitEventsStore:
     | {
-        upsert: (
-          ...args: unknown[]
-        ) => Promise<{ inserted: boolean }> | { inserted: boolean };
+        upsert: (...args: unknown[]) => Promise<{ inserted: boolean }> | { inserted: boolean };
       }
     | undefined;
   /**

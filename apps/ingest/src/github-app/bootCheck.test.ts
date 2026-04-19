@@ -21,11 +21,7 @@
 // code wires to a real `SELECT 1 FROM github_installations LIMIT 1` at boot.
 
 import { describe, expect, test } from "bun:test";
-import {
-  assertGitHubBootDeps,
-  BootCheckFailedError,
-  type GitHubBootDeps,
-} from "./bootCheck";
+import { assertGitHubBootDeps, BootCheckFailedError, type GitHubBootDeps } from "./bootCheck";
 
 function okDeps(): GitHubBootDeps {
   return {
@@ -52,9 +48,7 @@ describe("github-app bootCheck — fail-closed gates", () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(BootCheckFailedError);
-    expect((caught as BootCheckFailedError).code).toBe(
-      "BOOT_FAILED_GIT_EVENTS_STORE_MISSING",
-    );
+    expect((caught as BootCheckFailedError).code).toBe("BOOT_FAILED_GIT_EVENTS_STORE_MISSING");
   });
 
   test("missing github_installations table → BOOT_FAILED_GITHUB_INSTALLATIONS_MISSING", async () => {
@@ -67,9 +61,7 @@ describe("github-app bootCheck — fail-closed gates", () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(BootCheckFailedError);
-    expect((caught as BootCheckFailedError).code).toBe(
-      "BOOT_FAILED_GITHUB_INSTALLATIONS_MISSING",
-    );
+    expect((caught as BootCheckFailedError).code).toBe("BOOT_FAILED_GITHUB_INSTALLATIONS_MISSING");
   });
 
   test("probe throws → also surfaces BOOT_FAILED_GITHUB_INSTALLATIONS_MISSING", async () => {
@@ -84,9 +76,7 @@ describe("github-app bootCheck — fail-closed gates", () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(BootCheckFailedError);
-    expect((caught as BootCheckFailedError).code).toBe(
-      "BOOT_FAILED_GITHUB_INSTALLATIONS_MISSING",
-    );
+    expect((caught as BootCheckFailedError).code).toBe("BOOT_FAILED_GITHUB_INSTALLATIONS_MISSING");
   });
 
   test("missing reconciler → BOOT_FAILED_GITHUB_RECONCILER_MISSING", async () => {
@@ -100,9 +90,7 @@ describe("github-app bootCheck — fail-closed gates", () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(BootCheckFailedError);
-    expect((caught as BootCheckFailedError).code).toBe(
-      "BOOT_FAILED_GITHUB_RECONCILER_MISSING",
-    );
+    expect((caught as BootCheckFailedError).code).toBe("BOOT_FAILED_GITHUB_RECONCILER_MISSING");
   });
 
   test("reconciler present but unscheduled → BOOT_FAILED_GITHUB_RECONCILER_MISSING", async () => {
@@ -115,9 +103,7 @@ describe("github-app bootCheck — fail-closed gates", () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(BootCheckFailedError);
-    expect((caught as BootCheckFailedError).code).toBe(
-      "BOOT_FAILED_GITHUB_RECONCILER_MISSING",
-    );
+    expect((caught as BootCheckFailedError).code).toBe("BOOT_FAILED_GITHUB_RECONCILER_MISSING");
   });
 
   test("missing webhookSecretRef → BOOT_FAILED_GITHUB_WEBHOOK_SECRET_MISSING", async () => {
@@ -130,9 +116,7 @@ describe("github-app bootCheck — fail-closed gates", () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(BootCheckFailedError);
-    expect((caught as BootCheckFailedError).code).toBe(
-      "BOOT_FAILED_GITHUB_WEBHOOK_SECRET_MISSING",
-    );
+    expect((caught as BootCheckFailedError).code).toBe("BOOT_FAILED_GITHUB_WEBHOOK_SECRET_MISSING");
   });
 
   test("undefined webhookSecretRef → BOOT_FAILED_GITHUB_WEBHOOK_SECRET_MISSING", async () => {
@@ -146,9 +130,7 @@ describe("github-app bootCheck — fail-closed gates", () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(BootCheckFailedError);
-    expect((caught as BootCheckFailedError).code).toBe(
-      "BOOT_FAILED_GITHUB_WEBHOOK_SECRET_MISSING",
-    );
+    expect((caught as BootCheckFailedError).code).toBe("BOOT_FAILED_GITHUB_WEBHOOK_SECRET_MISSING");
   });
 
   test("each error code is distinct", () => {

@@ -7,9 +7,9 @@
 //
 // This is the merge blocker for every future fixture-carrying PR.
 
+import { describe, expect, test } from "bun:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { describe, expect, test } from "bun:test";
 import { redactionCheck } from "../src/github/redactCheck";
 
 const FIXTURES_ROOT = resolve(import.meta.dir);
@@ -45,9 +45,7 @@ describe("github fixtures — redaction gate", () => {
       const parsed = JSON.parse(raw);
       const { ok, offenses } = redactionCheck(parsed);
       if (!ok) {
-        throw new Error(
-          `Fixture redaction violations in ${file}:\n  ${offenses.join("\n  ")}`,
-        );
+        throw new Error(`Fixture redaction violations in ${file}:\n  ${offenses.join("\n  ")}`);
       }
     });
   }

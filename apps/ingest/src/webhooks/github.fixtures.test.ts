@@ -17,9 +17,9 @@
 // test time. The full-stack smoke test using docker-compose is documented
 // in the PR body.
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { InMemoryDedupStore } from "../dedup/checkDedup";
 import { createInMemoryOrgResolver, resetDeps, setDeps } from "../deps";
 import { _testHooks, handle } from "../server";

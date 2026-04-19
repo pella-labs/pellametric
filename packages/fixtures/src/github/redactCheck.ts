@@ -108,8 +108,7 @@ function checkDomains(str: string, offenses: string[]): void {
     if (isAllowedDomainSuffix(candidate)) continue;
     if (
       ALLOWED_NON_DOMAIN_LITERALS.some(
-        (lit) =>
-          str.includes(lit) && lit.toLowerCase().includes(candidate.toLowerCase()),
+        (lit) => str.includes(lit) && lit.toLowerCase().includes(candidate.toLowerCase()),
       )
     ) {
       continue;

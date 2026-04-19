@@ -6,13 +6,10 @@
 // recomputed value bit-for-bit — otherwise the fixture has drifted from its
 // signing seed and the ingest HMAC verifier would reject it at test time.
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
 import { describe, expect, test } from "bun:test";
-import {
-  computeHubSignature256,
-  readFixtureSecret,
-} from "../src/github/sign";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { computeHubSignature256, readFixtureSecret } from "../src/github/sign";
 
 const GITHUB_ROOT = resolve(import.meta.dir);
 const FIXTURES_ROOT = resolve(GITHUB_ROOT, "..");
@@ -45,10 +42,7 @@ describe("github fixtures — signature round-trip", () => {
     const rel = payloadPath.slice(GITHUB_ROOT.length + 1);
     test(`signature matches: ${rel}`, () => {
       const body = readFileSync(payloadPath, "utf8");
-      const headers = JSON.parse(readFileSync(headersPath, "utf8")) as Record<
-        string,
-        string
-      >;
+      const headers = JSON.parse(readFileSync(headersPath, "utf8")) as Record<string, string>;
       const expected = computeHubSignature256(body, secret);
       expect(headers["X-Hub-Signature-256"]).toBe(expected);
       expect(headers["X-GitHub-Event"]).toBeDefined();
