@@ -2367,43 +2367,40 @@
 /* ═══ Mobile Responsive ═══ */
 
 @media (max-width: 720px) {
-  /* Full-page card: let the root fit in the mobile viewport instead of
-     forcing 900px of vertical real estate. The scene positions itself
-     inside this box, so the surrounding chrome (toggle, dots, share-bar)
-     stays visible without overflow clipping.
-
-     Mobile layout is a vertical stack baked into absolute coordinates:
-       - global-toggle (tabs): top:12, ~32px tall
-       - card-scene: top:56 → bottom reserves space for dots/share-bar
-       - card-page-dots: bottom anchored
-       - share-bar: below dots
-     The explicit top/bottom anchors replace the 50%/50% centering so the
-     tabs/dots never visually overlap the card face. */
+  /* Mobile card layout: vertical stack baked into absolute coordinates.
+       - global-toggle (tabs): top 10px → ~34px tall → ends at 44px
+       - card-scene: starts at 56px, fixed height so it never reaches the
+         tabs or the dots
+       - card-page-dots: bottom 14px (compact) / 56px (full)
+       - share-bar: bottom 10px (full only)
+     Explicit height (calc) instead of top/bottom auto — Safari is quirky
+     with auto height on absolutely-positioned boxes when both insets are
+     set, and we've been burned by that here. */
   .card-root {
-    min-height: min(720px, calc(100vh - 80px));
+    min-height: 720px;
   }
   .card-root[data-compact="true"] {
-    min-height: 620px;
+    min-height: 680px;
   }
   .card-scene {
-    top: 60px;
-    bottom: 96px;
+    top: 56px;
+    bottom: auto;
     left: 50%;
     transform: translateX(-50%);
     width: min(380px, calc(100vw - 32px));
-    height: auto;
+    height: calc(100% - 116px);
   }
   [data-compact="true"] .card-scene {
     top: 56px;
-    bottom: 56px;
+    bottom: auto;
     width: min(340px, calc(100vw - 32px));
-    height: auto;
+    height: calc(100% - 92px);
   }
   .global-toggle {
-    top: 12px;
+    top: 10px;
   }
   [data-compact="true"] .global-toggle {
-    top: 12px;
+    top: 10px;
   }
   /* Anchor the side nav buttons to the card's flank rather than a fixed
      vw offset, so they never get pushed past the viewport edge. */
@@ -2414,13 +2411,41 @@
     right: 4px;
   }
   .card-page-dots {
-    bottom: 60px;
+    bottom: 56px;
   }
   [data-compact="true"] .card-page-dots {
-    bottom: 18px;
+    bottom: 14px;
   }
   .share-bar {
-    bottom: 16px;
+    bottom: 10px;
+  }
+}
+
+/* ─── Touch devices: KILL the hover/holo palette ─────────────────
+   The shine + glare + red __fire gradient + aurora opacity bumps are
+   designed for desktop mouse hover. On phones they get stuck on via
+   stray pointerenter events and the card turns into a red flashlight.
+   `hover: none` + `pointer: coarse` covers every mobile browser. */
+@media (hover: none), (pointer: coarse) {
+  .card-flipper .card-holo {
+    --card-opacity: 0 !important;
+  }
+  .card-flipper .card-holo-shine,
+  .card-flipper .card-holo-glare {
+    opacity: 0 !important;
+  }
+  .card-flipper .card__fire,
+  .card-flipper .card__cyan {
+    opacity: 0 !important;
+  }
+  .card-flipper .aurora-blob {
+    opacity: 0.3 !important;
+  }
+  .card-flipper .card-front {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 4px 24px rgba(0, 0, 0, 0.3),
+      0 20px 60px rgba(0, 0, 0, 0.4) !important;
   }
 }
 

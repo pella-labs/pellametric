@@ -1694,7 +1694,7 @@
     justify-content: center;
   }
   .bematist-marketing .mk-hero-card-slot {
-    min-height: 560px;
+    min-height: 680px;
   }
   .bematist-marketing .mk-getstarted {
     align-items: stretch;
@@ -1755,10 +1755,10 @@
   }
   .bematist-marketing .mk-demo-card-host .card-scene {
     top: 12px;
-    bottom: 60px;
+    bottom: auto;
     transform: translateX(-50%);
     width: min(360px, calc(100% - 24px));
-    height: auto;
+    height: calc(100% - 80px);
   }
   .bematist-marketing .mk-demo-card-host .card-page-dots {
     bottom: 24px;
@@ -1864,17 +1864,17 @@
     padding: 40px 14px 32px;
   }
   .bematist-marketing .mk-hero-card-slot {
-    min-height: 520px;
+    min-height: 660px;
   }
   .bematist-marketing .mk-demo-card-host {
     min-height: 600px;
   }
   .bematist-marketing .mk-demo-card-host .card-scene {
     top: 8px;
-    bottom: 56px;
+    bottom: auto;
     transform: translateX(-50%);
     width: min(340px, calc(100% - 16px));
-    height: auto;
+    height: calc(100% - 72px);
   }
   .bematist-marketing .mk-monolith {
     min-height: 320px;
