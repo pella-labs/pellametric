@@ -183,6 +183,36 @@ describe("domainParser — 12 G1 fixtures", () => {
     expect(r.reason).toBe("transfer");
   });
 
+  // ---- deployment / deployment_status (G3) --------------------------------
+
+  test("deployment.created → deployment_upsert, status=pending, environment=production", () => {
+    const r = parseDomain("deployment", body("deployment", "created"));
+    expect(r.kind).toBe("deployment_upsert");
+    if (r.kind !== "deployment_upsert") throw new Error("unreachable");
+    expect(r.row.status).toBe("pending");
+    expect(r.row.environment).toBe("production");
+    expect(r.row.sha).toBe("0000000000000000000000000000000000000001");
+    expect(r.row.provider_repo_id).toBe("987654321");
+    expect(r.row.deployment_id).toBe(900001n);
+  });
+
+  test("deployment_status.success → deployment_status_upsert, status=success, first_success_at set", () => {
+    const r = parseDomain("deployment_status", body("deployment_status", "success"));
+    expect(r.kind).toBe("deployment_status_upsert");
+    if (r.kind !== "deployment_status_upsert") throw new Error("unreachable");
+    expect(r.row.status).toBe("success");
+    expect(r.row.environment).toBe("production");
+    expect(r.row.first_success_at).toBe("2026-04-10T12:05:00Z");
+  });
+
+  test("deployment_status.failure → status=failure, first_success_at=null", () => {
+    const r = parseDomain("deployment_status", body("deployment_status", "failure"));
+    expect(r.kind).toBe("deployment_status_upsert");
+    if (r.kind !== "deployment_status_upsert") throw new Error("unreachable");
+    expect(r.row.status).toBe("failure");
+    expect(r.row.first_success_at).toBeNull();
+  });
+
   // ---- forbidden-field discipline -----------------------------------------
 
   test("pull_request: title_hash is sha256 hex, raw title never present on row", () => {

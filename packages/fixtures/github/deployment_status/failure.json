@@ -1,0 +1,59 @@
+{
+  "action": "created",
+  "deployment_status": {
+    "id": 900102,
+    "node_id": "DS_kwDOFIXTURE002",
+    "state": "failure",
+    "description": "Deployment failed during apply step.",
+    "environment": "production",
+    "target_url": "https://bematist.local/fixture-org/fixture-repo/actions/runs/900102",
+    "created_at": "2026-04-10T12:06:00Z",
+    "updated_at": "2026-04-10T12:06:00Z",
+    "deployment_url": "https://bematist.local/fixture-org/fixture-repo/deployments/900002",
+    "repository_url": "https://bematist.local/fixture-org/fixture-repo"
+  },
+  "deployment": {
+    "id": 900002,
+    "node_id": "D_kwDOFIXTURE002",
+    "sha": "0000000000000000000000000000000000000003",
+    "ref": "main",
+    "task": "deploy",
+    "payload": {},
+    "original_environment": "production",
+    "environment": "production",
+    "description": null,
+    "created_at": "2026-04-10T12:00:00Z",
+    "updated_at": "2026-04-10T12:06:00Z",
+    "statuses_url": "https://bematist.local/fixture-org/fixture-repo/deployments/900002/statuses",
+    "repository_url": "https://bematist.local/fixture-org/fixture-repo"
+  },
+  "repository": {
+    "id": 987654321,
+    "node_id": "R_kgDOFIXTURE001",
+    "name": "fixture-repo",
+    "full_name": "fixture-org/fixture-repo",
+    "private": false,
+    "owner": {
+      "login": "fixture-org",
+      "id": 123456,
+      "node_id": "O_kgDOFIXTUREORG",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "html_url": "https://bematist.local/fixture-org/fixture-repo",
+    "description": null,
+    "fork": false,
+    "default_branch": "main"
+  },
+  "sender": {
+    "login": "fixture-engineer",
+    "id": 555111,
+    "node_id": "U_kgDOFIXTURE_SENDER",
+    "type": "User",
+    "site_admin": false
+  },
+  "installation": {
+    "id": 42424242,
+    "node_id": "MDIzOkZJWFRVUkUwMDE="
+  }
+}

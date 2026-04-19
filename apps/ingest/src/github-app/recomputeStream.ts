@@ -29,7 +29,9 @@ export type RecomputeTrigger =
   | "webhook_push"
   | "webhook_check_suite"
   | "webhook_installation_state"
-  | "webhook_repository_rename_or_transfer";
+  | "webhook_repository_rename_or_transfer"
+  | "webhook_deployment"
+  | "webhook_deployment_status";
 
 export interface RecomputeMessage {
   schema_version: 1;

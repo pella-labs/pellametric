@@ -34,6 +34,7 @@ type SqlLike = Pick<Sql, "unsafe">;
 
 import {
   type CheckSuiteRow,
+  type DeploymentRow,
   type DomainParseResult,
   type GitEventExtension,
   type PullRequestRow,
@@ -161,6 +162,29 @@ async function handleParsed(
       handled: parsed.kind,
       recomputeTrigger: "webhook_check_suite",
       table: "github_check_suites",
+    };
+  }
+
+  if (parsed.kind === "deployment_upsert" || parsed.kind === "deployment_status_upsert") {
+    await deps.sql.begin(async (tx) => {
+      await tx.unsafe(`SELECT set_config('app.current_org_id', $1, true)`, [payload.tenant_id]);
+      await upsertDeployment(tx, payload.tenant_id, parsed.row);
+    });
+    const trigger: "webhook_deployment" | "webhook_deployment_status" =
+      parsed.kind === "deployment_upsert" ? "webhook_deployment" : "webhook_deployment_status";
+    const msg = buildRecomputeMessage(trigger, payload, {
+      provider_repo_id: parsed.row.provider_repo_id,
+      deployment_id: parsed.row.deployment_id.toString(),
+      environment: parsed.row.environment,
+      sha: parsed.row.sha,
+      status: parsed.row.status,
+    });
+    await deps.recompute.publish(msg);
+    log({ app: "worker-github", kind: parsed.kind, tenant: payload.tenant_id });
+    return {
+      handled: parsed.kind,
+      recomputeTrigger: trigger,
+      table: "github_deployments",
     };
   }
 
@@ -315,6 +339,32 @@ async function upsertPullRequest(
       row.opened_at,
       row.closed_at,
       row.merged_at,
+    ],
+  );
+}
+
+async function upsertDeployment(tx: SqlLike, tenantId: string, row: DeploymentRow): Promise<void> {
+  await tx.unsafe(
+    `INSERT INTO github_deployments (
+       tenant_id, provider_repo_id, deployment_id, environment, sha, ref, status, first_success_at, updated_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+     ON CONFLICT (tenant_id, provider_repo_id, deployment_id) DO UPDATE SET
+       environment = EXCLUDED.environment,
+       sha = EXCLUDED.sha,
+       ref = EXCLUDED.ref,
+       status = EXCLUDED.status,
+       first_success_at = COALESCE(github_deployments.first_success_at, EXCLUDED.first_success_at),
+       updated_at = now()`,
+    [
+      tenantId,
+      row.provider_repo_id,
+      row.deployment_id.toString(),
+      row.environment,
+      row.sha,
+      row.ref,
+      row.status,
+      row.first_success_at,
     ],
   );
 }

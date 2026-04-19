@@ -12,7 +12,11 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { computeOutcomeQualityV1_1 } from "./outcome_quality_v1_1";
+import {
+  computeOutcomeQualityV1_1,
+  deploySuccessPerDollarV1FromPercentile,
+  deploySuccessPerDollarV1Stub,
+} from "./outcome_quality_v1_1";
 
 describe("outcome_quality_v1.1", () => {
   test("all 3 terms present → standard weighted sum", () => {
@@ -97,5 +101,28 @@ describe("outcome_quality_v1.1", () => {
       deploy_success_per_dollar: { value: 50, suppressed: false },
     };
     expect(computeOutcomeQualityV1_1(i)).toEqual(computeOutcomeQualityV1_1(i));
+  });
+
+  test("G3 deploySuccessPerDollarV1Stub remains suppressed (G2-callsite back-compat)", () => {
+    const term = deploySuccessPerDollarV1Stub();
+    expect(term.suppressed).toBe(true);
+    expect(term.value).toBe(0);
+  });
+
+  test("G3 deploySuccessPerDollarV1FromPercentile null → suppressed", () => {
+    const t = deploySuccessPerDollarV1FromPercentile(null);
+    expect(t.suppressed).toBe(true);
+    expect(t.value).toBe(0);
+  });
+
+  test("G3 deploySuccessPerDollarV1FromPercentile 42 → not suppressed", () => {
+    const t = deploySuccessPerDollarV1FromPercentile(42);
+    expect(t.suppressed).toBe(false);
+    expect(t.value).toBe(42);
+  });
+
+  test("G3 deploySuccessPerDollarV1FromPercentile Infinity → suppressed (no ∞ leak)", () => {
+    const t = deploySuccessPerDollarV1FromPercentile(Number.POSITIVE_INFINITY);
+    expect(t.suppressed).toBe(true);
   });
 });

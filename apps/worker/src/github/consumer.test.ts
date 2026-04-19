@@ -87,6 +87,7 @@ async function seedTenantAndInstallation(sql: Sql): Promise<{
 async function cleanup(sql: Sql, tenantId: string): Promise<void> {
   // Delete order matters — FKs on tenant_id.
   await sql.unsafe(`DELETE FROM repo_id_hash_aliases WHERE tenant_id = $1`, [tenantId]);
+  await sql.unsafe(`DELETE FROM github_deployments WHERE tenant_id = $1`, [tenantId]);
   await sql.unsafe(`DELETE FROM github_check_suites WHERE tenant_id = $1`, [tenantId]);
   await sql.unsafe(`DELETE FROM github_pull_requests WHERE tenant_id = $1`, [tenantId]);
   await sql.unsafe(`DELETE FROM git_events WHERE org_id = $1`, [tenantId]);
@@ -338,6 +339,65 @@ describe("worker/github consumer — real Postgres integration", () => {
       Array<{ reason: string }>
     >`SELECT reason FROM repo_id_hash_aliases WHERE tenant_id = ${ctx.tenantId}`;
     expect(rows[0]?.reason).toBe("transfer");
+    await cleanup(sql, ctx.tenantId);
+  });
+
+  // 14 (G3). deployment.created → github_deployments row, status='pending'
+  test("deployment.created → github_deployments + status='pending' + recompute", async () => {
+    if (skip) return;
+    const body = readFixture("deployment", "created");
+    const out = await consumeMessage(
+      encodePayload(makePayload(ctx, "deployment", body)),
+      consumerDeps(ctx),
+    );
+    expect(out.handled).toBe("deployment_upsert");
+    const rows = await sql<
+      Array<{ status: string; environment: string; first_success_at: Date | null }>
+    >`SELECT status, environment, first_success_at
+        FROM github_deployments
+        WHERE tenant_id = ${ctx.tenantId}`;
+    expect(rows[0]?.status).toBe("pending");
+    expect(rows[0]?.environment).toBe("production");
+    expect(rows[0]?.first_success_at).toBeNull();
+    const msgs = ctx.recompute.readStream(ctx.tenantId);
+    expect(msgs[0]?.msg.trigger).toBe("webhook_deployment");
+    await cleanup(sql, ctx.tenantId);
+  });
+
+  // 15 (G3). deployment_status.success → status='success', first_success_at set
+  test("deployment_status.success → status='success' + first_success_at set", async () => {
+    if (skip) return;
+    const body = readFixture("deployment_status", "success");
+    const out = await consumeMessage(
+      encodePayload(makePayload(ctx, "deployment_status", body)),
+      consumerDeps(ctx),
+    );
+    expect(out.handled).toBe("deployment_status_upsert");
+    const rows = await sql<
+      Array<{ status: string; first_success_at: Date | null }>
+    >`SELECT status, first_success_at
+        FROM github_deployments
+        WHERE tenant_id = ${ctx.tenantId}`;
+    expect(rows[0]?.status).toBe("success");
+    expect(rows[0]?.first_success_at).not.toBeNull();
+    await cleanup(sql, ctx.tenantId);
+  });
+
+  // 16 (G3). deployment_status.failure → status='failure', first_success_at null
+  test("deployment_status.failure → status='failure' + no first_success_at", async () => {
+    if (skip) return;
+    const body = readFixture("deployment_status", "failure");
+    await consumeMessage(
+      encodePayload(makePayload(ctx, "deployment_status", body)),
+      consumerDeps(ctx),
+    );
+    const rows = await sql<
+      Array<{ status: string; first_success_at: Date | null }>
+    >`SELECT status, first_success_at
+        FROM github_deployments
+        WHERE tenant_id = ${ctx.tenantId}`;
+    expect(rows[0]?.status).toBe("failure");
+    expect(rows[0]?.first_success_at).toBeNull();
     await cleanup(sql, ctx.tenantId);
   });
 });

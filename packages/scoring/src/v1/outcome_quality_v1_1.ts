@@ -102,13 +102,33 @@ export function computeOutcomeQualityV1_1(
 }
 
 /**
- * G3-pending stub — always returns suppressed until the G3 deploy module
- * replaces it. Callers in G2 compose via this so swap-in at G3 is a no-op
- * in the outcome_quality_v1.1 shape.
+ * G3 deploy term resolver — live by default, suppressed when the caller
+ * passes `null` (module-not-wired or absent-signal fallback). The G3 live
+ * pipeline supplies a pre-normalized percentile-ranked value on [0, 100]
+ * OR a suppressed marker; a non-finite number is treated as suppressed.
+ *
+ * Kept as a named export (`deploySuccessPerDollarV1Stub`) for G2 callers
+ * that imported it before G3 landed — same shape, same meaning. The stub
+ * retains its "always suppressed" default so old call sites keep working.
  */
 export function deploySuccessPerDollarV1Stub(): Term {
   return {
     value: 0,
     suppressed: true,
   };
+}
+
+/**
+ * G3: convert a live `computeDeployPerDollar` raw result + its cohort's
+ * percentile-rank pipeline into the `Term` shape consumed by v1.1.
+ *
+ * Callers are expected to run the raw→winsorize p5/p95→percentile-rank
+ * pipeline themselves (the cohort lives server-side and is org-specific).
+ * This helper just closes the shape.
+ */
+export function deploySuccessPerDollarV1FromPercentile(percentile_rank_0_100: number | null): Term {
+  if (percentile_rank_0_100 === null || !Number.isFinite(percentile_rank_0_100)) {
+    return { value: 0, suppressed: true };
+  }
+  return { value: percentile_rank_0_100, suppressed: false };
 }

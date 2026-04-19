@@ -23,6 +23,8 @@ export type DomainParseResult =
   | { kind: "pull_request_upsert"; row: PullRequestRow; gitEventExtension: GitEventExtension }
   | { kind: "push"; gitEventExtension: GitEventExtension; forced: boolean; branch: string }
   | { kind: "check_suite_upsert"; row: CheckSuiteRow }
+  | { kind: "deployment_upsert"; row: DeploymentRow }
+  | { kind: "deployment_status_upsert"; row: DeploymentRow }
   | {
       kind: "installation_state_change";
       installation_id: bigint;
@@ -87,6 +89,17 @@ export interface CheckSuiteRow {
   completed_at: string | null;
 }
 
+export interface DeploymentRow {
+  provider_repo_id: string;
+  deployment_id: bigint;
+  environment: string;
+  sha: string;
+  ref: string;
+  /** One of the GitHub deployment_status.state values. `created` (= deployment.created event) maps to `pending`. */
+  status: "pending" | "queued" | "in_progress" | "success" | "failure" | "error" | "inactive";
+  first_success_at: string | null;
+}
+
 export interface GitEventExtension {
   /** Resolved per-tenant after worker reads the delivery's tenant_id. */
   provider_repo_id: string | null;
@@ -138,7 +151,73 @@ export function parseDomain(event: string, body: unknown): DomainParseResult {
   if (event === "repository") {
     return parseRepositoryLifecycle(b, action);
   }
+  if (event === "deployment") {
+    return parseDeployment(b);
+  }
+  if (event === "deployment_status") {
+    return parseDeploymentStatus(b);
+  }
   return action !== undefined ? { kind: "ignored", event, action } : { kind: "ignored", event };
+}
+
+function parseDeployment(b: Record<string, unknown>): DomainParseResult {
+  const repo = b.repository as Record<string, unknown> | undefined;
+  const dep = b.deployment as Record<string, unknown> | undefined;
+  if (!repo || !dep || repo.id === undefined || dep.id === undefined) {
+    return { kind: "ignored", event: "deployment" };
+  }
+  const row: DeploymentRow = {
+    provider_repo_id: String(repo.id),
+    deployment_id: BigInt(String(dep.id)),
+    environment: strOrNull(dep.environment) ?? strOrNull(dep.original_environment) ?? "",
+    sha: strOrNull(dep.sha) ?? "",
+    ref: strOrNull(dep.ref) ?? "",
+    // `deployment` event itself represents creation — a not-yet-statused
+    // deployment → treat as `pending` until a deployment_status arrives.
+    status: "pending",
+    first_success_at: null,
+  };
+  return { kind: "deployment_upsert", row };
+}
+
+function parseDeploymentStatus(b: Record<string, unknown>): DomainParseResult {
+  const repo = b.repository as Record<string, unknown> | undefined;
+  const dep = b.deployment as Record<string, unknown> | undefined;
+  const ds = b.deployment_status as Record<string, unknown> | undefined;
+  if (!repo || !dep || !ds || repo.id === undefined || dep.id === undefined) {
+    return { kind: "ignored", event: "deployment_status" };
+  }
+  const state = strOrNull(ds.state);
+  const allowedStates = new Set([
+    "pending",
+    "queued",
+    "in_progress",
+    "success",
+    "failure",
+    "error",
+    "inactive",
+  ]);
+  if (!state || !allowedStates.has(state)) {
+    return { kind: "ignored", event: "deployment_status" };
+  }
+  const status = state as DeploymentRow["status"];
+  const row: DeploymentRow = {
+    provider_repo_id: String(repo.id),
+    deployment_id: BigInt(String(dep.id)),
+    environment:
+      strOrNull(ds.environment) ??
+      strOrNull(dep.environment) ??
+      strOrNull(dep.original_environment) ??
+      "",
+    sha: strOrNull(dep.sha) ?? "",
+    ref: strOrNull(dep.ref) ?? "",
+    status,
+    // first_success_at: persist when state transitions to success; the
+    // consumer's UPSERT picks the earliest success across redeliveries.
+    first_success_at:
+      status === "success" ? (strOrNull(ds.created_at) ?? strOrNull(ds.updated_at)) : null,
+  };
+  return { kind: "deployment_status_upsert", row };
 }
 
 function parsePullRequest(
