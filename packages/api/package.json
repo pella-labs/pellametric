@@ -11,7 +11,10 @@
     "./gates": "./src/gates.ts",
     "./schemas/*": "./src/schemas/*.ts",
     "./queries/*": "./src/queries/*.ts",
-    "./mutations/*": "./src/mutations/*.ts"
+    "./mutations/*": "./src/mutations/*.ts",
+    "./schemas/github/*": "./src/schemas/github/*.ts",
+    "./queries/github/*": "./src/queries/github/*.ts",
+    "./mutations/github/*": "./src/mutations/github/*.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

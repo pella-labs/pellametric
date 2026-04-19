@@ -25,6 +25,7 @@ export {
   MIN_OUTCOME_EVENTS,
   MIN_SESSIONS,
 } from "./gates";
+export { enqueueGithubSync } from "./mutations/github/sync";
 export { setNotificationPref } from "./mutations/policy";
 // Mutations
 export { revealSession } from "./mutations/session";
@@ -38,6 +39,8 @@ export {
 } from "./queries/cluster";
 // Queries
 export { getSummary } from "./queries/dashboard";
+export { getGithubConnection } from "./queries/github/connection";
+export { listGithubRepos } from "./queries/github/repos";
 export {
   createIngestKey,
   listIngestKeys,

@@ -6,7 +6,13 @@ import { prompt_clusters } from "@bematist/schema/postgres";
 import type { ClickHouseClient } from "@clickhouse/client";
 import PgBoss from "pg-boss";
 import { ch } from "./clickhouse";
-import { db } from "./db";
+import { db, pgClient } from "./db";
+import {
+  createLocalSemaphore,
+  createNoopRecomputeEmitter,
+  createTokenBucket,
+} from "./github-initial-sync";
+import { dispatcherTick } from "./github-initial-sync/dispatcher";
 import { PostgresAnomalyNotifier } from "./jobs/anomaly/pg_notifier";
 import type { CohortP95, DailyMetricRow } from "./jobs/anomaly/types";
 import { runAnomalyDetection } from "./jobs/anomaly_detect";
@@ -24,6 +30,14 @@ const ANOMALY_CRON_SCHEDULE = process.env.ANOMALY_CRON_SCHEDULE ?? "0 * * * *";
 const RECLUSTER_CRON_SCHEDULE = process.env.RECLUSTER_CRON_SCHEDULE ?? "30 3 * * *";
 const RECLUSTER_EMBEDDING_MODEL = process.env.RECLUSTER_EMBEDDING_MODEL ?? "openai-3-small-512";
 const RECLUSTER_MAX_PROMPTS_PER_ORG = Number(process.env.RECLUSTER_MAX_PROMPTS_PER_ORG ?? 5_000);
+// Github initial-sync dispatcher — every 30s by default. Per-event work
+// (pagination + DB upserts) runs inside `runInitialSync`, gated by the
+// 5-slot local semaphore. CLAUDE.md Rule #4 compliant: this cron is the
+// scheduler, not the per-event worker.
+const GITHUB_SYNC_DISPATCHER_SCHEDULE =
+  process.env.GITHUB_SYNC_DISPATCHER_SCHEDULE ?? "*/1 * * * *";
+// Local worker-node semaphore per PRD §11.2 = 5 concurrent initial syncs.
+const githubInitialSyncSemaphore = createLocalSemaphore(5);
 
 export async function startWorker() {
   const boss = new PgBoss(PG_BOSS_URL);
@@ -46,6 +60,12 @@ export async function startWorker() {
   });
   await boss.schedule("cluster.recluster_nightly", RECLUSTER_CRON_SCHEDULE);
 
+  await boss.work("github.initial_sync_dispatcher", async () => {
+    const report = await runGithubInitialSyncDispatcher();
+    return report;
+  });
+  await boss.schedule("github.initial_sync_dispatcher", GITHUB_SYNC_DISPATCHER_SCHEDULE);
+
   console.log(
     "[worker] started; gdpr.partition_drop:",
     GDPR_CRON_SCHEDULE,
@@ -53,6 +73,8 @@ export async function startWorker() {
     ANOMALY_CRON_SCHEDULE,
     "cluster.recluster_nightly:",
     RECLUSTER_CRON_SCHEDULE,
+    "github.initial_sync_dispatcher:",
+    GITHUB_SYNC_DISPATCHER_SCHEDULE,
   );
   return boss;
 }
@@ -305,6 +327,59 @@ export async function runReclusterAllOrgs(deps: { ch: ClickHouseClient }): Promi
   }
 
   return { orgs: orgRows.length, prompts: totalPrompts, centroids: totalCentroids };
+}
+
+/**
+ * PgBoss cron body for `github.initial_sync_dispatcher`. Reads queued rows
+ * from `github_sync_progress` and runs each under the shared 5-slot
+ * semaphore. Production wiring — unit tests use a direct `dispatcherTick`
+ * call with fakes per `apps/worker/src/github-initial-sync/initialSync.test.ts`.
+ *
+ * Token-bucket state lives in Redis (production) but the token bucket we
+ * construct here owns its own lazy Redis connection — for now, we
+ * short-circuit to a process-local in-memory store until the worker has
+ * a shared Redis client (Sprint 2). The token bucket is additive
+ * back-pressure; Phase 0 / G1 tests pass without a real Redis because the
+ * GitHub rate-limit headers are the authoritative signal.
+ */
+async function runGithubInitialSyncDispatcher(): Promise<
+  import("./github-initial-sync/dispatcher").DispatcherTickReport
+> {
+  const mem = new Map<string, string>();
+  const tokenBucket = createTokenBucket({
+    store: {
+      async get(key) {
+        return mem.get(key) ?? null;
+      },
+      async set(key, value) {
+        mem.set(key, value);
+      },
+    },
+    refillPerSecond: 1,
+    burst: 10,
+  });
+
+  const emitRecompute = createNoopRecomputeEmitter();
+
+  // Installation-token resolver — wired to the ingest-side cache in a
+  // follow-up when the ingest + worker share a Redis-backed cache. Until
+  // then, missing GITHUB_APP_ID / private key short-circuits with a clear
+  // error logged from inside runInitialSync (which surfaces as
+  // status='failed' + last_error on the progress row).
+  const getInstallationToken = async (installationId: bigint): Promise<string> => {
+    throw new Error(
+      `github-initial-sync: getInstallationToken unwired on worker (installationId=${installationId.toString()}). ` +
+        "Deploy the ingest→worker shared token cache (tracked in follow-up) before enqueuing a sync.",
+    );
+  };
+
+  return await dispatcherTick({
+    sql: pgClient,
+    semaphore: githubInitialSyncSemaphore,
+    tokenBucket,
+    getInstallationToken,
+    emitRecompute,
+  });
 }
 
 if (import.meta.main) {
