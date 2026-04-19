@@ -22,8 +22,18 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { score } from "../index";
+import { type ScoringInputV1_1, scoreV1_1 } from "../index_v1_1";
 import { GATES } from "./gates";
 import type { ArchetypeTag, FixtureCase } from "./schema";
+
+/**
+ * G2 — GitHub fixtures carry the v1.1 overlay (github.* keys on input).
+ * We route them to `scoreV1_1` so the oracle-produced expectations match.
+ */
+function isV1_1Case(c: FixtureCase): boolean {
+  const input = c.input as unknown as { github?: unknown };
+  return input.github !== undefined;
+}
 
 const FIXTURE_DIR = join(import.meta.dir, "..", "__fixtures__");
 
@@ -55,7 +65,7 @@ function loadJsonl(path: string): FixtureCase[] {
 
 function evalFixture(name: string, cases: FixtureCase[]): FixtureResult {
   const results: CaseResult[] = cases.map((c) => {
-    const out = score(c.input);
+    const out = isV1_1Case(c) ? scoreV1_1(c.input as unknown as ScoringInputV1_1) : score(c.input);
     const actual = out.ai_leverage_score;
     const expected = c.expected_final_als;
     const error = Math.abs(actual - expected);
@@ -173,6 +183,9 @@ const perFileFixtures = [
   { name: "archetypes", file: "archetypes.jsonl" },
   { name: "snapshots", file: "snapshots.jsonl" },
   { name: "validation (held-out)", file: "validation.jsonl" },
+  // G2 — GitHub signal expansion (PRD-github-integration §12.4 / D44).
+  { name: "github (v1.1 signals)", file: "github.jsonl" },
+  { name: "github held-out (v1.1)", file: "github_validation.jsonl" },
 ];
 
 const fileCases = new Map<string, FixtureCase[]>();
@@ -187,16 +200,30 @@ for (const f of perFileFixtures) {
   printResult(result);
 }
 
-// Combined splits for the MERGE BLOCKER gate — train (500) + held-out (100).
-const trainCases: FixtureCase[] = [
+// Combined splits for the MERGE BLOCKER gate.
+// v1 TRAIN (500) + v1 HELD-OUT (100) guard against regressions on the locked
+// `ai_leverage_v1` math. G2-expanded MAIN (650 = 500 + 150 github) and
+// HELD-OUT (150 = 100 + 50 github) are new merge-blockers per PRD §12.4.
+const v1TrainCases: FixtureCase[] = [
   ...(fileCases.get("archetypes.jsonl") ?? []),
   ...(fileCases.get("snapshots.jsonl") ?? []),
 ];
-const heldOutCases: FixtureCase[] = fileCases.get("validation.jsonl") ?? [];
+const v1HeldOutCases: FixtureCase[] = fileCases.get("validation.jsonl") ?? [];
+const githubCases: FixtureCase[] = fileCases.get("github.jsonl") ?? [];
+const githubHeldOutCases: FixtureCase[] = fileCases.get("github_validation.jsonl") ?? [];
+
+// Back-compat names used below.
+const trainCases = v1TrainCases;
+const heldOutCases = v1HeldOutCases;
+
+const mainCases = [...v1TrainCases, ...githubCases];
+const expandedHeldOutCases = [...v1HeldOutCases, ...githubHeldOutCases];
 
 const splits = [
-  { name: "TRAIN (archetypes + snapshots)", cases: trainCases },
-  { name: "HELD-OUT (validation)", cases: heldOutCases },
+  { name: "V1 REGRESSION (archetypes + snapshots)", cases: v1TrainCases },
+  { name: "V1 HELD-OUT (validation)", cases: v1HeldOutCases },
+  { name: "V1.1 MAIN 650 (v1 + github)", cases: mainCases },
+  { name: "V1.1 HELD-OUT 150 (v1 + github)", cases: expandedHeldOutCases },
 ];
 
 const allFailures: string[] = [];
@@ -210,19 +237,31 @@ for (const s of splits) {
   allFailures.push(...gateResult(result));
 }
 
-// Headline MERGE BLOCKER floor — train must be ≥ 500, held-out must be ≥ 100
-// per CLAUDE.md §Scoring Rules ("500-case synthetic dev-month eval … held-out
-// 100-case validation split"). Guards against silent fixture shrinkage.
-const TRAIN_FLOOR = 500;
-const HELD_OUT_FLOOR = 100;
-if (trainCases.length < TRAIN_FLOOR) {
+// Headline MERGE BLOCKER floor — v1 regression must be ≥ 500, v1 held-out ≥ 100
+// per CLAUDE.md §Scoring Rules. PRD-github-integration §12.4 raises the v1.1
+// gate to 650 + 150.
+const V1_TRAIN_FLOOR = 500;
+const V1_HELD_OUT_FLOOR = 100;
+const V1_1_MAIN_FLOOR = 650;
+const V1_1_HELD_OUT_FLOOR = 150;
+if (trainCases.length < V1_TRAIN_FLOOR) {
   allFailures.push(
-    `TRAIN split size ${trainCases.length} < required ${TRAIN_FLOOR} (CLAUDE.md §Scoring Rules)`,
+    `V1 REGRESSION size ${trainCases.length} < required ${V1_TRAIN_FLOOR} (CLAUDE.md §Scoring Rules)`,
   );
 }
-if (heldOutCases.length < HELD_OUT_FLOOR) {
+if (heldOutCases.length < V1_HELD_OUT_FLOOR) {
   allFailures.push(
-    `HELD-OUT split size ${heldOutCases.length} < required ${HELD_OUT_FLOOR} (CLAUDE.md §Scoring Rules)`,
+    `V1 HELD-OUT size ${heldOutCases.length} < required ${V1_HELD_OUT_FLOOR} (CLAUDE.md §Scoring Rules)`,
+  );
+}
+if (mainCases.length < V1_1_MAIN_FLOOR) {
+  allFailures.push(
+    `V1.1 MAIN size ${mainCases.length} < required ${V1_1_MAIN_FLOOR} (PRD-github-integration §12.4)`,
+  );
+}
+if (expandedHeldOutCases.length < V1_1_HELD_OUT_FLOOR) {
+  allFailures.push(
+    `V1.1 HELD-OUT size ${expandedHeldOutCases.length} < required ${V1_1_HELD_OUT_FLOOR} (PRD-github-integration §12.4)`,
   );
 }
 
@@ -239,5 +278,7 @@ if (allFailures.length > 0) {
   process.exit(1);
 }
 
-console.log(`\n✓ all gates pass — TRAIN n=${trainCases.length}, HELD-OUT n=${heldOutCases.length}`);
+console.log(
+  `\n✓ all gates pass — V1 n=${trainCases.length}+${heldOutCases.length}, V1.1 n=${mainCases.length}+${expandedHeldOutCases.length}`,
+);
 process.exit(0);

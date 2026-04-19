@@ -24,6 +24,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ARCHETYPE_CASES } from "./archetypes";
 import { generateCases } from "./generate";
+import { generateGithubCases } from "./github_generate";
 import type { FixtureCase } from "./schema";
 
 const FIXTURE_DIR = join(import.meta.dir, "..", "__fixtures__");
@@ -61,6 +62,29 @@ writeJsonl(
       "new-hire": 0.1,
       "goodhart-gaming": 0.15,
     },
+  }),
+);
+
+// G2 — GitHub fixture expansion (PRD-github-integration §12.4 / D44).
+// 150 cases (100 adversarial + 50 normal) for the 650-case main run, plus
+// 50 held-out GitHub cases for the 150-case held-out run.
+writeJsonl(join(FIXTURE_DIR, "github.jsonl"), generateGithubCases(2026, "gh"));
+// Held-out GitHub split — 50 cases with normal counts shifted.
+writeJsonl(
+  join(FIXTURE_DIR, "github_validation.jsonl"),
+  generateGithubCases(20260419, "ghval", {
+    "normal-low": 5,
+    "normal-avg": 7,
+    "normal-high": 3,
+    "normal-new-hire": 2,
+    "loc-padding-gamer": 3,
+    "ci-off-repo": 3,
+    "empty-push-spammer": 3,
+    "junior-in-senior-cohort": 5,
+    "backend-vs-frontend": 5,
+    "deploy-spam-staging": 3,
+    "ci-flakiness-blamed": 5,
+    "revert-heavy-high-loc": 6,
   }),
 );
 
