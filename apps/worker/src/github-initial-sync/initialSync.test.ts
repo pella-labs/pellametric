@@ -286,15 +286,5 @@ describe("github-initial-sync/initialSync", () => {
       maxConcurrent = Math.max(maxConcurrent, concurrent);
     }
     expect(maxConcurrent).toBeLessThanOrEqual(5);
-
-    // Emit timeline to test log for PRD §13 test #7 concurrency evidence.
-    console.log(
-      JSON.stringify({
-        test: "concurrency-cap",
-        tenants: TENANTS,
-        peak,
-        timeline: sorted.map((e) => ({ event: e.event, at_rel_ms: e.at - sorted[0]!.at })),
-      }),
-    );
   });
 });

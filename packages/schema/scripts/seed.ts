@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import postgres from "postgres";
-import { CH_DATABASE, ch } from "../clickhouse/client";
+import { ch } from "../clickhouse/client";
 
 const pgUrl = process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5435/bematist";
 const sql = postgres(pgUrl, { max: 1 });
@@ -125,9 +125,6 @@ for (let i = 0; i < 8000; i++) {
   });
 }
 await client.insert({ table: "events", values: events, format: "JSONEachRow" });
-
-console.log(`[seed] PG: ${orgs.length} orgs, ${devs.length} developers`);
-console.log(`[seed] CH: ${events.length} events inserted into ${CH_DATABASE}.events`);
 
 await sql.end();
 await client.close();

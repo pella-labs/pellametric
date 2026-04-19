@@ -212,5 +212,5 @@ export function makeCommits(n: number, repoId: number, opts?: { baseTs?: number 
 
 function sha(repoId: number, i: number, tag: string): string {
   const hex = `${repoId.toString(16).padStart(6, "0")}${i.toString(16).padStart(6, "0")}${tag}`;
-  return (hex + "abcdef0123456789").slice(0, 40);
+  return `${hex}abcdef0123456789`.slice(0, 40);
 }

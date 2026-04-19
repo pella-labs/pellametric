@@ -42,7 +42,7 @@ export async function startKafkaGithubConsumer(
   config: KafkaConsumerConfig,
   deps: ConsumerDeps,
 ): Promise<KafkaConsumerHandle> {
-  const log = deps.log ?? ((e) => console.log(JSON.stringify(e)));
+  const log = deps.log ?? ((_e) => {});
   const kafka = new Kafka({
     clientId: config.clientId ?? "bematist-worker",
     brokers: config.brokers,

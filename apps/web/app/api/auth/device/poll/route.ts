@@ -13,10 +13,7 @@
 // plaintext never sits in the DB between approve and claim.
 
 import { createHash, randomBytes } from "node:crypto";
-import {
-  type DevicePollResponse,
-  DevicePollRequest,
-} from "@bematist/api/schemas/deviceAuth";
+import { DevicePollRequest, type DevicePollResponse } from "@bematist/api/schemas/deviceAuth";
 import { NextResponse } from "next/server";
 import { getDbClients } from "@/lib/db";
 

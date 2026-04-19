@@ -64,7 +64,7 @@ export class Rng {
       hex.push(this.int(256).toString(16).padStart(2, "0"));
     }
     // v4 variant nibbles
-    hex[6] = `4${hex[6]!.slice(1)}`;
+    hex[6] = `4${hex[6]?.slice(1)}`;
     const v = (Number.parseInt(hex[8]!, 16) & 0x3f) | 0x80;
     hex[8] = v.toString(16).padStart(2, "0");
     return [

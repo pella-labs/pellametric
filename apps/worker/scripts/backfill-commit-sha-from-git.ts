@@ -164,10 +164,7 @@ export async function applyBatch(
 ): Promise<void> {
   if (resolved.length === 0) return;
   if (DRY_RUN) {
-    for (const r of resolved) {
-      console.log(
-        `[dry] ${r.org_id} ${r.engineer_id.slice(0, 8)} ${r.session_id} ${r.branch} → ${r.commit_sha.slice(0, 10)}`,
-      );
+    for (const _r of resolved) {
     }
     return;
   }
@@ -255,41 +252,30 @@ export async function emitRecompute(resolved: ResolvedWindow[]): Promise<void> {
 export async function run(): Promise<void> {
   const ch = createClickHouseClient({ url: CH_URL, database: CH_DB });
   const sql = postgres(PG_URL as string, { max: 4, idle_timeout: 5 });
-
-  console.log(`[backfill-from-git] fetching candidate windows…`);
   const windows = await fetchCandidateWindows(ch);
-  console.log(`[backfill-from-git] ${windows.length} session-windows to consider`);
 
-  let resolved = 0;
-  let skipped = 0;
+  let _resolved = 0;
+  let _skipped = 0;
   let batch: ResolvedWindow[] = [];
 
   for (const w of windows) {
     const r = await resolveWindow(sql, w);
     if (!r) {
-      skipped += 1;
+      _skipped += 1;
       continue;
     }
     batch.push(r);
-    resolved += 1;
+    _resolved += 1;
     if (batch.length >= BATCH_SIZE) {
       await applyBatch(ch, batch);
       await emitRecompute(batch);
-      console.log(
-        `[backfill-from-git] applied ${batch.length} (total resolved=${resolved}, skipped=${skipped})`,
-      );
       batch = [];
     }
   }
   if (batch.length > 0) {
     await applyBatch(ch, batch);
     await emitRecompute(batch);
-    console.log(
-      `[backfill-from-git] applied final ${batch.length} (total resolved=${resolved}, skipped=${skipped})`,
-    );
   }
-
-  console.log(`[backfill-from-git] done. resolved=${resolved} skipped=${skipped}`);
   await ch.close();
   await sql.end({ timeout: 5 });
 }

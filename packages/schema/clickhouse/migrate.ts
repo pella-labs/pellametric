@@ -45,8 +45,6 @@ for (const file of files) {
   for (const stmt of statements) {
     await client.command({ query: stmt });
   }
-  console.log(`[ch-migrate] applied ${file}`);
 }
 
 await client.close();
-console.log(`[ch-migrate] done — ${files.length} file(s) applied to ${CH_DATABASE}`);

@@ -177,7 +177,7 @@ export function computeLinkerState(
   clock: StateClock = SYSTEM_CLOCK,
 ): LinkerState {
   const salt = inputs.tenant_salt ?? defaultTenantSalt(inputs.tenant_id);
-  const activeInstallations = sortBy(
+  const _activeInstallations = sortBy(
     inputs.installations.filter((i) => i.status === "active"),
     (i) => i.installation_id,
   );

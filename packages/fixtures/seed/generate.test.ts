@@ -17,7 +17,7 @@ describe("perf seed generator", () => {
   test("buildPlan is deterministic across runs (same seed)", () => {
     const a = buildPlan(new Rng(0xdecaf));
     const b = buildPlan(new Rng(0xdecaf));
-    expect(a.orgs[0]!.id).toBe(b.orgs[0]!.id);
+    expect(a.orgs[0]?.id).toBe(b.orgs[0]?.id);
     expect(a.devs.map((d) => d.engineerId)).toEqual(b.devs.map((d) => d.engineerId));
   });
 

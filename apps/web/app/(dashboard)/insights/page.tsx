@@ -494,9 +494,9 @@ export default async function InsightsPage({
           </table>
           {retry.worstSession ? (
             <p className="mt-3 text-xs text-muted-foreground">
-              Worst-retries session: <span className="font-mono">{retry.worstSession.name}</span>{" "}
-              on {retry.worstSession.date} · burned {USD.format(retry.worstSession.retryCostUsd)}{" "}
-              on retries
+              Worst-retries session: <span className="font-mono">{retry.worstSession.name}</span> on{" "}
+              {retry.worstSession.date} · burned {USD.format(retry.worstSession.retryCostUsd)} on
+              retries
             </p>
           ) : null}
         </Card>

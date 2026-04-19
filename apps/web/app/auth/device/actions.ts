@@ -19,9 +19,9 @@
 //     `gcloud auth login` UX).
 //   * Codes expire 10 min after mint.
 
+import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getDbClients } from "@/lib/db";
-import { headers } from "next/headers";
 
 type ApproveResult =
   | { ok: true; orgName: string }

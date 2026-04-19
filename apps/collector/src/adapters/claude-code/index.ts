@@ -5,7 +5,7 @@ import type { Event } from "@bematist/schema";
 import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
 import { resolveGitContext } from "../../lib/git-context";
 import { type DiscoverySources, discoverSources } from "./discovery";
-import { normalizeSession, type NormalizeExtras } from "./normalize";
+import { type NormalizeExtras, normalizeSession } from "./normalize";
 import { parseSessionFile } from "./parsers/parseSessionFile";
 
 const SOURCE_VERSION_DEFAULT = "1.0.x";

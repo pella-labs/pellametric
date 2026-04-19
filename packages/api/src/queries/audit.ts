@@ -1,6 +1,6 @@
 import { assertRole, type Ctx } from "../auth";
 import { useFixtures } from "../env";
-import type { AuditEvent, MyViewHistoryInput, MyViewHistoryOutput } from "../schemas/audit";
+import type { MyViewHistoryInput, MyViewHistoryOutput } from "../schemas/audit";
 
 /**
  * Return the list of manager drills into the caller's surfaces within the
@@ -53,7 +53,7 @@ async function getMyViewHistoryReal(
   };
 }
 
-const WINDOW_HOURS: Record<MyViewHistoryInput["window"], number> = {
+const _WINDOW_HOURS: Record<MyViewHistoryInput["window"], number> = {
   "24h": 24,
   "7d": 24 * 7,
   "30d": 24 * 30,

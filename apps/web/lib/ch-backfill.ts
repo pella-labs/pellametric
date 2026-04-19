@@ -8,8 +8,8 @@
 
 import "server-only";
 
-import { createClient } from "@clickhouse/client";
 import { createHash } from "node:crypto";
+import { createClient } from "@clickhouse/client";
 import { buildAnalytics, mergeAll, readClaude, readCodex, readCursor } from "grammata";
 
 const CH_URL = process.env.CLICKHOUSE_URL ?? "http://localhost:8123";
@@ -17,7 +17,9 @@ const CH_DATABASE = process.env.CLICKHOUSE_DATABASE ?? "bematist";
 
 const NAMESPACE = Buffer.from("6ba7b8109dad11d180b400c04fd430c8", "hex");
 function uuidv5(name: string): string {
-  const h = createHash("sha1").update(Buffer.concat([NAMESPACE, Buffer.from(name)])).digest();
+  const h = createHash("sha1")
+    .update(Buffer.concat([NAMESPACE, Buffer.from(name)]))
+    .digest();
   h[6] = (h[6]! & 0x0f) | 0x50;
   h[8] = (h[8]! & 0x3f) | 0x80;
   const x = h.toString("hex");
@@ -207,7 +209,6 @@ async function runBackfill(orgId: string, engineerId: string): Promise<void> {
       });
     }
     await ch.close();
-    console.log(`[ch-backfill] wrote ${rows.length} events for engineer=${engineerId}`);
   } catch (e) {
     console.error("[ch-backfill] failed:", e);
   }

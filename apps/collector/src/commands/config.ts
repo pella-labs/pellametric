@@ -92,9 +92,8 @@ async function runSet(cliKey: string | undefined, value: string | undefined): Pr
   }
   const vars = loadFile();
   vars[envName] = value;
-  const path = await writeFile(vars);
-  const shown = SECRET_KEYS.has(cliKey) ? mask(value) : value;
-  console.log(`bematist: wrote ${cliKey}=${shown} to ${path}`);
+  const _path = await writeFile(vars);
+  const _shown = SECRET_KEYS.has(cliKey) ? mask(value) : value;
 }
 
 async function runUnset(cliKey: string | undefined): Promise<void> {
@@ -109,12 +108,10 @@ async function runUnset(cliKey: string | undefined): Promise<void> {
   }
   const vars = loadFile();
   if (!(envName in vars)) {
-    console.log(`bematist: ${cliKey} was not set in config.env`);
     return;
   }
   delete vars[envName];
-  const path = await writeFile(vars);
-  console.log(`bematist: removed ${cliKey} from ${path}`);
+  const _path = await writeFile(vars);
 }
 
 function runGet(cliKey: string | undefined): void {
@@ -142,24 +139,20 @@ function runGet(cliKey: string | undefined): void {
 function runList(): void {
   const vars = loadFile();
   if (Object.keys(vars).length === 0) {
-    console.log(`bematist: config.env is empty (${configEnvPath()})`);
     return;
   }
   // Reverse-map env name → CLI key so the listing uses friendly names.
   const envToCli = new Map(Object.entries(KEY_TO_ENV).map(([k, v]) => [v, k]));
-  const rows = Object.entries(vars)
+  const _rows = Object.entries(vars)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([envName, value]) => {
       const cliKey = envToCli.get(envName) ?? envName.toLowerCase();
       const shown = SECRET_KEYS.has(cliKey) ? mask(value) : value;
       return `${cliKey} = ${shown}`;
     });
-  console.log(rows.join("\n"));
 }
 
-function runPath(): void {
-  console.log(configEnvPath());
-}
+function runPath(): void {}
 
 export async function runConfig(args: string[]): Promise<void> {
   const [sub, ...rest] = args;
@@ -184,7 +177,6 @@ export async function runConfig(args: string[]): Promise<void> {
     case undefined:
     case "-h":
     case "--help":
-      console.log(usage());
       return;
     default:
       console.error(`bematist config: unknown subcommand "${sub}"`);

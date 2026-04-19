@@ -84,7 +84,7 @@ describe("tracking-mode PATCH → recompute wire contract", () => {
     expect(recorded.length).toBe(1);
 
     // Critical: the linker's decoder understands our wire shape.
-    const decoded = decodeMessage(fieldsToRecord(recorded[0]!.fields));
+    const decoded = decodeMessage(fieldsToRecord(recorded[0]?.fields));
     expect(decoded).not.toBeNull();
     expect(decoded?.shape).toBe("sync");
     expect(decoded?.trigger).toBe("tracking_mode_flipped");

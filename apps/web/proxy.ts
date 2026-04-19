@@ -98,11 +98,7 @@ export function proxy(request: NextRequest) {
   // EXCEPT `/auth/device`, which IS the post-login landing for the
   // `bematist login` flow (RFC 8628 Device Authorization Grant). Bouncing
   // an already-signed-in user off that page defeats the whole flow.
-  if (
-    loggedIn &&
-    pathname.startsWith("/auth/") &&
-    !pathname.startsWith("/auth/device")
-  ) {
+  if (loggedIn && pathname.startsWith("/auth/") && !pathname.startsWith("/auth/device")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";

@@ -10,7 +10,6 @@ import { parseEnvFile } from "../config";
 export async function runLogout(_args: string[]): Promise<void> {
   const path = configEnvPath();
   if (!existsSync(path)) {
-    console.log("bematist: no config.env found — nothing to log out of.");
     return;
   }
 
@@ -30,9 +29,6 @@ export async function runLogout(_args: string[]): Promise<void> {
   await atomicWrite(path, content, { mode: 0o600 });
 
   if (hadToken) {
-    console.log(`bematist: cleared token from ${path}`);
   } else {
-    console.log(`bematist: no token was set; ${path} unchanged`);
   }
-  console.log("bematist: run `bematist stop` if you want to stop the background collector too.");
 }

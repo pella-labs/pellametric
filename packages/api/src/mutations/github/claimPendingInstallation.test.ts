@@ -6,7 +6,6 @@
 // under the caller's tenant and the pending row is marked claimed.
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import { randomUUID } from "node:crypto";
 import postgres, { type Sql } from "postgres";
 import type { Ctx, PgClient } from "../../auth";
 import { claimPendingInstallation } from "./claimPendingInstallation";
@@ -146,7 +145,7 @@ describe("claimPendingInstallation", () => {
       [tenantId, installationId.toString()],
     )) as unknown as Array<{ installation_id: string; status: string }>;
     expect(bound.length).toBe(1);
-    expect(bound[0]!.status).toBe("active");
+    expect(bound[0]?.status).toBe("active");
     await cleanup();
   });
 

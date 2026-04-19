@@ -11,9 +11,8 @@ import { existsSync, statSync } from "node:fs";
 import { platform } from "node:os";
 import { daemonLogPaths } from "../daemon";
 
-function tailFile(path: string, prefix: string): void {
+function tailFile(path: string, _prefix: string): void {
   if (!existsSync(path)) {
-    console.log(`bematist: ${prefix} log does not exist yet: ${path}`);
     return;
   }
   const tail = spawn("tail", ["-n", "50", "-F", path], { stdio: ["ignore", "inherit", "inherit"] });
@@ -43,8 +42,6 @@ function tailLogFiles(): void {
   const stdoutExists = existsSync(stdout) && statSync(stdout).size > 0;
   const stderrExists = existsSync(stderr) && statSync(stderr).size > 0;
   if (!stdoutExists && !stderrExists) {
-    console.log(`bematist: no log output yet at ${stdout} / ${stderr}`);
-    console.log("bematist: is the daemon running? try `bematist status`");
     return;
   }
   tailFile(stdout, "stdout");

@@ -37,9 +37,7 @@ export async function runAudit(args: string[]): Promise<void> {
   const config = loadConfig();
   const egress = new EgressLog(config.dataDir);
   const entries = egress.tail(n);
-  for (const e of entries) console.log(JSON.stringify(e));
-
-  if (!verbose) return;
+  for (const _e of entries) if (!verbose) return;
 
   // Forensic tail of per-event SQLite rows.
   const dbPath = egressSqlite();
@@ -49,18 +47,7 @@ export async function runAudit(args: string[]): Promise<void> {
   migrate(db);
   const j = new Journal(db);
   const rows = j.tail(n);
-  for (const r of rows) {
-    console.log(
-      JSON.stringify({
-        _verbose: true,
-        client_event_id: r.client_event_id,
-        enqueued_at: r.enqueued_at,
-        submitted_at: r.submitted_at,
-        retry_count: r.retry_count,
-        last_error: r.last_error,
-        event: JSON.parse(r.body_json),
-      }),
-    );
+  for (const _r of rows) {
   }
   db.close();
 }

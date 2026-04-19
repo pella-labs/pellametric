@@ -124,28 +124,14 @@ function fmt(n: number): string {
 }
 
 function printResult(r: FixtureResult): void {
-  console.log(`\n=== ${r.name} (${r.count} cases) ===`);
-  console.log(`MAE:        ${fmt(r.mae)}    (gate ≤ ${GATES.MAE_MAX})`);
-  console.log(
-    `max|err|:   ${fmt(r.max_error)}    @ ${r.max_error_case}    (gate ≤ ${GATES.MAX_ERROR_MAX})`,
-  );
-  console.log(`per-archetype MAE:`);
-  for (const [tag, stats] of Object.entries(r.per_archetype_mae)) {
+  for (const [_tag, stats] of Object.entries(r.per_archetype_mae)) {
     if (!stats) continue;
-    const flag = stats.mae > GATES.PER_ARCHETYPE_MAE_MAX ? " ⚠" : "";
-    console.log(
-      `  ${tag.padEnd(18)} n=${String(stats.count).padStart(3)}  mae=${fmt(stats.mae)}${flag}`,
-    );
+    const _flag = stats.mae > GATES.PER_ARCHETYPE_MAE_MAX ? " ⚠" : "";
   }
   if (r.failing_cases.length > 0) {
-    console.log(`FAILING (${r.failing_cases.length}):`);
-    for (const f of r.failing_cases.slice(0, 10)) {
-      console.log(
-        `  ${f.case_id.padEnd(24)} ${f.archetype_tag.padEnd(18)} expected=${fmt(f.expected)} actual=${fmt(f.actual)} err=${fmt(f.error)} (tol=${fmt(f.tolerance)})`,
-      );
+    for (const _f of r.failing_cases.slice(0, 10)) {
     }
     if (r.failing_cases.length > 10) {
-      console.log(`  ... and ${r.failing_cases.length - 10} more`);
     }
   }
 }
@@ -193,7 +179,6 @@ for (const f of perFileFixtures) {
   const cases = loadJsonl(join(FIXTURE_DIR, f.file));
   fileCases.set(f.file, cases);
   if (cases.length === 0) {
-    console.log(`\n=== ${f.name} === (0 cases — skipped)`);
     continue;
   }
   const result = evalFixture(f.name, cases);
@@ -266,19 +251,12 @@ if (expandedHeldOutCases.length < V1_1_HELD_OUT_FLOOR) {
 }
 
 const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
-console.log(`\nelapsed: ${elapsed}s`);
 
 if (elapsed && Number.parseFloat(elapsed) > GATES.RUNTIME_MAX_SEC) {
   allFailures.push(`runtime ${elapsed}s > ${GATES.RUNTIME_MAX_SEC}s`);
 }
 
 if (allFailures.length > 0) {
-  console.log(`\n❌ ${allFailures.length} gate failure(s):`);
-  for (const f of allFailures) console.log(`  - ${f}`);
-  process.exit(1);
+  for (const _f of allFailures) process.exit(1);
 }
-
-console.log(
-  `\n✓ all gates pass — V1 n=${trainCases.length}+${heldOutCases.length}, V1.1 n=${mainCases.length}+${expandedHeldOutCases.length}`,
-);
 process.exit(0);

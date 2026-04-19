@@ -5,7 +5,7 @@
 // POST /app/hook/deliveries/:id/attempts for exactly the 1 missing delivery.
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
-import postgres, { type Sql } from "postgres";
+import postgres from "postgres";
 import { type ReconcileHttpClient, runReconcileScaffold } from "./reconcileScaffold";
 
 const DATABASE_URL =

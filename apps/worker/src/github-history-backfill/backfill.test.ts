@@ -160,8 +160,8 @@ describe("github-history-backfill/backfill", () => {
 
     // Repo A: 250 recent pulls + 50 older-than-90d; 180 commits.
     // Repo B: 30 pulls (1 page); 60 commits (1 page).
-    const repoAId = Number(repos[0]!.providerRepoId);
-    const repoBId = Number(repos[1]!.providerRepoId);
+    const repoAId = Number(repos[0]?.providerRepoId);
+    const repoBId = Number(repos[1]?.providerRepoId);
     const mockOpts = {
       perPage: 100,
       clock,
@@ -272,7 +272,7 @@ describe("github-history-backfill/backfill", () => {
       fakeNowMs += ms;
     };
 
-    const repoId = Number(repos[0]!.providerRepoId);
+    const repoId = Number(repos[0]?.providerRepoId);
     // 150 pulls → 2 pages. Page 2 first returns 429, then 200 on retry.
     // We model "429-then-200" by overriding just the first attempt via a
     // state flag.
@@ -350,7 +350,7 @@ describe("github-history-backfill/backfill", () => {
       fakeNowMs += ms;
     };
 
-    const repoId = Number(repos[0]!.providerRepoId);
+    const repoId = Number(repos[0]?.providerRepoId);
     const mock = createMockGitHubApi({
       perPage: 100,
       clock,
@@ -424,7 +424,7 @@ describe("github-history-backfill/backfill", () => {
         fakeNowMs += ms;
       };
 
-      const repoId = Number(repos[0]!.providerRepoId);
+      const repoId = Number(repos[0]?.providerRepoId);
       const mock = createMockGitHubApi({
         perPage: 100,
         clock,

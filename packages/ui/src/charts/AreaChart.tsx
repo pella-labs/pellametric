@@ -57,7 +57,6 @@ function makeFormatter(format: AreaChartFormat, currency: string) {
         style: "percent",
         maximumFractionDigits: 1,
       }).format;
-    case "number":
     default:
       return new Intl.NumberFormat("en-US").format;
   }

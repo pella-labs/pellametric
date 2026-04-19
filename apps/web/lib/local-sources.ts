@@ -373,9 +373,7 @@ async function readFreshFromCh(): Promise<LocalData> {
   // Per-source rollup from sessionRows so Summary source chips still work.
   for (const s of analytics.sessionRows) {
     const key =
-      s.source === "claude-code"
-        ? "claude-code"
-        : (s.source as "codex" | "cursor" | "goose");
+      s.source === "claude-code" ? "claude-code" : (s.source as "codex" | "cursor" | "goose");
     const bucket = data.sources.find((x) => x.key === key);
     if (!bucket) continue;
     bucket.sessions += 1;
@@ -503,8 +501,7 @@ export async function getLocalDataWindowed(
   const base = await getLocalData();
   if (window === "all" && !filter) return base;
 
-  const cutoff =
-    window === "all" ? 0 : Date.now() - WINDOW_DAYS[window] * 24 * 60 * 60 * 1000;
+  const cutoff = window === "all" ? 0 : Date.now() - WINDOW_DAYS[window] * 24 * 60 * 60 * 1000;
 
   const afterCutoff = (iso: string | undefined): boolean => {
     if (!iso) return false;

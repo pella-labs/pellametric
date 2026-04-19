@@ -104,14 +104,13 @@ async function mintIngestKey(org: { id: string; slug: string }): Promise<string>
     const bearer = `bm_${org.slug}_${keyId}_${secret}`;
     const outPath = process.env.PERF_INGEST_BEARER_PATH ?? "tests/perf/.ingest-bearer";
     writeFileSync(outPath, bearer, { mode: 0o600 });
-    console.log(`[seed:perf] wrote ingest bearer to ${outPath} (org=${org.slug} keyId=${keyId})`);
     return bearer;
   } finally {
     await sql.end();
   }
 }
 
-function fmtRate(n: number, ms: number): string {
+function _fmtRate(n: number, ms: number): string {
   return ms > 0 ? `${Math.round((n / ms) * 1000).toLocaleString()} ev/s` : "—";
 }
 
@@ -119,21 +118,12 @@ function writeDevTenantId(orgId: string): void {
   const outPath = process.env.PERF_DEV_TENANT_PATH ?? "tests/perf/.dev-tenant-id";
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, orgId, { mode: 0o600 });
-  console.log(`[seed:perf] wrote dev tenant uuid to ${outPath} (${orgId})`);
 }
 
 async function main() {
   const rng = new Rng();
   const plan = buildPlan(rng);
-
-  console.log(
-    `[seed:perf] plan: ${plan.orgs.length} orgs · ${plan.devs.length} devs · ${plan.days}d × ${plan.eventsPerDevPerDay} ev/d/dev = ${(plan.devs.length * plan.days * plan.eventsPerDevPerDay).toLocaleString()} events`,
-  );
-  console.log(`[seed:perf] target floor: ${TARGET.toLocaleString()} · batch: ${BATCH_SIZE}`);
-
-  console.log("[seed:perf] PG control-plane …");
   await seedControlPlane(plan.devs, plan.orgs);
-  console.log(`[seed:perf] PG done: ${plan.orgs.length} orgs, ${plan.devs.length} devs`);
 
   // Mint an ingest key for the largest org so the ingest k6 scenario can
   // POST real bearers. Skipped only if explicitly told to.
@@ -179,10 +169,7 @@ async function main() {
     await ch.insert({ table: "events", values: buffer, format: "JSONEachRow" });
     totalInserted += buffer.length;
     if (totalInserted % (BATCH_SIZE * 10) === 0 || totalInserted >= TARGET) {
-      const elapsed = Date.now() - t0;
-      console.log(
-        `[seed:perf] inserted ${totalInserted.toLocaleString()} / ${TARGET.toLocaleString()}  ${fmtRate(totalInserted, elapsed)}  (${(elapsed / 1000).toFixed(1)}s)`,
-      );
+      const _elapsed = Date.now() - t0;
     }
     buffer = [];
   }
@@ -217,10 +204,7 @@ async function main() {
   await flush();
   await ch.close();
 
-  const elapsed = Date.now() - t0;
-  console.log(
-    `[seed:perf] DONE — ${totalInserted.toLocaleString()} events in ${(elapsed / 1000).toFixed(1)}s (${fmtRate(totalInserted, elapsed)})`,
-  );
+  const _elapsed = Date.now() - t0;
   if (totalInserted < TARGET) {
     console.error(`[seed:perf] FAILED to hit ${TARGET.toLocaleString()} target`);
     process.exit(1);

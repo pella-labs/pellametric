@@ -600,10 +600,8 @@ function writeFixture(spec: FixtureSpec): void {
     "X-Hub-Signature-256": sig,
   };
   writeFileSync(headersPath, `${JSON.stringify(headers, null, 2)}\n`);
-  console.log(`wrote ${spec.event}/${spec.scenario}.json + .headers.json`);
 }
 
 for (const spec of fixtures) {
   writeFixture(spec);
 }
-console.log(`done: ${fixtures.length} fixtures written.`);

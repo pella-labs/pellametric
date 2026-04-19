@@ -10,6 +10,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { hostname, platform } from "node:os";
+
 // Types mirror packages/api/src/schemas/deviceAuth.ts. Inlined here so the
 // compiled binary doesn't transitively pull @bematist/api (which would drag
 // in server-side query code we don't run on-device). Keep these in sync if
@@ -31,6 +32,7 @@ interface DevicePollResponse {
   user_email?: string;
   slow_down_by?: number;
 }
+
 import { atomicWrite, configEnvPath, dataDir } from "@bematist/config";
 import { COLLECTOR_VERSION, parseEnvFile } from "../config";
 
@@ -72,7 +74,6 @@ function parseArgs(args: string[]): LoginOptions {
     } else if (arg === "--force" || arg === "-f") {
       force = true;
     } else if (arg === "--help" || arg === "-h") {
-      console.log(usage());
       process.exit(0);
     } else if (arg !== undefined) {
       console.error(`bematist login: unknown flag: ${arg}`);
@@ -118,8 +119,7 @@ function deviceLabel(): string {
 }
 
 function openInBrowser(url: string): boolean {
-  const cmd =
-    platform() === "darwin" ? "open" : platform() === "win32" ? "cmd" : "xdg-open";
+  const cmd = platform() === "darwin" ? "open" : platform() === "win32" ? "cmd" : "xdg-open";
   const args = platform() === "win32" ? ["/c", "start", "", url] : [url];
   const r = spawnSync(cmd, args, { stdio: "ignore" });
   return r.status === 0;
@@ -147,7 +147,7 @@ async function postJson<T>(url: string, body: unknown, timeoutMs = 10_000): Prom
   return (await res.json()) as T;
 }
 
-function formatCode(code: string): string {
+function _formatCode(code: string): string {
   if (code.length === 8) return `${code.slice(0, 4)}-${code.slice(4)}`;
   return code;
 }
@@ -182,9 +182,7 @@ export async function runLogin(args: string[]): Promise<void> {
   const opts = parseArgs(args);
 
   if (!opts.force && existingToken()) {
-    console.error(
-      "bematist: already logged in (token exists in ~/.bematist/config.env).",
-    );
+    console.error("bematist: already logged in (token exists in ~/.bematist/config.env).");
     console.error("bematist: re-run with --force to replace, or `bematist logout` to clear.");
     process.exit(1);
   }
@@ -206,13 +204,8 @@ export async function runLogin(args: string[]): Promise<void> {
   // 2. Surface URL + code. Try to open a browser; fall back gracefully.
   const opened = !opts.printOnly && openInBrowser(code.verification_uri_complete);
   if (opened) {
-    console.log(`bematist: opened ${code.verification_uri_complete} in your browser.`);
   } else {
-    console.log("bematist: open this URL to authorize:");
-    console.log(`  ${code.verification_uri_complete}`);
   }
-  console.log(`bematist: verify the code matches: ${formatCode(code.user_code)}`);
-  console.log(`bematist: waiting for approval (expires in ${Math.floor(code.expires_in / 60)}m)…`);
 
   // 3. Poll until approved / terminal state / we run out of attempts.
   const pollUrl = `${opts.webUrl}/api/auth/device/poll`;
@@ -237,6 +230,7 @@ export async function runLogin(args: string[]): Promise<void> {
       case "slow_down":
         interval += poll.slow_down_by ?? 5;
         continue;
+      // biome-ignore lint/suspicious/noFallthroughSwitchClause: process.exit ends flow.
       case "expired":
         console.error("bematist: code expired before you approved. Run `bematist login` again.");
         process.exit(1);
@@ -250,12 +244,9 @@ export async function runLogin(args: string[]): Promise<void> {
           console.error("bematist: server returned approved status without credentials; aborting.");
           process.exit(1);
         }
-        const path = await writeCredentials(poll.endpoint, poll.bearer);
-        const who = poll.user_email ? `${poll.user_email} → ` : "";
-        const org = poll.org_name ?? poll.org_slug ?? "your org";
-        console.log(`bematist: approved. logged in as ${who}${org}.`);
-        console.log(`bematist: config saved to ${path}`);
-        console.log("bematist: next: `bematist start` to launch the background collector.");
+        const _path = await writeCredentials(poll.endpoint, poll.bearer);
+        const _who = poll.user_email ? `${poll.user_email} → ` : "";
+        const _org = poll.org_name ?? poll.org_slug ?? "your org";
         return;
       }
     }

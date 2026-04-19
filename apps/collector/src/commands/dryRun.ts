@@ -77,7 +77,7 @@ export async function runDryRun(_args: string[]): Promise<void> {
   });
   for (const e of events) journal.enqueue(e as Event);
 
-  const flush = await flushBatch(journal, egress, {
+  const _flush = await flushBatch(journal, egress, {
     endpoint: config.endpoint,
     token: config.token,
     fetchImpl: fetch,
@@ -87,29 +87,13 @@ export async function runDryRun(_args: string[]): Promise<void> {
   });
 
   // Preview first 10 events.
-  const preview = events.slice(0, 10).map((e) => ({
+  const _preview = events.slice(0, 10).map((e) => ({
     client_event_id: e.client_event_id,
     source: e.source,
     session_id: e.session_id,
     event_kind: e.dev_metrics?.event_kind,
     ts: e.ts,
   }));
-
-  console.log(
-    JSON.stringify(
-      {
-        dryRun: true,
-        endpoint: `${config.endpoint}/v1/events`,
-        adapters: registry.map((a) => a.id),
-        enqueued: events.length,
-        wouldSubmit: events.length,
-        preview,
-        flush,
-      },
-      null,
-      2,
-    ),
-  );
   log.info({ events: events.length }, "dry-run complete");
   db.close();
 }

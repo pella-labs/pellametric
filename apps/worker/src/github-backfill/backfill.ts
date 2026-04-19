@@ -265,8 +265,4 @@ export async function runBackfill(deps: BackfillDeps): Promise<BackfillReport> {
   return { repos: reposReport, git_events: evReport };
 }
 
-function defaultLogger(event: BackfillLogEvent): void {
-  // Structured JSON on one line — pino-compatible shape the worker can
-  // adopt wholesale once it pulls pino into its deps.
-  console.log(JSON.stringify({ ...event, app: "github-backfill" }));
-}
+function defaultLogger(_event: BackfillLogEvent): void {}

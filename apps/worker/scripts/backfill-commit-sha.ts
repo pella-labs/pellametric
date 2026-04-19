@@ -402,10 +402,10 @@ async function main() {
   });
 
   const emitter = await buildRedisEmitter();
-  const sink = makePollingSink({ logger: (m) => console.log(`[mutations] ${m}`) });
+  const sink = makePollingSink({ logger: (_m) => {} });
 
   try {
-    const summary = await runBackfill({
+    const _summary = await runBackfill({
       ch: ch as unknown as ClickHouseLike,
       org_id,
       claudeDir,
@@ -413,9 +413,8 @@ async function main() {
       emitter,
       limit,
       dryRun,
-      log: (m) => console.log(m),
+      log: (_m) => {},
     });
-    console.log("summary:", summary);
   } finally {
     await ch.close().catch(() => undefined);
     await emitter.close().catch(() => undefined);

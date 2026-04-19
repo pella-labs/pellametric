@@ -117,8 +117,7 @@ export async function runReconcileScaffold(
     const githubDeliveryIds = new Set<string>();
     while (pagesRead < maxPages) {
       await sleep(1000); // per-installation 1 req/s floor
-      const url =
-        `${apiBase}/app/hook/deliveries?per_page=100` + (cursor ? `&cursor=${cursor}` : "");
+      const url = `${apiBase}/app/hook/deliveries?per_page=100${cursor ? `&cursor=${cursor}` : ""}`;
       const res = await deps.http.get(url, hdrs());
       pagesRead++;
       if (res.status < 200 || res.status >= 300) break;

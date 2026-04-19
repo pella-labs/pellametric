@@ -133,7 +133,7 @@ export async function redeliverWebhooks(
 
   while (pagesRead < MAX_PAGES) {
     await pacerAcquire(bucket, installationId, sleep);
-    const url = `${apiBase}/app/hook/deliveries?per_page=100` + (cursor ? `&cursor=${cursor}` : "");
+    const url = `${apiBase}/app/hook/deliveries?per_page=100${cursor ? `&cursor=${cursor}` : ""}`;
     const res = await executeWithBackoff(() => deps.http.get(url, hdrs()), sleep);
     pagesRead++;
     if (res.status < 200 || res.status >= 300) {

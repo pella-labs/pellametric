@@ -11,7 +11,7 @@ const db = new Database(egressSqlite());
 migrate(db);
 const j = new Journal(db);
 const egress = new EgressLog(config.dataDir);
-const r = await flushBatch(j, egress, {
+const _r = await flushBatch(j, egress, {
   endpoint: config.endpoint,
   token: config.token,
   fetchImpl: fetch,
@@ -19,5 +19,4 @@ const r = await flushBatch(j, egress, {
   batchSize: config.batchSize,
   ingestOnlyTo: config.ingestOnlyTo,
 });
-console.log(JSON.stringify(r, null, 2));
 db.close();

@@ -107,9 +107,7 @@ function CohortView({ cohort, viewerId }: { cohort: CohortRollup; viewerId: stri
 
   const scatterSrc = cohort.engineers.filter((e) => e.cost > 0 && e.sessions > 0);
   const firstTryRanks = percentileRank(scatterSrc.map((e) => e.firstTryRate));
-  const effRanks = percentileRank(
-    scatterSrc.map((e) => (e.cost > 0 ? e.sessions / e.cost : 0)),
-  );
+  const effRanks = percentileRank(scatterSrc.map((e) => (e.cost > 0 ? e.sessions / e.cost : 0)));
   const scatter = scatterSrc.map((e, i) => ({
     id: e.shortId,
     x: firstTryRanks[i] ?? 50,
@@ -380,14 +378,10 @@ export default async function TeamsPage({
         <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
         <p className="text-sm text-muted-foreground">
           Real cohort — every row here is a teammate whose collector has posted to this
-          deployment&apos;s ingest. Prompt text never reaches ClickHouse (Tier B at ingest
-          strips it by schema); this page can&apos;t show prompts even if it wanted to.
+          deployment&apos;s ingest. Prompt text never reaches ClickHouse (Tier B at ingest strips it
+          by schema); this page can&apos;t show prompts even if it wanted to.
         </p>
-        <EngineerChipRow
-          engineers={cohort.engineers}
-          current={selected}
-          viewerId={viewerId}
-        />
+        <EngineerChipRow engineers={cohort.engineers} current={selected} viewerId={viewerId} />
       </header>
 
       {body}
@@ -399,21 +393,20 @@ export default async function TeamsPage({
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
           <li>
             <strong className="text-foreground">No prompts in ClickHouse.</strong> Ingest rejects
-            any payload carrying prompt_text, tool args, or file contents with HTTP 400.
-            Server-side redactor (TruffleHog + gitleaks + Presidio) runs on everything that gets
-            through. This page can only query what&apos;s in the schema — token counts, cost,
-            tool names, statuses — no content.
+            any payload carrying prompt_text, tool args, or file contents with HTTP 400. Server-side
+            redactor (TruffleHog + gitleaks + Presidio) runs on everything that gets through. This
+            page can only query what&apos;s in the schema — token counts, cost, tool names, statuses
+            — no content.
           </li>
           <li>
             <strong className="text-foreground">Per-viewer personal pages.</strong> Each
             teammate&apos;s /insights, /summary, /me/digest queries CH filtered by their own
-            engineer_id from the Better Auth session. Same URL, different filtered data per
-            viewer.
+            engineer_id from the Better Auth session. Same URL, different filtered data per viewer.
           </li>
           <li>
-            <strong className="text-foreground">Names vs color dots.</strong> Below k=5,
-            identity chips show the first 6 chars of the hashed engineer_id. Above k=5, names
-            only unlock via explicit IC opt-in per CLAUDE.md §7.4.
+            <strong className="text-foreground">Names vs color dots.</strong> Below k=5, identity
+            chips show the first 6 chars of the hashed engineer_id. Above k=5, names only unlock via
+            explicit IC opt-in per CLAUDE.md §7.4.
           </li>
           <li>
             <strong className="text-foreground">Transcript stays local.</strong>{" "}

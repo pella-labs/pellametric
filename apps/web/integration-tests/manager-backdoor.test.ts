@@ -43,7 +43,7 @@ async function seed(): Promise<void> {
     INSERT INTO orgs (name, slug)
     VALUES ('backdoor-test', ${`backdoor-test-${Date.now()}-${Math.random()}`})
     RETURNING id`) as unknown as Array<{ id: string }>;
-  tenantId = orgRows[0]!.id;
+  tenantId = orgRows[0]?.id;
   const u1 = (await sql<Array<{ id: string }>>`
     INSERT INTO users (org_id, sso_subject, email)
     VALUES (${tenantId}, ${"sub-a"}, ${`a-${Date.now()}-${Math.random()}@x.test`})
@@ -52,8 +52,8 @@ async function seed(): Promise<void> {
     INSERT INTO users (org_id, sso_subject, email)
     VALUES (${tenantId}, ${"sub-b"}, ${`b-${Date.now()}-${Math.random()}@x.test`})
     RETURNING id`) as unknown as Array<{ id: string }>;
-  actorUserId = u1[0]!.id;
-  otherUserId = u2[0]!.id;
+  actorUserId = u1[0]?.id;
+  otherUserId = u2[0]?.id;
 }
 
 async function cleanup(): Promise<void> {

@@ -151,8 +151,6 @@ beforeEach(async () => {
 describe("worker/github consumer — real Postgres integration", () => {
   test("skip-note: DATABASE_URL not reachable; skipping integration suite", () => {
     if (!skip) return;
-    // Emit a marker so the runner shows this branch explicitly.
-    console.log("[worker/github consumer] SKIPPED — no Postgres at DATABASE_URL");
     expect(skip).toBe(true);
   });
 

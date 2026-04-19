@@ -1,7 +1,7 @@
+import { afterEach, beforeEach, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
 import { platform, tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "bun:test";
 import { runConfig } from "./config";
 
 let tmpDir: string;

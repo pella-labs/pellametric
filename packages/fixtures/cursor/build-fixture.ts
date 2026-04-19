@@ -88,7 +88,6 @@ db.run("INSERT INTO ItemTable (key, value) VALUES (?, ?)", [
 ]);
 db.run("INSERT INTO ItemTable (key, value) VALUES (?, ?)", ["other.unrelated.key", '{"x":1}']);
 db.close();
-console.log(`wrote ${dbPath}`);
 
 // Emit expected normalized events — keep in lockstep with normalize.ts.
 import { normalizeGenerations } from "../../../apps/collector/src/adapters/cursor/normalize";
@@ -103,4 +102,3 @@ const events = normalizeGenerations(
   "0.43.0",
 );
 writeFileSync(jsonlPath, `${events.map((e) => JSON.stringify(e)).join("\n")}\n`);
-console.log(`wrote ${jsonlPath} — ${events.length} events`);

@@ -32,7 +32,6 @@ const FIXTURE_DIR = join(import.meta.dir, "..", "__fixtures__");
 function writeJsonl(path: string, cases: FixtureCase[]): void {
   const content = cases.map((c) => JSON.stringify(c)).join("\n") + (cases.length > 0 ? "\n" : "");
   writeFileSync(path, content, "utf8");
-  console.log(`wrote ${cases.length} cases → ${path}`);
 }
 
 // Train split — total 500 (10 hand-curated + 490 generated).
@@ -90,5 +89,3 @@ writeJsonl(
     "healthy-prod-deployer": 0,
   }),
 );
-
-console.log("done.");

@@ -3,10 +3,10 @@
 // behavior: template rendering, path resolution, dispatch to the right
 // implementation on each platform, and log-path layout.
 
+import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "bun:test";
 import { daemonLogPaths, daemonStatus } from "./daemon";
 import {
   LAUNCHD_PLIST_TMPL,

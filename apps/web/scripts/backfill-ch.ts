@@ -1,8 +1,8 @@
 // Backfill grammata → ClickHouse `events`.
 //   bun run apps/web/scripts/backfill-ch.ts
 
-import { createClient } from "@clickhouse/client";
 import { createHash } from "node:crypto";
+import { createClient } from "@clickhouse/client";
 import { buildAnalytics, mergeAll, readClaude, readCodex, readCursor } from "grammata";
 
 const CH_URL = process.env.CLICKHOUSE_URL ?? "http://localhost:8123";
@@ -18,7 +18,9 @@ const DEVICE_ID = createHash("sha256")
 
 const NAMESPACE = Buffer.from("6ba7b8109dad11d180b400c04fd430c8", "hex");
 function uuidv5(name: string): string {
-  const h = createHash("sha1").update(Buffer.concat([NAMESPACE, Buffer.from(name)])).digest();
+  const h = createHash("sha1")
+    .update(Buffer.concat([NAMESPACE, Buffer.from(name)]))
+    .digest();
   h[6] = (h[6]! & 0x0f) | 0x50;
   h[8] = (h[8]! & 0x3f) | 0x80;
   const x = h.toString("hex");
@@ -34,7 +36,6 @@ function fidelity(src: string): number {
 }
 
 async function main() {
-  console.log("Reading local sessions via grammata…");
   const [claude, codex, cursor] = await Promise.all([
     readClaude().catch(() => null),
     readCodex().catch(() => null),
@@ -43,7 +44,6 @@ async function main() {
   const merged = mergeAll(claude, codex, cursor, null);
   const analytics = buildAnalytics(merged);
   const sessions = analytics.sessionRows;
-  console.log(`Got ${sessions.length} sessions`);
 
   const rows: Record<string, unknown>[] = [];
   for (const s of sessions) {
@@ -150,8 +150,6 @@ async function main() {
     }
   }
 
-  console.log(`Prepared ${rows.length} events (org=${ORG_ID} engineer=${ENGINEER_ID})`);
-
   const ch = createClient({
     url: CH_URL,
     database: CH_DATABASE,
@@ -160,10 +158,8 @@ async function main() {
   const BATCH = 5000;
   for (let i = 0; i < rows.length; i += BATCH) {
     await ch.insert({ table: "events", values: rows.slice(i, i + BATCH), format: "JSONEachRow" });
-    console.log(`Inserted ${Math.min(i + BATCH, rows.length)}/${rows.length}`);
   }
   await ch.close();
-  console.log("Done.");
 }
 
 main().catch((e) => {

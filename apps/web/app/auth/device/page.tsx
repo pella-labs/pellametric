@@ -121,8 +121,9 @@ function ManualEntryFallback() {
       <div className="flex w-full max-w-md flex-col gap-6 rounded-xl border border-border bg-card p-8 shadow-sm">
         <h1 className="text-2xl font-semibold tracking-tight">Authorize a CLI session</h1>
         <p className="text-sm text-muted-foreground">
-          Open this page by running <code className="font-mono text-foreground">bematist login</code>{" "}
-          in your terminal. The CLI prints a URL with the code pre-filled.
+          Open this page by running{" "}
+          <code className="font-mono text-foreground">bematist login</code> in your terminal. The
+          CLI prints a URL with the code pre-filled.
         </p>
         <p className="text-xs text-muted-foreground">
           If you know the user code, you can append it to this URL:{" "}

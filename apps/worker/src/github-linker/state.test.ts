@@ -53,7 +53,7 @@ describe("computeLinkerState — per-input-dimension", () => {
   test("direct_repo only → 1 link, eligible under mode=all", () => {
     const out = computeLinkerState(baseInputs(), CLOCK);
     expect(out.links).toHaveLength(1);
-    expect(out.links[0]!.match_reason).toBe("direct_repo");
+    expect(out.links[0]?.match_reason).toBe("direct_repo");
     expect(out.eligibility.eligible).toBe(true);
   });
 
@@ -83,7 +83,7 @@ describe("computeLinkerState — per-input-dimension", () => {
     });
     const out = computeLinkerState(inp, CLOCK);
     expect(out.links).toHaveLength(1);
-    expect(out.links[0]!.match_reason).toBe("commit_link");
+    expect(out.links[0]?.match_reason).toBe("commit_link");
   });
 
   test("pr_link produces separate row from commit_link for same PR", () => {
@@ -135,7 +135,7 @@ describe("computeLinkerState — per-input-dimension", () => {
     });
     const out = computeLinkerState(inp, CLOCK);
     expect(out.links).toHaveLength(1);
-    expect(out.links[0]!.match_reason).toBe("deployment_link");
+    expect(out.links[0]?.match_reason).toBe("deployment_link");
   });
 
   test("force-push tombstone excludes SHA from commit_link", () => {
@@ -172,7 +172,7 @@ describe("computeLinkerState — per-input-dimension", () => {
     const inp = baseInputs({ installation_status: "suspended" });
     const out = computeLinkerState(inp, CLOCK);
     expect(out.links).toHaveLength(1);
-    expect(out.links[0]!.stale_at).not.toBeNull();
+    expect(out.links[0]?.stale_at).not.toBeNull();
   });
 
   test("unknown repo is ignored even when PR matches SHA", () => {

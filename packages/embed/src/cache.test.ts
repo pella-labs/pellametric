@@ -14,7 +14,7 @@ function fakeProvider(overrides: Partial<EmbedProvider> = {}): EmbedProvider {
     maxBatch: 10,
     maxInputTokens: 100,
     costPerMillionTokens: 0.02,
-    async embed(req): Promise<EmbedResult> {
+    async embed(_req): Promise<EmbedResult> {
       callCount++;
       return {
         vector: Float32Array.from([0.1, 0.2, 0.3, 0.4]),

@@ -2375,24 +2375,24 @@
    `hover: none` + `pointer: coarse` covers every mobile browser. */
 @media (hover: none), (pointer: coarse) {
   .card-flipper .card-holo {
-    --card-opacity: 0 !important;
+    --card-opacity: 0;
   }
   .card-flipper .card-holo-shine,
   .card-flipper .card-holo-glare {
-    opacity: 0 !important;
+    opacity: 0;
   }
   .card-flipper .card__fire,
   .card-flipper .card__cyan {
-    opacity: 0 !important;
+    opacity: 0;
   }
   .card-flipper .aurora-blob {
-    opacity: 0.3 !important;
+    opacity: 0.3;
   }
   .card-flipper .card-front {
     box-shadow:
       0 0 0 1px rgba(255, 255, 255, 0.06),
       0 4px 24px rgba(0, 0, 0, 0.3),
-      0 20px 60px rgba(0, 0, 0, 0.4) !important;
+      0 20px 60px rgba(0, 0, 0, 0.4);
   }
 }
 

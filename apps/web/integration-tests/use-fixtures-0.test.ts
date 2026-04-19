@@ -363,7 +363,7 @@ describe.skipIf(!RUN_E2E)("USE_FIXTURES=0 end-to-end", () => {
       // spy capturing CH SQL containing `dev_daily_rollup`. Whether the SQL
       // currently runs is a separate (filed) bug.
       let summarySucceeded = false;
-      let realQueryError: unknown = null;
+      let _realQueryError: unknown = null;
       try {
         const summary = await getSummary(ctx, { window: "7d" });
         // If/when dashboard.ts is fixed, this asserts the real shape lands.
@@ -372,7 +372,7 @@ describe.skipIf(!RUN_E2E)("USE_FIXTURES=0 end-to-end", () => {
         expect(Array.isArray(summary.cost_series)).toBe(true);
         summarySucceeded = true;
       } catch (err) {
-        realQueryError = err;
+        _realQueryError = err;
       }
 
       // Hard proof we took the real branch (vs. the deterministic fixture
@@ -409,14 +409,6 @@ describe.skipIf(!RUN_E2E)("USE_FIXTURES=0 end-to-end", () => {
       // outcome is acceptable proof of "real branch taken". We log the error
       // (if any) for the demo transcript.
       if (!summarySucceeded) {
-        // eslint-disable-next-line no-console
-        console.log(
-          JSON.stringify({
-            level: "warn",
-            msg: "e2e: getSummary real-branch SQL incompatible with MV (known bug, see PR body)",
-            err: realQueryError instanceof Error ? realQueryError.message : String(realQueryError),
-          }),
-        );
       }
     } finally {
       delete process.env.USE_FIXTURES;

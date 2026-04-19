@@ -69,17 +69,6 @@ function makeDevStore(): IngestKeyStore {
 }
 
 async function main(): Promise<void> {
-  // eslint-disable-next-line no-console
-  console.log(
-    JSON.stringify({
-      level: "info",
-      msg: "smoke: starting",
-      redis: REDIS_URL,
-      ch: CH_URL,
-      port: PORT,
-    }),
-  );
-
   // 1. Wire the real runtime adapters.
   const sharedRedis = await createSharedNodeRedisClient({ url: REDIS_URL });
   const lua = await createNodeRedisLuaClient({ client: sharedRedis });
@@ -159,21 +148,11 @@ async function main(): Promise<void> {
     dev_metrics: { event_kind: "llm_response", cost_usd: 0.001 * (i + 1) },
   }));
 
-  const res = await fetch(`${base}/v1/events`, {
+  const _res = await fetch(`${base}/v1/events`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: bearer },
     body: JSON.stringify({ events }),
   });
-
-  // eslint-disable-next-line no-console
-  console.log(
-    JSON.stringify({
-      level: "info",
-      msg: "smoke: post done",
-      status: res.status,
-      body: await res.text(),
-    }),
-  );
 
   // 5. Poll ClickHouse up to ~5s.
   let count = 0;
@@ -206,18 +185,6 @@ async function main(): Promise<void> {
     rollupCost = Number(json.data[0]?.cost ?? 0);
   }
 
-  // eslint-disable-next-line no-console
-  console.log(
-    JSON.stringify({
-      level: "info",
-      msg: "smoke: ch summary",
-      count,
-      expected: 10,
-      cost_usd_events: costUsd,
-      cost_usd_rollup: rollupCost,
-    }),
-  );
-
   // 7. Teardown
   await consumer.stop();
   try {
@@ -234,8 +201,6 @@ async function main(): Promise<void> {
   } catch {}
 
   if (count >= 10 && rollupCost > 0) {
-    // eslint-disable-next-line no-console
-    console.log(JSON.stringify({ level: "info", msg: "smoke: OK" }));
     process.exit(0);
   }
   // eslint-disable-next-line no-console

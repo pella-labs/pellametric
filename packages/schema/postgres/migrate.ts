@@ -36,14 +36,12 @@ if (rollbackIdx !== -1) {
   }
   const sql = readFileSync(rollbackFile, "utf8");
   await client.unsafe(sql);
-  console.log(`[pg-migrate] rollback — applied ${target}.down.sql`);
   await client.end();
   process.exit(0);
 }
 
 // ---- Forward path -------------------------------------------------------
 await migrate(db, { migrationsFolder });
-console.log(`[pg-migrate] drizzle — applied migrations from ${migrationsFolder}`);
 
 // Custom idempotent SQL (triggers, RLS policies, functions) that drizzle
 // doesn't know how to author. Each file must use CREATE OR REPLACE / DROP IF
@@ -55,7 +53,6 @@ if (existsSync(customFolder)) {
   for (const f of files) {
     const sql = readFileSync(join(customFolder, f), "utf8");
     await client.unsafe(sql);
-    console.log(`[pg-migrate] custom — applied ${f}`);
   }
 }
 

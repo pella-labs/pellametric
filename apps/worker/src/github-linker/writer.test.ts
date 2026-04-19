@@ -113,7 +113,6 @@ beforeEach(async () => {
 describe("writeLinkerState — same-txn cascade", () => {
   test("skip-note when DATABASE_URL unreachable", () => {
     if (!skip) return;
-    console.log("[writer] SKIPPED — no Postgres at DATABASE_URL");
     expect(skip).toBe(true);
   });
 

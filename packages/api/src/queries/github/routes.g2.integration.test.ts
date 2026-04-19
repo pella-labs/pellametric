@@ -88,7 +88,7 @@ function ctx(role: "admin" | "viewer" = "admin"): Ctx {
       pg: {
         async query<T = unknown>(text: string, params?: unknown[]): Promise<T[]> {
           // biome-ignore lint/suspicious/noExplicitAny: postgres.js widens to RowList
-          const rows = (await sql!.unsafe(text, (params ?? []) as any[])) as unknown as T[];
+          const rows = (await sql?.unsafe(text, (params ?? []) as any[])) as unknown as T[];
           return rows;
         },
       },

@@ -298,7 +298,7 @@ function windowsInstall(bin: string): string {
   return path;
 }
 
-function windowsIsRunning(): boolean {
+function _windowsIsRunning(): boolean {
   const r = run("schtasks", ["/Query", "/TN", WINDOWS_TASK, "/FO", "CSV", "/NH"]);
   if (r.status !== 0) return false;
   // CSV row: "TaskName","Next Run Time","Status"

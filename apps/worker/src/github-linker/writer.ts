@@ -59,7 +59,7 @@ export async function writeLinkerState(
       `SELECT inputs_sha256 FROM session_repo_eligibility WHERE tenant_id = $1 AND session_id = $2`,
       [tenantId, state.eligibility.session_id],
     )) as unknown as Array<{ inputs_sha256: Buffer | null } | undefined>;
-    if (existing && existing.inputs_sha256 && existing.inputs_sha256.equals(state.inputs_sha256)) {
+    if (existing?.inputs_sha256?.equals(state.inputs_sha256)) {
       result = { ...result, skipped: true };
       return;
     }

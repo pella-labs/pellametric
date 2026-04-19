@@ -88,7 +88,7 @@ export async function consumeMessage(
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    const log = deps.log ?? ((e) => console.log(JSON.stringify(e)));
+    const log = deps.log ?? ((_e) => {});
     log({
       level: "warn",
       app: "worker-github",
@@ -112,7 +112,7 @@ async function handleParsed(
   payload: WebhookBusPayload,
   deps: ConsumerDeps,
 ): Promise<ConsumeOutcome> {
-  const log = deps.log ?? ((e) => console.log(JSON.stringify(e)));
+  const log = deps.log ?? ((_e) => {});
   const salt = (deps.tenantSalt ?? defaultTenantSalt)(payload.tenant_id);
 
   // RLS: every domain-table write runs in a transaction that SETs

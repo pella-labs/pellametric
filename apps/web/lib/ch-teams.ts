@@ -53,10 +53,7 @@ function chClient() {
  * tenant. Returns empty arrays if CH is unreachable or the tenant has no
  * events — caller decides whether to fall back to grammata.
  */
-export async function getCohort(
-  tenantId: string,
-  windowDays = 30,
-): Promise<CohortRollup> {
+export async function getCohort(tenantId: string, windowDays = 30): Promise<CohortRollup> {
   const ch = chClient();
   try {
     const rs = await ch.query({
@@ -110,10 +107,7 @@ export async function getCohort(
       cost: Number(r.cost) || 0,
       toolCalls: Number(r.tool_calls) || 0,
       toolErrors: Number(r.tool_errors) || 0,
-      firstTryRate:
-        Number(r.tool_calls) > 0
-          ? 1 - Number(r.tool_errors) / Number(r.tool_calls)
-          : 1,
+      firstTryRate: Number(r.tool_calls) > 0 ? 1 - Number(r.tool_errors) / Number(r.tool_calls) : 1,
       activeDays: Number(r.active_days) || 0,
       firstSeen: r.first_seen,
       lastSeen: r.last_seen,

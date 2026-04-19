@@ -151,10 +151,7 @@ function resolveStr(
   return { value: fallback, source: "default" };
 }
 
-function resolveOptStr(
-  envName: string,
-  fileVars: Record<string, string>,
-): Resolved<string | null> {
+function resolveOptStr(envName: string, fileVars: Record<string, string>): Resolved<string | null> {
   const envVal = process.env[envName];
   if (envVal !== undefined && envVal !== "") {
     return { value: envVal, source: "env" };
@@ -205,9 +202,7 @@ export function loadConfig(overrides: Partial<CollectorConfig> = {}): CollectorC
  * Same as loadConfig() but also surfaces which source each field came from.
  * `bematist doctor` uses this to annotate each resolved value.
  */
-export function loadConfigWithSources(
-  overrides: Partial<CollectorConfig> = {},
-): LoadedConfig {
+export function loadConfigWithSources(overrides: Partial<CollectorConfig> = {}): LoadedConfig {
   const fileVars = readFileVars(configEnvPath());
 
   const endpoint = (() => {

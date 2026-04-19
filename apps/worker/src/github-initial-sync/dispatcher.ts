@@ -31,7 +31,7 @@ export interface DispatcherTickReport {
 /** Pick queued sync rows and run them. Returns a summary for observability. */
 export async function dispatcherTick(deps: DispatcherDeps): Promise<DispatcherTickReport> {
   const maxPerTick = deps.maxPerTick ?? 5;
-  const log = deps.log ?? ((entry) => console.log(JSON.stringify(entry)));
+  const log = deps.log ?? ((_entry) => {});
 
   const candidates = (await deps.sql.unsafe(
     `SELECT tenant_id::text AS tenant_id, installation_id::text AS installation_id

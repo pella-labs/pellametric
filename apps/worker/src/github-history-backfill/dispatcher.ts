@@ -47,7 +47,7 @@ export async function dispatcherTick(
 ): Promise<HistoryDispatcherTickReport> {
   const maxPerTick = deps.maxPerTick ?? 5;
   const windowDays = deps.windowDays ?? 90;
-  const log = deps.log ?? ((entry) => console.log(JSON.stringify(entry)));
+  const log = deps.log ?? ((_entry) => {});
 
   // ---- Step 1. Auto-enqueue installations that finished initial sync but
   // have never had a history backfill started. We only seed rows here; the

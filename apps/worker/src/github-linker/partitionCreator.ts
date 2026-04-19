@@ -32,7 +32,7 @@ export async function ensurePartitionsFor(
   // latter is the cron's raison d'être; the former makes local-dev idempotent.
   const months: Date[] = [firstOfMonthUtc(today)];
   const next = firstOfMonthUtc(in7days);
-  if (next.getTime() !== months[0]!.getTime()) months.push(next);
+  if (next.getTime() !== months[0]?.getTime()) months.push(next);
   // Always ensure next-next month too, so long onboarding windows never
   // trip a missing partition between T-7d and the cron actually running.
   months.push(firstOfMonthUtc(addMonths(next, 1)));

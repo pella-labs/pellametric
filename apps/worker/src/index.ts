@@ -709,7 +709,7 @@ async function runGithubHistoryBackfillDispatcher(): Promise<
       tokenBucket,
       getInstallationToken,
       publish: (topic, msg) => bus.publish(topic, msg),
-      log: (entry) => console.log(JSON.stringify({ ...entry, app: "worker-history-backfill" })),
+      log: (_entry) => {},
     });
   } finally {
     await bus.close();

@@ -15,10 +15,7 @@ import { getDbClients } from "./db";
 
 const cache = new Map<string, string>();
 
-export async function resolveEngineerId(
-  orgId: string,
-  userId: string,
-): Promise<string | null> {
+export async function resolveEngineerId(orgId: string, userId: string): Promise<string | null> {
   const key = `${orgId}|${userId}`;
   const hit = cache.get(key);
   if (hit) return hit;

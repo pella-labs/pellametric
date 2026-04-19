@@ -349,7 +349,7 @@
   .bematist-deck .cover-monogram .ring-text,
   .bematist-deck .rings-bg .ring-outer,
   .bematist-deck .rings-bg .ring-inner {
-    animation: none !important;
+    animation: none;
   }
 }
 .bematist-deck .cover-bottom {
@@ -1125,7 +1125,7 @@
 @media (prefers-reduced-motion: reduce) {
   .bematist-deck .deck-slide,
   .bematist-deck .deck-nav .dot {
-    transition: none !important;
-    animation: none !important;
+    transition: none;
+    animation: none;
   }
 }

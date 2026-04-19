@@ -29,7 +29,7 @@ function formatDuration(ms: number): string {
   return `${m}m ${rem}s`;
 }
 
-function formatMinutesAsHm(ms: number): string {
+function _formatMinutesAsHm(ms: number): string {
   const mins = Math.max(0, Math.round(ms / 60_000));
   const h = Math.floor(mins / 60);
   const m = mins % 60;

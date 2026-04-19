@@ -30,8 +30,7 @@ export function modelMix(analytics: AnalyticsData): ModelMixRow[] {
     const cur = retryByModel.get(key) ?? { retries: 0, turns: 0, cost: 0 };
     cur.retries += s.retryCount ?? 0;
     cur.turns += s.totalEditTurns || s.messageCount || 0;
-    const ratio =
-      s.totalEditTurns > 0 ? Math.min(1, (s.retryCount ?? 0) / s.totalEditTurns) : 0;
+    const ratio = s.totalEditTurns > 0 ? Math.min(1, (s.retryCount ?? 0) / s.totalEditTurns) : 0;
     cur.cost += (s.cost ?? 0) * ratio;
     retryByModel.set(key, cur);
   }
@@ -98,8 +97,7 @@ export function weekOverWeek(analytics: AnalyticsData): WowDelta[] {
   const tail = daily.slice(-14);
   const prev = tail.slice(0, 7);
   const cur = tail.slice(7);
-  const sum = <T>(arr: T[], pick: (x: T) => number): number =>
-    arr.reduce((a, b) => a + pick(b), 0);
+  const sum = <T>(arr: T[], pick: (x: T) => number): number => arr.reduce((a, b) => a + pick(b), 0);
   const curCost = sum(cur, (d) => d.cost);
   const prevCost = sum(prev, (d) => d.cost);
 
@@ -151,8 +149,7 @@ export function weekOverWeek(analytics: AnalyticsData): WowDelta[] {
       label: "First-try rate",
       current: firstTryForRange(curStart, curEnd),
       previous: firstTryForRange(prevStart, prevEnd),
-      delta:
-        firstTryForRange(curStart, curEnd) - firstTryForRange(prevStart, prevEnd),
+      delta: firstTryForRange(curStart, curEnd) - firstTryForRange(prevStart, prevEnd),
       format: "percent",
       polarity: "up-good",
     },
@@ -162,8 +159,7 @@ export function weekOverWeek(analytics: AnalyticsData): WowDelta[] {
       previous: cacheSavedForRange(prevStart, prevEnd),
       delta:
         cacheSavedForRange(prevStart, prevEnd) > 0
-          ? (cacheSavedForRange(curStart, curEnd) -
-              cacheSavedForRange(prevStart, prevEnd)) /
+          ? (cacheSavedForRange(curStart, curEnd) - cacheSavedForRange(prevStart, prevEnd)) /
             cacheSavedForRange(prevStart, prevEnd)
           : 0,
       format: "currency",
@@ -282,8 +278,7 @@ export function detectAnomalies(analytics: AnalyticsData): AnomalyRow[] {
   const stats = byDow.map((arr) => {
     const n = arr.length;
     const mean = n > 0 ? arr.reduce((a, b) => a + b, 0) / n : 0;
-    const variance =
-      n > 1 ? arr.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1) : 0;
+    const variance = n > 1 ? arr.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1) : 0;
     return { mean, stddev: Math.sqrt(variance), n };
   });
 

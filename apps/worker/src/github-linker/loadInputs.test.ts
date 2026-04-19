@@ -184,7 +184,6 @@ beforeEach(async () => {
 describe("loadInputs — assembles LinkerInputs from PG + CH", () => {
   test("skip-note when DATABASE_URL or CLICKHOUSE_URL unreachable", () => {
     if (!skip) return;
-    console.log("[loadInputs] SKIPPED — no Postgres or ClickHouse");
     expect(skip).toBe(true);
   });
 

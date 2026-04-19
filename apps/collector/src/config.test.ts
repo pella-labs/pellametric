@@ -1,7 +1,7 @@
+import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "bun:test";
 import { loadConfig, loadConfigWithSources, parseEnvFile } from "./config";
 
 const saved: Record<string, string | undefined> = {};
@@ -147,7 +147,7 @@ test("defaults report source = default", () => {
 });
 
 test("config.env parses quoted values", () => {
-  writeConfigEnv('BEMATIST_ENDPOINT="https://quoted.test"\nBEMATIST_TOKEN=\'bm_single\'\n');
+  writeConfigEnv("BEMATIST_ENDPOINT=\"https://quoted.test\"\nBEMATIST_TOKEN='bm_single'\n");
   const { config } = loadConfigWithSources();
   expect(config.endpoint).toBe("https://quoted.test");
   expect(config.token).toBe("bm_single");

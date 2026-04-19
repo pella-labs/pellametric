@@ -5,9 +5,8 @@
 import "server-only";
 
 import { createClient } from "@clickhouse/client";
-import type { MergedUsage, UnifiedSession } from "grammata";
+import type { AnalyticsData, MergedUsage, UnifiedSession } from "grammata";
 import { buildAnalytics } from "grammata";
-import type { AnalyticsData } from "grammata";
 
 const CH_URL = process.env.CLICKHOUSE_URL ?? "http://localhost:8123";
 const CH_DATABASE = process.env.CLICKHOUSE_DATABASE ?? "bematist";
@@ -88,7 +87,7 @@ export async function readAnalyticsForEngineer(
       const cacheCreate = Number(r.cache_create) || 0;
       const errs = Number(r.errs) || 0;
       const oks = Number(r.oks) || 0;
-      const d = new Date(r.ts.replace(" ", "T") + "Z");
+      const d = new Date(`${r.ts.replace(" ", "T")}Z`);
       return {
         id: r.session_id,
         name: (attrs.name as string) || r.session_id.slice(0, 8),

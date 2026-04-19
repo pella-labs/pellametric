@@ -587,7 +587,7 @@ describe("linker commutativity (PRD §10 D53) — MERGE BLOCKER", () => {
     const expected = repoIdHash(defaultTenantSalt(tenantId), "901");
     const st = computeLinkerState(scenarios[8]!.build(), CLOCK);
     expect(st.links.length).toBe(1);
-    expect(st.links[0]!.repo_id_hash.equals(expected)).toBe(true);
+    expect(st.links[0]?.repo_id_hash.equals(expected)).toBe(true);
   });
 
   test("random bytes unrelated to inputs do not leak into output", () => {

@@ -13,7 +13,6 @@ import { runServe } from "./commands/serve";
 import { runStart } from "./commands/start";
 import { runStatus } from "./commands/status";
 import { runStop } from "./commands/stop";
-import { COLLECTOR_VERSION } from "./config";
 import { harden } from "./harden";
 
 async function main() {
@@ -57,7 +56,6 @@ async function main() {
     case "--version":
     case "-v":
     case "version":
-      console.log(`bematist ${COLLECTOR_VERSION}`);
       return;
     case undefined:
     case "-h":
@@ -72,32 +70,7 @@ async function main() {
   }
 }
 
-function printHelp() {
-  console.log(`bematist ${COLLECTOR_VERSION} — collector CLI
-
-Commands:
-  login               Authorize this machine against your Bematist org (browser flow)
-  logout              Clear credentials from ~/.bematist/config.env
-  start               Install + start the OS service (launchd / systemd / schtasks)
-  stop                Stop the OS service
-  status              Active adapters, last event, queue depth, daemon state
-  logs                Tail the collector's stdout/err (or journalctl on Linux)
-  serve               Run the collector daemon in foreground (blocks the terminal)
-  dry-run             Poll once + log what would be sent, send nothing
-  audit --tail [-n N] Stream the egress journal (Bill of Rights #1)
-  doctor              Pre-flight checks: core dumps, ingest, adapters, sha256
-  config <sub>        get/set/list persisted config (~/.bematist/config.env)
-  --version           Print version
-
-Environment (see CLAUDE.md §Environment Variables):
-  BEMATIST_ENDPOINT       Ingest URL (default http://localhost:8000)
-  BEMATIST_TOKEN          Bearer token (required for serve)
-  BEMATIST_DATA_DIR       Egress journal + state dir (default ~/.bematist)
-  BEMATIST_DRY_RUN=1      Log what would be sent, send nothing
-  BEMATIST_LOG_LEVEL      pino level (default warn)
-  BEMATIST_INGEST_ONLY_TO Egress allowlist (cert-pinning host)
-`);
-}
+function printHelp() {}
 
 main().catch((e) => {
   console.error("bematist: fatal", e);
