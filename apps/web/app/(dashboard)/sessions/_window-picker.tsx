@@ -36,7 +36,7 @@ export function WindowPicker({ value }: { value: Win }) {
         disabled={isPending}
         aria-label="Sessions time window"
         className={cn(
-          "rounded-md border border-border bg-background px-2 py-1 font-medium text-foreground",
+          "h-8 rounded-md border border-border bg-background px-2.5 py-1 pr-7 font-medium text-foreground",
           "cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring",
           "disabled:cursor-not-allowed disabled:opacity-50",
         )}

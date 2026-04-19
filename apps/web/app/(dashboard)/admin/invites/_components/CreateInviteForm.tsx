@@ -55,7 +55,7 @@ export function CreateInviteForm() {
             id="invite-role"
             value={role}
             onChange={(e) => setRole(e.target.value as "admin" | "ic")}
-            className="h-9 cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+            className="h-10 cursor-pointer rounded-md border border-input bg-background px-3.5 py-2 pr-9 text-sm text-foreground"
           >
             <option value="ic">Engineer (default) — can view own data + team aggregates</option>
             <option value="admin">Admin — can mint keys, invite, read audit logs</option>

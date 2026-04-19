@@ -5,12 +5,8 @@ import { DashboardNav } from "./_nav";
 import "./dashboard.css";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  // Role gate is decorative on the sidebar — the authoritative check lives
-  // in apps/web/app/admin/layout.tsx (requireAdmin) + in every mutation via
-  // assertRole(). This just decides whether to render the Admin group.
   const ctx = await getSessionCtx();
   const isAdmin = ctx.role === "admin";
-
   return (
     <div className="bematist-dashboard">
       <div className="dash-shell">

@@ -70,7 +70,7 @@ export function MintKeyForm({ developers }: MintKeyFormProps) {
               id="mint-engineer"
               value={engineerId}
               onChange={(e) => setEngineerId(e.target.value)}
-              className="h-9 cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+              className="h-10 cursor-pointer rounded-md border border-input bg-background px-3.5 py-2 pr-9 text-sm text-foreground"
               required
             >
               {developers.map((d) => (
@@ -103,7 +103,7 @@ export function MintKeyForm({ developers }: MintKeyFormProps) {
               id="mint-tier"
               value={tier}
               onChange={(e) => setTier(e.target.value as "A" | "B")}
-              className="h-9 cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+              className="h-10 cursor-pointer rounded-md border border-input bg-background px-3.5 py-2 pr-9 text-sm text-foreground"
             >
               <option value="B">Tier B — default (counters + redacted envelopes)</option>
               <option value="A">Tier A — counters only</option>

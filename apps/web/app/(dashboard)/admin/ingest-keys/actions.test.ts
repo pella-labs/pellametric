@@ -7,7 +7,7 @@ import {
   type IngestKeyStore,
   LRUCache,
   verifyBearer,
-} from "../../../../ingest/src/auth/verifyIngestKey";
+} from "../../../../../ingest/src/auth/verifyIngestKey";
 
 /**
  * End-to-end authZ contract for minted keys.
