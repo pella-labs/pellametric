@@ -1,0 +1,17 @@
+node_modules
+.next
+dist
+coverage
+.claude
+.git
+test-results
+playwright-report
+**/*.test.ts
+tests/perf/
+tests/soak/
+tests/privacy/adversarial/
+.env*
+!.env.example
+*.log
+.DS_Store
+dev-docs/archived

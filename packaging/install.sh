@@ -17,7 +17,7 @@
 
 set -eu
 
-REPO_DEFAULT="bematist-org/bematist"
+REPO_DEFAULT="pella-labs/bematist"
 PREFIX_DEFAULT="/usr/local"
 
 main() {

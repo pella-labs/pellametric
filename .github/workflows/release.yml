@@ -73,10 +73,14 @@ jobs:
             runner: ubuntu-latest
             bun_target: bun-linux-arm64
             ext: ""
-          - target: darwin-x64
-            runner: macos-13
-            bun_target: bun-darwin-x64
-            ext: ""
+          # darwin-x64 temporarily dropped due to sustained macos-13 runner
+          # queue contention on 2026-04-18. Team is all Apple Silicon at v0.1;
+          # re-add before v0.2 so Intel-Mac customers are covered.
+          #
+          # - target: darwin-x64
+          #   runner: macos-13
+          #   bun_target: bun-darwin-x64
+          #   ext: ""
           - target: darwin-arm64
             runner: macos-14
             bun_target: bun-darwin-arm64
