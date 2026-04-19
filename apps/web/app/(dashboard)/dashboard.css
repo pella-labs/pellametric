@@ -173,7 +173,54 @@
 .bematist-dashboard .dash-main {
   padding: 32px;
   overflow-y: auto;
+  min-width: 0; /* lets grid-child tables shrink below intrinsic width */
   background: var(--mk-bg);
+}
+
+/* ─── Responsive: stack sidebar above main under ~900px ─────────── */
+@media (max-width: 900px) {
+  .bematist-dashboard .dash-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .bematist-dashboard .dash-side {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    border-right: none;
+    border-bottom: 1px solid var(--mk-border);
+    overflow-x: auto;
+    /* Collapse wordmark margin — no room for vertical stacking. */
+  }
+  .bematist-dashboard .dash-wordmark {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+  .bematist-dashboard .dash-nav {
+    flex-direction: row;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    scrollbar-width: none; /* subtle; nav is short enough to fit usually */
+  }
+  .bematist-dashboard .dash-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .bematist-dashboard .dash-nav-link {
+    white-space: nowrap;
+  }
+  .bematist-dashboard .dash-nav-link[aria-current="page"]::before {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    height: 2px;
+  }
+
+  .bematist-dashboard .dash-main {
+    padding: 16px;
+  }
 }
 
 /* ─── Custom scrollbars (matches the muted palette) ────────────── */

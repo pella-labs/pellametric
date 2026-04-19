@@ -88,13 +88,17 @@ export function ScatterChart({
           <ReferenceLine y={yThreshold} stroke="var(--border)" strokeDasharray="4 4" />
           <RechartsTooltip
             cursor={{ strokeDasharray: "3 3", stroke: "var(--border)" }}
+            wrapperStyle={{ outline: "none" }}
             contentStyle={{
-              background: "var(--popover)",
-              border: "1px solid var(--border)",
-              borderRadius: "0.5rem",
-              fontSize: "0.75rem",
+              background: "rgba(5, 5, 6, 0.95)",
+              border: "1px solid rgba(237, 232, 222, 0.2)",
+              borderRadius: "6px",
+              fontSize: "12px",
+              color: "var(--foreground)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
             }}
-            labelStyle={{ color: "var(--muted-foreground)" }}
+            labelStyle={{ color: "var(--muted-foreground)", marginBottom: 4 }}
+            itemStyle={{ color: "var(--foreground)" }}
             formatter={(value: number, name: string) => [value.toFixed(0), name]}
           />
           <Scatter data={data} fill={color} fillOpacity={0.75} stroke={color} strokeWidth={1} />
