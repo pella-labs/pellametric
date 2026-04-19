@@ -23,7 +23,7 @@
 //     triggers whose payload names a concrete session_id.
 
 import type { Sql } from "postgres";
-import { WindowCoalescer } from "./coalescer";
+import { type CoalesceEntry, type StreamEntryRef, WindowCoalescer } from "./coalescer";
 import { decodeMessage, fieldsToRecord, type LinkerMessage } from "./messageShape";
 import { computeLinkerState, type LinkerInputs } from "./state";
 import {
@@ -31,6 +31,31 @@ import {
   markLinksStaleForInstallation,
   writeLinkerState,
 } from "./writer";
+
+function pushAck(bucket: Record<string, string[]>, key: string, id: string): void {
+  let arr = bucket[key];
+  if (!arr) {
+    arr = [];
+    bucket[key] = arr;
+  }
+  arr.push(id);
+}
+
+function groupIdsByStream(refs: StreamEntryRef[]): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const ref of refs) pushAck(out, ref.streamKey, ref.id);
+  return out;
+}
+
+function* iteratePendingEntries(c: WindowCoalescer): Iterable<CoalesceEntry> {
+  // The coalescer exposes `pendingIdsCount()` as the supported public
+  // gauge; for per-stream breakdown we reach in through a private map.
+  // Kept as a helper so this stays the single place we rely on private
+  // internals.
+  // biome-ignore lint/suspicious/noExplicitAny: narrow peek into private state
+  const map = (c as any).pending as Map<string, CoalesceEntry>;
+  for (const entry of map.values()) yield entry;
+}
 
 /** Minimal node-redis v4 surface we touch. Kept as `any` for compatibility. */
 // biome-ignore lint/suspicious/noExplicitAny: node-redis types are large and version-dependent
@@ -51,6 +76,8 @@ export interface ConsumerOptions {
   windowMs?: number;
   /** Retry attempts before dead-letter. */
   maxAttempts?: number;
+  /** Clock provider — forwarded to the coalescer for deterministic tests. */
+  now?: () => number;
 }
 
 export interface LinkerConsumerDeps {
@@ -108,7 +135,9 @@ export class LinkerConsumer {
     this.blockMs = opts.blockMs ?? 5_000;
     this.batchCount = opts.batchCount ?? 32;
     this.windowMs = opts.windowMs ?? 30_000;
-    this.coalescer = new WindowCoalescer({ windowMs: this.windowMs });
+    this.coalescer = new WindowCoalescer(
+      opts.now ? { windowMs: this.windowMs, now: opts.now } : { windowMs: this.windowMs },
+    );
   }
 
   /** Discover tenant streams (SCAN-based, safe for large keyspaces). */
@@ -155,7 +184,12 @@ export class LinkerConsumer {
     ackIds: number;
   }> {
     const streams = await this.discoverStreams();
-    const ackIds: Record<string, string[]> = {};
+    // IDs safe to ACK *this tick*: messages that did not coalesce into a
+    // pending window (undecodable, or session-less with no work to do, or
+    // successfully-handled installation-state broadcasts). Window-bound
+    // ids stay on the coalescer and are ACKed only after
+    // `processWindow` succeeds.
+    const immediateAck: Record<string, string[]> = {};
     let messagesRead = 0;
     for (const key of streams) {
       await this.ensureGroup(key);
@@ -163,47 +197,79 @@ export class LinkerConsumer {
       if (!reply) continue;
       for (const entry of reply) {
         const msg = decodeMessage(fieldsToRecord(entry.message));
-        if (msg) {
-          // For G1 we only process messages naming a concrete session_id.
-          // Broadcast triggers go through `handleInstallationState` below.
-          if (msg.session_id) {
-            this.coalescer.add(
-              { tenant_id: msg.tenant_id, session_id: msg.session_id },
-              msg.trigger,
-            );
-          } else if (msg.trigger === "webhook_installation_state") {
-            await this.handleInstallationState(msg);
-          }
-          messagesRead += 1;
+        if (!msg) {
+          // Undecodable: drop (ACK now) to avoid DLQ poisoning.
+          pushAck(immediateAck, key, entry.id);
+          continue;
         }
-        let bucket = ackIds[key];
-        if (!bucket) {
-          bucket = [];
-          ackIds[key] = bucket;
+        messagesRead += 1;
+        if (msg.session_id) {
+          // Window-bound. The entry ref rides with the coalesced window
+          // and gets ACKed only after `processWindow` succeeds.
+          this.coalescer.add(
+            { tenant_id: msg.tenant_id, session_id: msg.session_id },
+            msg.trigger,
+            { streamKey: key, id: entry.id },
+          );
+        } else if (msg.trigger === "webhook_installation_state") {
+          // Broadcast → apply synchronously; ACK only if it succeeds so
+          // the id remains in XPENDING on handler failure.
+          await this.handleInstallationState(msg);
+          pushAck(immediateAck, key, entry.id);
+        } else {
+          // Session-less non-broadcast (e.g. tenant-wide sync fan-out
+          // trigger without a session_id payload) — no work at this
+          // stage. ACK so XPENDING does not accumulate.
+          pushAck(immediateAck, key, entry.id);
         }
-        bucket.push(entry.id);
       }
     }
 
-    // Flush due windows. ACK happens AFTER successful commit (below).
-    let emissions = 0;
-    await this.coalescer.flushDue(async (k, e) => {
-      await this.processWindow(k.tenant_id, k.session_id, e.count);
-      emissions += 1;
-    });
-
-    // ACK every id we read. Because we've rolled the coalesced emission
-    // through Postgres inside `processWindow`, duplicates would be a
-    // no-op anyway (idempotent via inputs_sha256).
+    // Flush any ids we determined were safe to ACK this tick.
     const r: RedisLike = this.deps.redis;
     let acked = 0;
-    for (const [key, ids] of Object.entries(ackIds)) {
+    for (const [key, ids] of Object.entries(immediateAck)) {
       if (ids.length === 0) continue;
       await r.xAck(key, this.groupName, ids);
       acked += ids.length;
     }
 
+    // Flush due windows. On success, ACK the window's entry ids; on
+    // throw, the coalescer has already re-queued the entry with its
+    // ids, so nothing is ACKed (XPENDING will re-deliver).
+    let emissions = 0;
+    await this.coalescer.flushDue(async (k, e) => {
+      await this.processWindow(k.tenant_id, k.session_id, e.count);
+      emissions += 1;
+      const grouped = groupIdsByStream(e.ids);
+      for (const [streamKey, ids] of Object.entries(grouped)) {
+        if (ids.length === 0) continue;
+        await r.xAck(streamKey, this.groupName, ids);
+        acked += ids.length;
+      }
+    });
+
     return { streamsRead: streams.length, messagesRead, emissions, ackIds: acked };
+  }
+
+  /**
+   * Gauge: number of entry refs on pending windows that have not yet
+   * flushed (and therefore have not yet been ACKed). Exported so the
+   * process can publish `github_linker_retry_pending_depth` on a metric
+   * endpoint without poking at internal coalescer state.
+   *
+   * Passing a stream key restricts the count to that stream; no-arg
+   * returns the aggregate.
+   */
+  retryPendingDepth(streamKey?: string): number {
+    if (!streamKey) return this.coalescer.pendingIdsCount();
+    let n = 0;
+    for (const entry of iteratePendingEntries(this.coalescer)) {
+      for (const ref of entry.ids) {
+        if (ref.streamKey === streamKey) n += 1;
+      }
+    }
+    return n;
   }
 
   /**
@@ -282,9 +348,15 @@ export class LinkerConsumer {
 
   async stop(): Promise<void> {
     this.stopped = true;
-    // Drain pending windows on graceful shutdown.
-    await this.coalescer.drainAll(async (k) => {
+    const r: RedisLike = this.deps.redis;
+    // Drain pending windows on graceful shutdown; ACK after success.
+    await this.coalescer.drainAll(async (k, e) => {
       await this.processWindow(k.tenant_id, k.session_id);
+      const grouped = groupIdsByStream(e.ids);
+      for (const [streamKey, ids] of Object.entries(grouped)) {
+        if (ids.length === 0) continue;
+        await r.xAck(streamKey, this.groupName, ids);
+      }
     });
   }
 

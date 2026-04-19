@@ -11,19 +11,36 @@
 //     the window (PRD §10 "synthesizes a message for every live session_id").
 //   - Drain-on-close: a graceful shutdown flushes pending windows once.
 //
+// ACK-after-flush contract (B4a):
+//   - `add()` accepts an optional `entryRef: { streamKey, id }` — the
+//     Redis Streams entry that triggered this coalesce. The coalescer
+//     accumulates the full set of entry refs on the pending window.
+//   - `flushDue`/`flushOne`/`drainAll` hand the entry refs to the handler
+//     via `entry.ids`. The consumer ACKs those ids only after the handler
+//     returns successfully; on throw the entry stays in XPENDING and the
+//     next XREADGROUP claim re-delivers.
+//
 // Delivery:
-//   - `flush(handler)` invokes `handler(key)` for each pending window and
-//     removes it from the map. Handler failures re-queue the key by
-//     re-adding it with its original `firstSeenAt`.
+//   - `flushDue(handler)` invokes `handler(key, entry)` for each pending
+//     window and removes it from the map. Handler failures re-queue the
+//     key by re-adding it with its original `firstSeenAt` + ids.
 
 export interface CoalesceKey {
   tenant_id: string;
   session_id: string;
 }
 
+export interface StreamEntryRef {
+  streamKey: string;
+  id: string;
+}
+
 export interface CoalesceEntry {
   firstSeenAt: number;
   count: number;
+  /** Stream entry refs that contributed to this window. ACKed only after
+   *  the handler returns successfully. */
+  ids: StreamEntryRef[];
   /** last trigger reason observed — purely diagnostic, not load-bearing. */
   lastTrigger?: string;
 }
@@ -53,15 +70,21 @@ export class WindowCoalescer {
 
   /** Returns `true` if this trigger should bypass the window and flush
    *  immediately after enqueueing. */
-  add(key: CoalesceKey, trigger: string): { immediate: boolean } {
+  add(key: CoalesceKey, trigger: string, entryRef?: StreamEntryRef): { immediate: boolean } {
     const k = serialise(key);
     const nowMs = this.now();
     const existing = this.pending.get(k);
     if (existing) {
       existing.count += 1;
       existing.lastTrigger = trigger;
+      if (entryRef) existing.ids.push(entryRef);
     } else {
-      this.pending.set(k, { firstSeenAt: nowMs, count: 1, lastTrigger: trigger });
+      this.pending.set(k, {
+        firstSeenAt: nowMs,
+        count: 1,
+        lastTrigger: trigger,
+        ids: entryRef ? [entryRef] : [],
+      });
     }
     return { immediate: IMMEDIATE_TRIGGERS.has(trigger) };
   }
@@ -138,6 +161,15 @@ export class WindowCoalescer {
 
   size(): number {
     return this.pending.size;
+  }
+
+  /** Total entry refs across all pending windows — exposed so callers can
+   *  surface a `github_linker_retry_pending_depth` gauge without poking at
+   *  Redis XPENDING directly. */
+  pendingIdsCount(): number {
+    let n = 0;
+    for (const e of this.pending.values()) n += e.ids.length;
+    return n;
   }
 
   clear(): void {
