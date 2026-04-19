@@ -52,7 +52,7 @@ to a distinct PR with its own contract tests:
 |---|---|---|
 | B1 | `installation.created` parser + admin claim flow | **Pending follow-up** — requires pre-claim `github_pending_installations` surface + admin UI claim path |
 | B2 | Shared ingest↔worker installation-token resolver | **Pending follow-up** — unblocks admin sync |
-| B4 | Recompute pipeline wiring (Redis stream producer in worker + real `loadInputs`) | **Pending follow-up** — most-leverage blocker; linker currently no-ops on all messages |
+| B4 | Recompute pipeline wiring (Redis stream producer in worker + real `loadInputs`) | **Partial** — Redis producer wired (webhooks now reach the stream); ACK semantics refactor + real `loadInputs` against PG+ClickHouse session enrichment remain as follow-up |
 | B5 | Partial unique index on `session_repo_links (stale_at IS NULL)` | **Landed** (migration 0008) |
 | B9 | Redis token-bucket for `redeliverWebhooks` (D59) | **Pending follow-up** |
 | B10 | Recursive allowlist for `assertEvidenceSafe` | **Landed** |
