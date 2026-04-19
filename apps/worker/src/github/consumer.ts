@@ -212,6 +212,47 @@ async function handleParsed(
     };
   }
 
+  if (parsed.kind === "installation_created") {
+    // B1 — installation.created lands in github_pending_installations
+    // for the admin to claim. Uses the global-admin RLS bypass because
+    // pending rows exist before any tenant binding. No recompute emission:
+    // the actual github_installations row is written by the claim Server
+    // Action, which also triggers the initial sync.
+    await deps.sql.begin(async (tx) => {
+      await tx.unsafe(`SELECT set_config('app.is_global_admin', 'true', true)`);
+      await tx.unsafe(
+        `INSERT INTO github_pending_installations
+           (installation_id, github_org_id, github_org_login, app_id,
+            target_type, repositories_selected_count)
+         VALUES ($1::bigint, $2::bigint, $3, $4::bigint, $5, $6)
+         ON CONFLICT (installation_id) DO UPDATE SET
+           github_org_id                 = EXCLUDED.github_org_id,
+           github_org_login              = EXCLUDED.github_org_login,
+           app_id                        = EXCLUDED.app_id,
+           target_type                   = EXCLUDED.target_type,
+           repositories_selected_count   = EXCLUDED.repositories_selected_count,
+           updated_at                    = now()`,
+        [
+          parsed.installation_id.toString(),
+          parsed.github_org_id.toString(),
+          parsed.github_org_login,
+          parsed.app_id.toString(),
+          parsed.target_type,
+          parsed.repositories_selected_count,
+        ],
+      );
+    });
+    log({
+      app: "worker-github",
+      kind: parsed.kind,
+      installation_id: parsed.installation_id.toString(),
+    });
+    return {
+      handled: parsed.kind,
+      table: "github_pending_installations",
+    };
+  }
+
   if (parsed.kind === "installation_state_change") {
     // Update is keyed on the OUTER payload.installation_id (the one the
     // ingest resolved from the `github_installations` row at HMAC time),

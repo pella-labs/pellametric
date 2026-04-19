@@ -159,11 +159,18 @@ describe("domainParser — 12 G1 fixtures", () => {
     expect(r.next_status).toBe("revoked");
   });
 
-  // ---- installation.created (G0 fixture) — NOT a state change, ignored ---
+  // ---- installation.created (B1) — seeds github_pending_installations ----
 
-  test("installation.created → ignored (handled elsewhere at app-install time)", () => {
+  test("installation.created → installation_created with installation_id + app_id", () => {
     const r = parseDomain("installation", body("installation", "created"));
-    expect(r.kind).toBe("ignored");
+    expect(r.kind).toBe("installation_created");
+    if (r.kind !== "installation_created") throw new Error("unreachable");
+    expect(r.installation_id).toBe(42424242n);
+    expect(r.github_org_login).toBe("fixture-org");
+    expect(r.github_org_id).toBe(123456n);
+    expect(r.app_id).toBe(909090n);
+    expect(r.target_type).toBe("Organization");
+    expect(r.repositories_selected_count).toBe(1);
   });
 
   // ---- repository lifecycle -----------------------------------------------

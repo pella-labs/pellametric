@@ -32,6 +32,15 @@ export type DomainParseResult =
       reason: "suspend" | "unsuspend" | "deleted";
     }
   | {
+      kind: "installation_created";
+      installation_id: bigint;
+      github_org_id: bigint;
+      github_org_login: string;
+      app_id: bigint;
+      target_type: string;
+      repositories_selected_count: number;
+    }
+  | {
       kind: "repository_rename_or_transfer";
       provider_repo_id: string;
       reason: "rename" | "transfer";
@@ -367,12 +376,35 @@ function parseInstallationLifecycle(
   b: Record<string, unknown>,
   action: string | undefined,
 ): DomainParseResult {
+  const inst = b.installation as Record<string, unknown> | undefined;
+
+  if (action === "created") {
+    // B1 — `installation.created` lands in `github_pending_installations`
+    // until an admin claims it. The webhook arrives BEFORE the OAuth
+    // callback on self-hosted installs, so we cannot bind tenant_id here;
+    // the admin UI runs `claimPendingInstallation(pendingId)` to promote.
+    if (!inst || inst.id === undefined) {
+      return { kind: "ignored", event: "installation", action };
+    }
+    const account = inst.account as Record<string, unknown> | undefined;
+    const target_type = strOrNull(inst.target_type) ?? "Organization";
+    const repos = Array.isArray(b.repositories) ? (b.repositories as unknown[]) : [];
+    return {
+      kind: "installation_created",
+      installation_id: BigInt(String(inst.id)),
+      github_org_id: BigInt(String(account?.id ?? inst.target_id ?? 0)),
+      github_org_login: strOrNull(account?.login) ?? "",
+      app_id: BigInt(String(inst.app_id ?? 0)),
+      target_type,
+      repositories_selected_count: repos.length,
+    };
+  }
+
   if (action !== "suspend" && action !== "unsuspend" && action !== "deleted") {
     return action !== undefined
       ? { kind: "ignored", event: "installation", action }
       : { kind: "ignored", event: "installation" };
   }
-  const inst = b.installation as Record<string, unknown> | undefined;
   if (!inst || inst.id === undefined) return { kind: "ignored", event: "installation", action };
   // action is narrowed to 'suspend' | 'unsuspend' | 'deleted' from the guard above.
   const installation_id = BigInt(String(inst.id));
