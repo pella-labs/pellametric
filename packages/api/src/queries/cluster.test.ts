@@ -34,6 +34,23 @@ describe("listClusters", () => {
     const out = await listClusters(makeCtx(), { window: "30d", limit: 3 });
     expect(out.clusters.length).toBeLessThanOrEqual(3);
   });
+
+  test("includeBelowFloorClusters=true surfaces clusters under the k=3 floor", async () => {
+    const guarded = await listClusters(makeCtx(), { window: "30d", limit: 100 });
+    const all = await listClusters(makeCtx(), {
+      window: "30d",
+      limit: 100,
+      includeBelowFloorClusters: true,
+    });
+    // Unfiltered list must include every cluster the guarded list returned,
+    // and at least one below-floor cluster (fixture universe seeds entries
+    // with contributor_count < 3 to exercise the bypass).
+    expect(all.clusters.length).toBeGreaterThan(guarded.clusters.length);
+    expect(all.clusters.some((c) => c.contributor_count < CLUSTER_CONTRIBUTOR_FLOOR)).toBe(true);
+    // suppressed_below_floor still reflects the locked floor so the badge stays
+    // honest in both modes.
+    expect(all.suppressed_below_floor).toBe(guarded.suppressed_below_floor);
+  });
 });
 
 function makeCtx(): Ctx {
@@ -275,6 +292,40 @@ describe("listClusterContributors (fixture branch)", () => {
     // Both views use the same stable eh_* hash format.
     for (const t of twins.matches) expect(t.engineer_id_hash).toMatch(/^eh_[0-9a-f]{8}$/);
     for (const c of contribs.contributors) expect(c.engineer_id_hash).toMatch(/^eh_[0-9a-f]{8}$/);
+  });
+
+  test("omits identities map when includeIdentities is not requested", async () => {
+    const out = await listClusterContributors(makeCtx(), { cluster_id: "c_000" });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect((out as unknown as { identities?: unknown }).identities).toBeUndefined();
+  });
+
+  test("returns identities map keyed by engineer_id_hash when includeIdentities=true", async () => {
+    const out = await listClusterContributors(makeCtx(), {
+      cluster_id: "c_000",
+      includeIdentities: true,
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.identities).toBeDefined();
+    for (const c of out.contributors) {
+      const id = out.identities?.[c.engineer_id_hash];
+      expect(id).toBeDefined();
+      expect(typeof id?.email).toBe("string");
+      expect(id?.email.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("identities map omitted on below-floor cluster (consistent with no contributor array)", async () => {
+    const out = await listClusterContributors(makeCtx(), {
+      cluster_id: "c_005",
+      includeIdentities: true,
+    });
+    expect(out.ok).toBe(false);
+    if (out.ok) return;
+    // identities lives on the ok:true variant only — discriminated union safety.
+    expect((out as unknown as { identities?: unknown }).identities).toBeUndefined();
   });
 });
 

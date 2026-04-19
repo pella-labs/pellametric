@@ -11,6 +11,8 @@ import type {
   TwinFinderInput,
   TwinFinderOutput,
 } from "../schemas/cluster";
+import type { DeveloperIdentity } from "../schemas/common";
+import { buildFixtureIdentity, fetchIdentitiesByHash } from "./identities";
 
 /** k>=3 contributor floor per CLAUDE.md Privacy Model Rules + Clio/OpenClio prior art. */
 export const CLUSTER_CONTRIBUTOR_FLOOR = 3;
@@ -55,9 +57,12 @@ async function listClustersFixture(ctx: Ctx, input: ClusterListInput): Promise<C
   const limit = input.limit ?? 20;
 
   // Build a fixture universe of clusters, then apply the contributor floor.
+  // Compliance-OFF demo opt-in `includeBelowFloorClusters` lowers the floor
+  // to 0 so suppressed clusters surface in the demo path.
   const universe = buildFixtureUniverse(seed);
-  const eligible = universe.filter((c) => c.contributor_count >= effectiveClusterFloor());
-  const suppressed = universe.length - eligible.length;
+  const floor = input.includeBelowFloorClusters ? 0 : effectiveClusterFloor();
+  const eligible = universe.filter((c) => c.contributor_count >= floor);
+  const suppressed = universe.filter((c) => c.contributor_count < effectiveClusterFloor()).length;
 
   return {
     window: input.window,
@@ -141,9 +146,12 @@ async function listClustersReal(ctx: Ctx, input: ClusterListInput): Promise<Clus
     fidelity: r.fidelity,
   }));
 
-  // Enforce k>=3 server-side. Suppressed count is the difference.
-  const eligible = universe.filter((c) => c.contributor_count >= effectiveClusterFloor());
-  const suppressed = universe.length - eligible.length;
+  // Enforce k>=3 server-side unless the compliance-OFF demo opt-in is set.
+  // Suppressed count always reflects the locked floor so the badge stays
+  // accurate even when below-floor clusters are surfaced for the demo.
+  const floor = input.includeBelowFloorClusters ? 0 : effectiveClusterFloor();
+  const eligible = universe.filter((c) => c.contributor_count >= floor);
+  const suppressed = universe.filter((c) => c.contributor_count < effectiveClusterFloor()).length;
 
   return {
     window: input.window,
@@ -575,19 +583,37 @@ function listClusterContributorsFixture(
     counts.set(c.engineer_id, (counts.get(c.engineer_id) ?? 0) + 1);
   }
 
-  const contributors: ClusterContributor[] = Array.from(counts.entries())
-    .map(([engId, count]) => ({
-      engineer_id_hash: hashEngineerIdStub(engId),
-      session_count: count,
-    }))
+  // Keep raw → hash map so identity lookup can rekey by hash if requested.
+  const hashByDeveloperId = new Map<string, string>();
+  const contributorsAll = Array.from(counts.entries()).map(([engId, count]) => {
+    const hash = hashEngineerIdStub(engId);
+    hashByDeveloperId.set(engId, hash);
+    return { engineer_id_hash: hash, session_count: count };
+  });
+  const contributors: ClusterContributor[] = contributorsAll
     .sort((a, b) => b.session_count - a.session_count)
     .slice(0, limit);
+
+  let identities: Record<string, DeveloperIdentity> | undefined;
+  if (input.includeIdentities) {
+    identities = {};
+    for (const c of contributors) {
+      // Find the raw engineer_id whose hash matches; fixture universe has it.
+      for (const [engId, hash] of hashByDeveloperId) {
+        if (hash === c.engineer_id_hash) {
+          identities[hash] = buildFixtureIdentity(engId);
+          break;
+        }
+      }
+    }
+  }
 
   return {
     ok: true,
     cluster_id: input.cluster_id,
     contributors,
     contributor_count: stats.distinct_engineers,
+    ...(identities ? { identities } : {}),
   };
 }
 
@@ -639,16 +665,24 @@ async function listClusterContributorsReal(
     };
   }
 
-  const contributors: ClusterContributor[] = contribRows.map((r) => ({
-    engineer_id_hash: hashEngineerIdStub(r.engineer_id),
-    session_count: Number(r.session_count),
-  }));
+  const hashByDeveloperId = new Map<string, string>();
+  const contributors: ClusterContributor[] = contribRows.map((r) => {
+    const hash = hashEngineerIdStub(r.engineer_id);
+    hashByDeveloperId.set(r.engineer_id, hash);
+    return { engineer_id_hash: hash, session_count: Number(r.session_count) };
+  });
+
+  let identities: Record<string, DeveloperIdentity> | undefined;
+  if (input.includeIdentities) {
+    identities = await fetchIdentitiesByHash(ctx, hashByDeveloperId);
+  }
 
   return {
     ok: true,
     cluster_id: input.cluster_id,
     contributors,
     contributor_count: distinctEngineers,
+    ...(identities ? { identities } : {}),
   };
 }
 

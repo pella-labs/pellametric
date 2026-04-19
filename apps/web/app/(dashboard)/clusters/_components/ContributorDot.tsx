@@ -1,10 +1,16 @@
+import type { schemas } from "@bematist/api";
+
 /**
  * Color-dot pseudonymization for cluster contributors.
  *
- * Per CLAUDE.md §Scoring Rules: IC names are hidden by default (color dots;
- * reveal requires IC opt-in). Color is derived deterministically from the
- * engineer hash so the same engineer always paints the same color across
- * Twin Finder + cluster views, without ever surfacing identity.
+ * Compliance ON (default polarity): IC names are hidden — each contributor
+ * renders as a deterministic colored dot derived from the engineer hash.
+ * The same engineer always paints the same color across Twin Finder + cluster
+ * views, without ever surfacing identity. Per CLAUDE.md §Scoring Rules.
+ *
+ * Compliance OFF (demo path): when the parent passes a `developer` prop, the
+ * component renders the GitHub avatar (when present) instead of the dot. The
+ * label rendered next to the dot is the parent's responsibility.
  *
  * Pure server component — no JS shipped to the client.
  */
@@ -13,9 +19,25 @@ export interface ContributorDotProps {
   hash: string;
   /** Diameter in px; default 10. */
   size?: number;
+  /**
+   * Compliance-OFF demo identity. When present, renders the avatar
+   * (`developer.image`) instead of the dot. Absent in the default path.
+   */
+  developer?: schemas.DeveloperIdentity;
 }
 
-export function ContributorDot({ hash, size = 10 }: ContributorDotProps) {
+export function ContributorDot({ hash, size = 10, developer }: ContributorDotProps) {
+  if (developer?.image) {
+    return (
+      <img
+        src={developer.image}
+        alt=""
+        aria-hidden="true"
+        className="inline-block rounded-full ring-1 ring-border"
+        style={{ width: size + 6, height: size + 6 }}
+      />
+    );
+  }
   const hue = hashToHue(hash);
   return (
     <span

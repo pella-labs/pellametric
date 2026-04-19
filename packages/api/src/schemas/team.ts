@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Display } from "../gates";
-import { Fidelity, Gated, Window } from "./common";
+import { DeveloperIdentity, Fidelity, Gated, Window } from "./common";
 
 /**
  * List teams visible to the caller. Manager-scoped by RBAC; viewers get the
@@ -40,6 +40,19 @@ export const TeamTwoByTwoInput = z.object({
   window: Window,
   team_id: z.string(),
   task_category: z.string().optional(),
+  /**
+   * Compliance-OFF demo opt-in: when true, the response carries an
+   * `identities` map keyed by `engineer_id_hash`. Callers MUST gate this on
+   * `isComplianceEnabled() === false`. Default false preserves the wire
+   * shape for every current caller.
+   */
+  includeIdentities: z.boolean().optional(),
+  /**
+   * Compliance-OFF demo opt-in: when true, the k≥5 cohort floor is bypassed
+   * so small teams render their scatter even though it would normally be
+   * suppressed. Default false preserves the locked privacy floor.
+   */
+  bypassCohortFloor: z.boolean().optional(),
 });
 export type TeamTwoByTwoInput = z.infer<typeof TeamTwoByTwoInput>;
 
@@ -66,5 +79,10 @@ export const TeamTwoByTwoOutput = z.object({
   /** Task categories available for cohort stratification in this team+window. */
   available_task_categories: z.array(z.string()),
   fidelity: Fidelity,
+  /**
+   * Plaintext identity per `engineer_id_hash`. Present ONLY when caller
+   * opted in via `includeIdentities: true` (compliance-OFF demo path).
+   */
+  identities: z.record(z.string(), DeveloperIdentity).optional(),
 });
 export type TeamTwoByTwoOutput = z.infer<typeof TeamTwoByTwoOutput>;

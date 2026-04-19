@@ -12,6 +12,11 @@ import { expect, test } from "@playwright/test";
 
 test.describe("/privacy (Bill of Rights)", () => {
   test("v1 Bill of Rights renders all six items with load-bearing copy", async ({ page }) => {
+    const flag = process.env.BEMATIST_COMPLIANCE_ENABLED;
+    test.skip(
+      flag !== "1" && flag !== "true",
+      "Only runs when BEMATIST_COMPLIANCE_ENABLED is '1' or 'true' (compliance UX shown).",
+    );
     await page.goto("/privacy");
 
     // /privacy is OUTSIDE the dashboard layout — it ships its own <main>.
@@ -70,5 +75,17 @@ test.describe("/privacy (Bill of Rights)", () => {
     // with one <li> per rule — count asserts we did not silently add/drop.
     const items = main.locator("ol > li");
     await expect(items).toHaveCount(6);
+  });
+});
+
+test.describe("/privacy with BEMATIST_COMPLIANCE_ENABLED disabled", () => {
+  test("returns 404 — page is hidden when the compliance flag is off", async ({ request }) => {
+    const flag = process.env.BEMATIST_COMPLIANCE_ENABLED;
+    test.skip(
+      flag === "1" || flag === "true",
+      "Only runs when BEMATIST_COMPLIANCE_ENABLED is unset / '0' / 'false' (compliance UX hidden).",
+    );
+    const response = await request.get("/privacy");
+    expect(response.status()).toBe(404);
   });
 });

@@ -1,6 +1,6 @@
 import { assertRole, type Ctx } from "../auth";
 import { useFixtures } from "../env";
-import type { Window } from "../schemas/common";
+import type { DeveloperIdentity, Window } from "../schemas/common";
 import type {
   GetSessionInput,
   GetSessionOutput,
@@ -9,6 +9,7 @@ import type {
   SessionListItem,
   SessionSummary,
 } from "../schemas/session";
+import { buildFixtureIdentity, fetchIdentitiesByDeveloperId } from "./identities";
 
 /**
  * Session detail. `prompt_text` is included ONLY if the caller holds a valid
@@ -39,8 +40,7 @@ async function getSessionFixture(ctx: Ctx, input: GetSessionInput): Promise<GetS
     // reveal_token here and, on success, attach the real prompt_text.
     return {
       ...summary,
-      prompt_text:
-        "[reveal-token supplied, but fixture mode has no real prompt — wire up real ClickHouse read to populate]",
+      prompt_text: buildFixturePrompt(input.session_id),
       redacted_reason: "none",
     };
   }
@@ -51,6 +51,64 @@ async function getSessionFixture(ctx: Ctx, input: GetSessionInput): Promise<GetS
     redacted_reason: "consent_required",
   };
 }
+
+/**
+ * Deterministic synthetic prompt text keyed by session_id. Used in fixture
+ * mode when a reveal_token is on the ctx — either a real post-reveal flow
+ * or the compliance-OFF demo path that attaches a synthetic token. Picks
+ * from a small catalogue of realistic-looking coding-agent conversations
+ * so reloads are stable and different sessions show different content.
+ */
+function buildFixturePrompt(sessionId: string): string {
+  const template = FIXTURE_PROMPTS[hash(sessionId) % FIXTURE_PROMPTS.length] ?? FIXTURE_PROMPTS[0]!;
+  return template;
+}
+
+const FIXTURE_PROMPTS: readonly string[] = [
+  `User: Getting a TypeError: Cannot read property 'map' of undefined in apps/web/components/SessionsList.tsx:42. Only happens on initial load — sessions should be an array per the type.
+
+Agent: Looked at it. useSessions returns Session[] | null during load but the component guards against undefined, not null. Smallest fix is changing sessions.map(...) to sessions?.map(...) so both states are handled.
+
+User: apply it
+
+Agent: Applied in apps/web/components/SessionsList.tsx. Noticed the same pattern in ClustersList.tsx:38 — want me to apply the same guard there?
+
+User: yes
+
+Agent: Applied. Both files compile. No other call sites use this hook.`,
+
+  `User: Refactor packages/api/src/queries/cluster.ts to share the k-anonymity floor logic between listClusters and listClusterContributors — right now effectiveClusterFloor() is only used in one branch.
+
+Agent: Both functions call effectiveClusterFloor() but the second one filters after the SQL query while the first filters inline. I'll extract the filter into a small shared helper, keep the server-side enforcement intact, and preserve the suppressed_below_floor count.
+
+User: make sure the privacy adversarial tests still pass
+
+Agent: Ran tests/privacy/adversarial/gate-5 locally. 29/29 pass. The k>=3 floor still drops below-threshold entries before they ship to the client. Diff is +12/-18.`,
+
+  `User: Add a Playwright e2e for the /me/digest page that verifies the "Nothing in the last 24 hours" empty state renders when no audit events exist in the window.
+
+Agent: Looked at existing specs under apps/web/tests/e2e. Pattern is test.describe + Playwright request/page fixtures. Added me-digest.e2e.ts with the empty-state assertion plus a check for the "Preference:" badge. Gated on role=manager via the seeded dev actor.
+
+User: run it
+
+Agent: 1/1 pass in 820ms. Note: the spec depends on the seed being empty for audit_events — if Sandesh's seed starts populating those, the assertion will need a windowed filter.`,
+
+  `User: Why is the cluster-contributor dot color drifting between Twin Finder and /clusters? Same engineer should paint the same hue everywhere.
+
+Agent: Both views pipe through hashEngineerIdStub(engineer_id), but Twin Finder recomputes the hash client-side from a truncated id while /clusters uses the server-returned hash. Different inputs -> different FNV-1a output -> different hue.
+
+User: fix it so the server is the source of truth
+
+Agent: Pulled the hash computation back to the server-side return. ContributorDot now receives the final eh_* hash as a prop and never recomputes. Colors align across views. Updated the cluster.test.ts assertion to cover the cross-view consistency.`,
+
+  `User: The sessions table keeps flashing empty state on navigation. Feels like the fetch is racing the initial render.
+
+Agent: It's Suspense. The server component awaits listSessions before rendering so no flash should happen unless the router is firing a client-side transition without streaming. Checked the parent layout — it's using next/navigation's useRouter push instead of <Link> for the row click handler, which bypasses prefetch.
+
+User: fix it to use Link
+
+Agent: Swapped onClick + router.push for a wrapping Link with prefetch={true}. Rows still look the same. Empty-state flash is gone. Side benefit: middle-click now opens in a new tab.`,
+] as const;
 
 /**
  * Real-branch ClickHouse read.
@@ -244,7 +302,20 @@ async function listSessionsFixture(
     sessions,
     total: sessions.length,
     window: input.window,
+    ...(input.includeIdentities
+      ? { identities: buildFixtureIdentitiesForEngineers(sessions.map((s) => s.engineer_id)) }
+      : {}),
   };
+}
+
+function buildFixtureIdentitiesForEngineers(
+  engineerIds: readonly string[],
+): Record<string, DeveloperIdentity> {
+  const out: Record<string, DeveloperIdentity> = {};
+  for (const eid of engineerIds) {
+    if (!(eid in out)) out[eid] = buildFixtureIdentity(eid);
+  }
+  return out;
 }
 
 /**
@@ -334,10 +405,17 @@ async function listSessionsReal(ctx: Ctx, input: ListSessionsInput): Promise<Lis
     tier: r.tier,
   }));
 
+  let identities: Record<string, DeveloperIdentity> | undefined;
+  if (input.includeIdentities) {
+    const uniqueIds = Array.from(new Set(sessions.map((s) => s.engineer_id)));
+    identities = await fetchIdentitiesByDeveloperId(ctx, uniqueIds);
+  }
+
   return {
     sessions,
     total: sessions.length,
     window: input.window,
+    ...(identities ? { identities } : {}),
   };
 }
 

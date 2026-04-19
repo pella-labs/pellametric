@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Fidelity, Window } from "./common";
+import { DeveloperIdentity, Fidelity, Window } from "./common";
 
 /**
  * Prompt-cluster list + Twin Finder. Server ALWAYS enforces k>=3 contributor
@@ -13,6 +13,13 @@ export const ClusterListInput = z.object({
   task_category: z.string().optional(),
   /** Max clusters to return; default 20. */
   limit: z.number().int().positive().max(100).optional(),
+  /**
+   * Compliance-OFF demo opt-in: when true, surfaces clusters below the k≥3
+   * contributor floor that would otherwise be suppressed. Default false
+   * preserves the locked server-side privacy floor for every current caller.
+   * Callers MUST gate this on `isComplianceEnabled() === false`.
+   */
+  includeBelowFloorClusters: z.boolean().optional(),
 });
 export type ClusterListInput = z.infer<typeof ClusterListInput>;
 
@@ -29,8 +36,14 @@ export const Cluster = z.object({
    * label-time (no URLs, no proper nouns — CLAUDE.md AI Rules).
    */
   label: z.string(),
-  /** Always >=3 in output; below floor is dropped server-side. */
-  contributor_count: z.number().int().min(3),
+  /**
+   * Distinct contributors. The default query path enforces the k≥3 floor
+   * server-side (below-floor clusters are dropped, never returned). The
+   * compliance-OFF demo path (`includeBelowFloorClusters: true`) can surface
+   * counts below 3, which is why the type is `nonnegative()` rather than
+   * `min(3)`.
+   */
+  contributor_count: z.number().int().nonnegative(),
   session_count: z.number().int().nonnegative(),
   avg_cost_usd: z.number().nonnegative(),
   top_outcomes: z.array(ClusterOutcome),
@@ -110,6 +123,15 @@ export const ClusterContributorsInput = z.object({
   cluster_id: z.string().min(1),
   /** Max contributors to return; default 25. */
   limit: z.number().int().positive().max(100).optional(),
+  /**
+   * Compliance-OFF demo opt-in: when true, the ok:true response carries an
+   * `identities` map of `engineer_id_hash → {name?, email, image?}`.
+   * Callers MUST gate this on `isComplianceEnabled() === false`. The
+   * below-floor / not-found branches never carry identities — same shape
+   * as before, no information leak about cluster membership when the
+   * cluster is suppressed.
+   */
+  includeIdentities: z.boolean().optional(),
 });
 export type ClusterContributorsInput = z.infer<typeof ClusterContributorsInput>;
 
@@ -128,6 +150,13 @@ export const ClusterContributorsOutput = z.union([
     contributors: z.array(ClusterContributor),
     /** Total distinct engineers in the cluster — always >= 3 when ok:true. */
     contributor_count: z.number().int().min(3),
+    /**
+     * Plaintext identity per `engineer_id_hash`. Present ONLY when caller
+     * opted in via `includeIdentities: true` (compliance-OFF demo path).
+     * Absent in the default / compliance-ON path so the wire shape is
+     * unchanged for existing callers.
+     */
+    identities: z.record(z.string(), DeveloperIdentity).optional(),
   }),
   z.object({
     ok: z.literal(false),

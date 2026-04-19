@@ -38,6 +38,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/privacy",
   "/home",
   "/card",
+  "/deck",
   "/_next",
   "/favicon",
 ];

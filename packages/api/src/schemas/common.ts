@@ -32,3 +32,21 @@ export type Confidence = z.infer<typeof Confidence>;
 
 export const Fidelity = z.enum(["full", "estimated", "aggregate-only", "post-migration"]);
 export type Fidelity = z.infer<typeof Fidelity>;
+
+/**
+ * Plaintext developer identity. Returned by queries opted into
+ * `includeIdentities: true` for compliance-OFF (demo) rendering. Source chain:
+ * `developers.user_id → users → betterAuthUser.{name, image}`. `email` is
+ * always present (from `users.email`); `name` and `image` are nullable
+ * because Better-Auth-less seeded users don't have a `betterAuthUser` row.
+ *
+ * Callers MUST gate the request on `isComplianceEnabled() === false` from
+ * `@bematist/api`. The compliance ON path never includes identities — it
+ * keeps showing hashes / dots so the audit posture is unchanged.
+ */
+export const DeveloperIdentity = z.object({
+  name: z.string().nullable(),
+  email: z.string(),
+  image: z.string().nullable(),
+});
+export type DeveloperIdentity = z.infer<typeof DeveloperIdentity>;

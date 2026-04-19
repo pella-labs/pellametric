@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Fidelity, Window } from "./common";
+import { DeveloperIdentity, Fidelity, Window } from "./common";
 
 export const SessionSummary = z.object({
   session_id: z.string(),
@@ -91,6 +91,13 @@ export const ListSessionsInput = z.object({
   source: SessionSummary.shape.source.optional(),
   /** Max rows returned — virtualization handles larger lists. */
   limit: z.number().int().positive().max(5000).default(500),
+  /**
+   * Compliance-OFF demo opt-in: when true, the response carries an
+   * `identities` map of `engineer_id → {name?, email, image?}`. Callers MUST
+   * gate this on `isComplianceEnabled() === false`. Default false preserves
+   * the existing wire shape for every current caller.
+   */
+  includeIdentities: z.boolean().optional(),
 });
 export type ListSessionsInput = z.infer<typeof ListSessionsInput>;
 
@@ -99,5 +106,12 @@ export const ListSessionsOutput = z.object({
   /** Total matching rows; `sessions.length` may be <= this when capped by limit. */
   total: z.number().int().nonnegative(),
   window: Window,
+  /**
+   * Plaintext identity per `engineer_id`. Present ONLY when caller opted in
+   * via `includeIdentities: true` (compliance-OFF demo path). Absent in the
+   * default / compliance-ON path so the wire shape is unchanged for existing
+   * callers.
+   */
+  identities: z.record(z.string(), DeveloperIdentity).optional(),
 });
 export type ListSessionsOutput = z.infer<typeof ListSessionsOutput>;

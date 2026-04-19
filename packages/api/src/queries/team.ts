@@ -1,6 +1,7 @@
 import { assertRole, type Ctx } from "../auth";
 import { useFixtures } from "../env";
 import { applyDisplayGate, K_ANONYMITY_FLOOR } from "../gates";
+import type { DeveloperIdentity } from "../schemas/common";
 import type {
   ScatterPoint,
   TeamListInput,
@@ -9,6 +10,7 @@ import type {
   TeamTwoByTwoInput,
   TeamTwoByTwoOutput,
 } from "../schemas/team";
+import { buildFixtureIdentity } from "./identities";
 
 /**
  * Teams list — populates `/teams` page and team switcher.
@@ -193,36 +195,52 @@ async function getTwoByTwoFixture(ctx: Ctx, input: TeamTwoByTwoInput): Promise<T
   const cohortSize = team?.engineers ?? 0;
   const taskCategory = input.task_category ?? null;
 
-  const gate = applyDisplayGate({
+  const lockedGate = applyDisplayGate({
     sessions_count: 100,
     active_days: 20,
     outcome_events: 10,
     cohort_size: cohortSize,
     team_scope: true,
   });
+  // Compliance-OFF demo opt-in `bypassCohortFloor` forces the scatter to
+  // render even if the cohort fails the k≥5 floor. Locked gate value is
+  // preserved in shape so the frontend can still surface the badge if
+  // wanted.
+  const showScatter = input.bypassCohortFloor ? true : lockedGate.show;
 
-  const points: ScatterPoint[] = gate.show
+  const points: ScatterPoint[] = showScatter
     ? buildFixturePoints(
         `${ctx.tenant_id}:${input.team_id}:${input.window}:${taskCategory ?? "all"}`,
-        cohortSize,
+        Math.max(cohortSize, input.bypassCohortFloor ? 1 : 0),
       )
     : [];
+
+  let identities: Record<string, DeveloperIdentity> | undefined;
+  if (input.includeIdentities && points.length > 0) {
+    identities = {};
+    for (const p of points) {
+      identities[p.engineer_id_hash] = buildFixtureIdentity(p.engineer_id_hash);
+    }
+  }
 
   return {
     window: input.window,
     team_id: input.team_id,
     task_category: taskCategory,
     cohort_size: cohortSize,
-    display: gate.show
+    display: lockedGate.show
       ? { show: true }
-      : {
-          show: false,
-          suppression_reason: gate.suppression_reason,
-          failed_gates: gate.failed_gates,
-        },
+      : showScatter
+        ? { show: true }
+        : {
+            show: false,
+            suppression_reason: lockedGate.suppression_reason,
+            failed_gates: lockedGate.failed_gates,
+          },
     points,
     available_task_categories: AVAILABLE_TASK_CATEGORIES,
     fidelity: "full",
+    ...(identities ? { identities } : {}),
   };
 }
 
@@ -271,15 +289,16 @@ async function getTwoByTwoReal(ctx: Ctx, input: TeamTwoByTwoInput): Promise<Team
 
   const cohortSize = rows.length;
 
-  const gate = applyDisplayGate({
+  const lockedGate = applyDisplayGate({
     sessions_count: rows.reduce((s, r) => s + Number(r.sessions), 0),
     active_days: Math.max(1, Math.min(days, 30)),
     outcome_events: rows.length,
     cohort_size: cohortSize,
     team_scope: true,
   });
+  const showScatter = input.bypassCohortFloor ? true : lockedGate.show;
 
-  const points: ScatterPoint[] = gate.show
+  const points: ScatterPoint[] = showScatter
     ? rows.map((r) => ({
         engineer_id_hash: r.engineer_id_hash,
         outcome_quality: round2(clamp(Number(r.outcome_quality), 0, 100)),
@@ -289,21 +308,37 @@ async function getTwoByTwoReal(ctx: Ctx, input: TeamTwoByTwoInput): Promise<Team
       }))
     : [];
 
+  // Real-mode identities use buildFixtureIdentity keyed by hash because the
+  // CH query already cityHash64'd the engineer_id; the raw id isn't returned.
+  // For now this gives demo a stable synthetic name per hash. A future
+  // improvement (out of scope here) would also SELECT the raw engineer_id and
+  // JOIN through PG → developers → users → betterAuthUser.
+  let identities: Record<string, DeveloperIdentity> | undefined;
+  if (input.includeIdentities && points.length > 0) {
+    identities = {};
+    for (const p of points) {
+      identities[p.engineer_id_hash] = buildFixtureIdentity(p.engineer_id_hash);
+    }
+  }
+
   return {
     window: input.window,
     team_id: input.team_id,
     task_category: taskCategory,
     cohort_size: cohortSize,
-    display: gate.show
+    display: lockedGate.show
       ? { show: true }
-      : {
-          show: false,
-          suppression_reason: gate.suppression_reason,
-          failed_gates: gate.failed_gates,
-        },
+      : showScatter
+        ? { show: true }
+        : {
+            show: false,
+            suppression_reason: lockedGate.suppression_reason,
+            failed_gates: lockedGate.failed_gates,
+          },
     points,
     available_task_categories: AVAILABLE_TASK_CATEGORIES,
     fidelity: "full",
+    ...(identities ? { identities } : {}),
   };
 }
 

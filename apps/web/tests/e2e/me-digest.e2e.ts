@@ -10,6 +10,11 @@ import { expect, test } from "@playwright/test";
  *     but the framing still has to communicate that transparency is the
  *     default, not a premium feature.
  *
+ * The page stays reachable in both compliance polarities — it's a personal
+ * surface that may grow to include non-compliance content. When the flag is
+ * off in demo mode, the audit log naturally renders its empty-state copy
+ * because no reveal / drill actions have been taken.
+ *
  * Note: today only the preference BADGE renders, not a live toggle. When
  * Walid's notification-preference mutation lands, extend this spec to click
  * the toggle and assert the server action response.

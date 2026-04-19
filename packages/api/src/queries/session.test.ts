@@ -47,6 +47,36 @@ describe("listSessions", () => {
     const b = await listSessions(makeCtx(), { window: "7d", limit: 30 });
     expect(a.sessions.map((s) => s.session_id)).toEqual(b.sessions.map((s) => s.session_id));
   });
+
+  test("omits identities map when includeIdentities is not requested", async () => {
+    const out = await listSessions(makeCtx(), { window: "7d", limit: 30 });
+    expect(out.identities).toBeUndefined();
+  });
+
+  test("omits identities map when includeIdentities=false explicitly", async () => {
+    const out = await listSessions(makeCtx(), {
+      window: "7d",
+      limit: 30,
+      includeIdentities: false,
+    });
+    expect(out.identities).toBeUndefined();
+  });
+
+  test("returns identities map keyed by engineer_id when includeIdentities=true", async () => {
+    const out = await listSessions(makeCtx(), {
+      window: "7d",
+      limit: 30,
+      includeIdentities: true,
+    });
+    expect(out.identities).toBeDefined();
+    const engineers = new Set(out.sessions.map((s) => s.engineer_id));
+    for (const eid of engineers) {
+      const id = out.identities?.[eid];
+      expect(id).toBeDefined();
+      expect(typeof id?.email).toBe("string");
+      expect(id?.email.length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("getSession", () => {
