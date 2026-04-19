@@ -141,6 +141,58 @@ describe("POST /v1/webhooks/github/:installation_id — path-param route", () =>
     expect(j.code).toBe("INSTALLATION_REVOKED");
   });
 
+  test("H6 — suspended installation_id → 404 INSTALLATION_SUSPENDED + audit", async () => {
+    const ctx = makeCtx({ status: "suspended" });
+    const body = '{"action":"opened"}';
+    const res = await postPath(INSTALLATION_ID.toString(), body, {
+      signature: sig(body, ACTIVE_SECRET),
+      deliveryId: "d-sus-1",
+    });
+    expect(res.status).toBe(404);
+    const j = (await res.json()) as { code: string };
+    expect(j.code).toBe("INSTALLATION_SUSPENDED");
+    // Must NOT have published to the bus
+    expect(ctx.bus.peek(GITHUB_WEBHOOKS_TOPIC).length).toBe(0);
+    // Must audit the rejection
+    const audits = ctx.audit.records.filter(
+      (r) => r.action === "github.webhook.installation_not_active",
+    );
+    expect(audits.length).toBe(1);
+    expect(audits[0]?.metadata.status).toBe("suspended");
+  });
+
+  test("H6 — reconnecting installation_id → 404 INSTALLATION_RECONNECTING + audit", async () => {
+    const ctx = makeCtx({ status: "reconnecting" });
+    const body = '{"action":"opened"}';
+    const res = await postPath(INSTALLATION_ID.toString(), body, {
+      signature: sig(body, ACTIVE_SECRET),
+      deliveryId: "d-rec-1",
+    });
+    expect(res.status).toBe(404);
+    const j = (await res.json()) as { code: string };
+    expect(j.code).toBe("INSTALLATION_RECONNECTING");
+    expect(ctx.bus.peek(GITHUB_WEBHOOKS_TOPIC).length).toBe(0);
+    const audits = ctx.audit.records.filter(
+      (r) => r.action === "github.webhook.installation_not_active",
+    );
+    expect(audits.length).toBe(1);
+    expect(audits[0]?.metadata.status).toBe("reconnecting");
+  });
+
+  test("H6 — revoked installation also writes audit (strict allowlist)", async () => {
+    const ctx = makeCtx({ status: "revoked" });
+    const body = '{"action":"opened"}';
+    await postPath(INSTALLATION_ID.toString(), body, {
+      signature: sig(body, ACTIVE_SECRET),
+      deliveryId: "d-rev-1",
+    });
+    const audits = ctx.audit.records.filter(
+      (r) => r.action === "github.webhook.installation_not_active",
+    );
+    expect(audits.length).toBe(1);
+    expect(audits[0]?.metadata.status).toBe("revoked");
+  });
+
   test("active + valid signature → 200 accepted:true + bus emission", async () => {
     const ctx = makeCtx();
     const body = '{"action":"opened","pull_request":{"node_id":"PR_1","number":1}}';
