@@ -41,7 +41,7 @@ Same agent binary runs in all three. `BEMATIST_ENDPOINT=<url>` is the only switc
 
 | Layer | Choice | Pin |
 |---|---|---|
-| Runtime (server + collector) | Bun | `^1.2.x`; collector is `bun build --compile` single binary |
+| Runtime (server + collector) | Bun | `^1.3.x` (pinned `1.3.4` in root `package.json`); collector is `bun build --compile` single binary |
 | Web framework | Next.js | `16.x` with `output: 'standalone'` |
 | UI components | shadcn/ui + Tailwind v4 | latest |
 | Charts | Tremor v3 + Recharts | latest |
@@ -91,11 +91,17 @@ bun run test:privacy              # privacy adversarial suite — MERGE BLOCKER
 bun run test:scoring              # 500-case AI Leverage Score eval — MERGE BLOCKER on scoring changes (MAE ≤ 3)
 bun run test:e2e                  # playwright
 bun run test:perf                 # k6 perf (gates Sprint 2)
+bun run test:soak                 # 24h Bun↔ClickHouse soak (F15 / INT0 gate)
 
 # Database
 bun run db:migrate:pg             # drizzle for postgres
 bun run db:migrate:ch             # clickhouse migration runner
 bun run db:seed                   # seed dev data
+bun run seed:perf                 # seed 1M-event perf fixture
+bun run fixtures:write            # regenerate scoring eval fixtures
+bun run preflight:card            # card-migration preflight check
+bun run generate:otel             # regenerate OTel GenAI mapping from upstream spec
+bun run check:otel-generated      # CI gate: OTel generated artifacts are in sync
 
 # Self-host stack (dev)
 docker compose -f docker-compose.dev.yml up
@@ -151,6 +157,7 @@ bematist serve --embedded
     apps/
       web/                  # Next.js 16 standalone
       ingest/               # Bun ingest server
+      ingest-sidecar/       # Plan B Go ClickHouse writer (clickhouse-go/v2 Native); UNIX-socket-fed from ingest when CLICKHOUSE_WRITER=sidecar (Rule #7)
       collector/            # Bun-compiled binary (per-dev)
       worker/               # PgBoss + Redis Stream consumers
     packages/
@@ -426,7 +433,7 @@ BEMATIST_DRY_RUN                          # 1 = log what would be sent, send not
   - `challenger-loop2-critique.md` — Opus 4.6 Challenger critique that drove amendments
   - `PRD.old.md` — earlier PRD (pre-consolidation; dates from before the Bematist rename)
   - `CLAUDE.old.md` — earlier CLAUDE.md (pre-consolidation; notably had Tier C as default — superseded by D7)
-- `WORKSTREAMS.md` — (to be created in Foundation Sprint F14) per-workstream README
+- `WORKSTREAMS.md` — per-workstream README + contract index (contracts live in `contracts/01…09`)
 
 ## Related prior work (in this user's portfolio)
 
