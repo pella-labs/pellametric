@@ -20,7 +20,7 @@
 | **D50** Copilot Metrics API Phase 2 | Deferred | — |
 | **D51** Hourly reconciliation runner wired to redelivery API | **Yes — G3 live** | `apps/worker/src/github-linker/reconcileScaffold.ts` + `reconcileGapFill.test.ts` |
 | **D52** `session_repo_links` Postgres partitioning | Yes | G1 migration + `partitionCreator.ts` |
-| **D53** Linker state pure function + commutativity 1000 orderings | Yes — **11 scenarios × 100 orderings = 1100 orderings** (G3 extends) | `apps/worker/src/github-linker/commutativity.test.ts` + G3 force-push range scenario |
+| **D53** Linker state pure function + commutativity ≥1000 orderings | Yes — **11 scenarios × 100 orderings = 1,100 orderings** (aggregate) + dedicated 1,000-ordering run on s11 (force-push RANGE + rename alias) for per-scenario D53 witness | `apps/worker/src/github-linker/commutativity.test.ts` (16 tests, 5,316 expect calls) |
 | **D54** `session_repo_eligibility` same-txn | Yes | G1 |
 | **D55** 10-min webhook secret rotation | Yes | G1 + G2 admin API |
 | **D56** Redis Streams per-tenant recompute | Yes | G1 |
@@ -34,13 +34,35 @@
 | Gate | Status | Evidence |
 |---|---|---|
 | **INT9 — RLS cross-tenant probes on 8 new tables** | Green | `packages/schema/postgres/__tests__/github_g1_rls.test.ts` |
-| **Commutativity — 1000 orderings × 10 scenarios (G1)** | Green | `commutativity.test.ts` |
-| **Commutativity — G3 extension (11 scenarios × 100 orderings = 1100 total)** | Green | G3 `s11` scenario + range-aware permutation |
+| **Commutativity — 11 scenarios × 100 orderings = 1,100 aggregate** | Green | `commutativity.test.ts` |
+| **Commutativity — dedicated 1,000-ordering pass on s11 (per-scenario D53 witness)** | Green | `commutativity.test.ts` — `D53 per-scenario — s11 (force-push RANGE) holds across 1,000 orderings` |
 | **MAE ≤ 3 on 650-case main + 150 held-out** | **Green** (MAE 0.025 main; 0.024 held-out; 666+150 cases) | `bun run test:scoring` output |
 | **LLM-judge adversarial eval ≥ 0.7** | Green (carried from G2) | Scoring eval runner |
 | **Privacy adversarial gate (INT10)** | Green | G1/G2 — no G3 regressions |
-| **F15 Bun↔ClickHouse soak — 24h at 100 evt/s** | **Compressed 10-min proxy: PASSED.** 60k writes, 0 failures, p99 15.88ms, drift 0. Full 24h: deferred to post-MVP hardening per CLAUDE.md Architecture Rule #7 Plan B posture | `tests/soak/compressed-proxy.test.ts` |
+| **F15 Bun↔ClickHouse soak — 24h at 100 evt/s** | **Compressed proxy PASSED locally at 10 min** (60k writes, 0 failures, p99 15.88ms, drift 0). **CI default runs 6s (SOAK_COMPRESSED_MINUTES=0.1)** — this is a fast-feedback loop, not a soak gate. A distinct 10-min CI job (M7 follow-up) is needed to call the soak gate green in CI. Full 24h deferred per Architecture Rule #7 Plan B posture. | `tests/soak/compressed-proxy.test.ts` |
 | **Fixture redaction privacy test** | Green (47 fixtures, +3 G3 deploys) | `packages/fixtures/github/fixtures.redaction.test.ts` |
+
+## Known gaps pending subsequent PR
+
+The integration PR #92 consolidates G0–G3. Three reviews surfaced 13 issues;
+the following are landed in this PR. Items marked *(follow-up)* are scoped
+to a distinct PR with its own contract tests:
+
+| ID | Title | Status |
+|---|---|---|
+| B1 | `installation.created` parser + admin claim flow | **Pending follow-up** — requires pre-claim `github_pending_installations` surface + admin UI claim path |
+| B2 | Shared ingest↔worker installation-token resolver | **Pending follow-up** — unblocks admin sync |
+| B4 | Recompute pipeline wiring (Redis stream producer in worker + real `loadInputs`) | **Pending follow-up** — most-leverage blocker; linker currently no-ops on all messages |
+| B5 | Partial unique index on `session_repo_links (stale_at IS NULL)` | **Landed** (migration 0008) |
+| B9 | Redis token-bucket for `redeliverWebhooks` (D59) | **Pending follow-up** |
+| B10 | Recursive allowlist for `assertEvidenceSafe` | **Landed** |
+| B11 | Honest commutativity count + per-scenario D53 witness | **Landed** |
+| H2 | Playwright `admin-github` storageState fixture | **Pending follow-up** — 4 tests currently red under default harness invocation |
+| H3 | Fail-closed boot (Kafka / PG / GITHUB_APP_ID) | **Landed** |
+| H6 | Strict installation-status allowlist w/ distinct codes | **Landed** |
+| M1 | `repos.full_name` column + ILIKE search path | **Pending follow-up** |
+| M7 | F15 10-min CI soak gate (separate job) | **Pending follow-up** |
+| M13 | PR-local lint debt (biome organize-imports + non-null assertions) | **Landed** |
 
 ## Explicitly deferred to Phase 2 (§5 / §13.G4)
 
@@ -119,7 +141,8 @@ the trailer is missing — still accurate but less auditable.
   `PATCH /api/admin/github/repos/:id/prod-env-regex` + 4 tests)
 - Force-push tombstone extended from flat-SHA to 30-min windows
   (`ForcePushTombstone.excluded_ranges`) + 4 tests + commutativity
-  scenario #11 (1100 orderings total)
+  scenario #11 (1,100 aggregate orderings + dedicated 1,000-ordering
+  per-scenario D53 pass)
 - Hourly reconciler wired to GitHub `/app/hook/deliveries` redelivery API
   + gap-detection test (5 deliveries seeded, 1 missing → exactly 1
   redelivery requested)

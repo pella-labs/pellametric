@@ -528,7 +528,9 @@ describe("linker commutativity (PRD §10 D53) — MERGE BLOCKER", () => {
       const refFingerprint = linksFingerprint(ref.links);
       const refEligible = ref.eligibility.eligible;
 
-      // 100 random orderings per scenario × 10 scenarios = 1000 orderings total.
+      // 11 scenarios × 100 orderings each = 1,100 orderings aggregate (exceeds
+      // D53 "≥ 1000 orderings" requirement in aggregate). One scenario below
+      // runs a dedicated 1,000-ordering pass to also satisfy D53 per-scenario.
       for (let i = 0; i < 100; i++) {
         const rng = makeRng(0xc0ffee + i);
         const permuted = permuteInputs(base, rng);
@@ -540,11 +542,32 @@ describe("linker commutativity (PRD §10 D53) — MERGE BLOCKER", () => {
     });
   }
 
-  test("GLOBAL: 1000 orderings across ALL scenarios agree", () => {
+  // B11 — dedicated per-scenario 1,000-ordering pass to literally satisfy
+  // D53 on the most complex scenario (multi-trigger + force-push RANGE +
+  // rename alias). The main suite above runs 100 orderings × 11 scenarios
+  // = 1,100 orderings total; this adds 1,000 orderings on a single base so
+  // there's a single-scenario D53 witness in the log.
+  test("D53 per-scenario — s11 (force-push RANGE) holds across 1,000 orderings", () => {
+    const s11 = scenarios.find((s) => s.name.startsWith("s11"));
+    expect(s11).toBeDefined();
+    if (!s11) return;
+    const base = s11.build();
+    const ref = computeLinkerState(base, CLOCK);
+    const refSha = ref.inputs_sha256.toString("hex");
+    const refFingerprint = linksFingerprint(ref.links);
+    for (let i = 0; i < 1000; i++) {
+      const rng = makeRng(0xb11b11 + i);
+      const permuted = permuteInputs(base, rng);
+      const out = computeLinkerState(permuted, CLOCK);
+      expect(out.inputs_sha256.toString("hex")).toBe(refSha);
+      expect(linksFingerprint(out.links)).toBe(refFingerprint);
+    }
+  });
+
+  test("sanity: ref hash is 32 bytes for every scenario (pre-ordering smoke)", () => {
     for (const s of scenarios) {
       const base = s.build();
       const ref = computeLinkerState(base, CLOCK);
-      // chain test — final aggregate sanity.
       expect(ref.inputs_sha256.length).toBe(32);
     }
   });
