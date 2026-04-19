@@ -3,15 +3,15 @@
 import Image from "next/image";
 import { CardMount } from "../../(marketing)/_card/CardMount";
 import { DEMO_CARD } from "../../(marketing)/_card/demo-data";
-import { RingsBg } from "../components/rings-bg";
 
 /**
  * Final slide — merges the former "engineer card" slide into the CTA so
  * developers who scan the QR have immediate reason to care: their own
  * card is the first thing they see.
  *
- * Layout: QR + "Start today / Join the movement" on the LEFT, real
- * shareable card (same component /card/[id] renders) on the RIGHT.
+ * Layout: QR + "Start today / Join the movement" on the LEFT, live
+ * shareable card on the RIGHT, auto-advancing through all 8 card pages
+ * so the audience sees every face without keyboard input.
  */
 export function Slide14Cta(_props: { totalPages: number }) {
   return (
@@ -20,19 +20,6 @@ export function Slide14Cta(_props: { totalPages: number }) {
       style={{ padding: 0, height: "100%", position: "relative", overflow: "hidden" }}
     >
       <div className="grid-bg" />
-
-      <RingsBg
-        outer="START TODAY · JOIN THE MOVEMENT · START TODAY · JOIN THE MOVEMENT · START TODAY · JOIN THE MOVEMENT · "
-        inner="APACHE 2.0 · OPEN SOURCE · SELF-HOSTABLE · APACHE 2.0 · OPEN SOURCE · SELF-HOSTABLE · "
-        style={{
-          right: -250,
-          top: "auto",
-          bottom: -250,
-          width: 1100,
-          height: 1100,
-          opacity: 0.5,
-        }}
-      />
 
       <div className="chrome-row">
         <div className="wordmark">
@@ -72,16 +59,16 @@ export function Slide14Cta(_props: { totalPages: number }) {
           </div>
           <div
             style={{
-              width: 320,
-              height: 320,
+              width: 420,
+              height: 420,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               position: "relative",
-              borderRadius: 32,
+              borderRadius: 40,
               overflow: "hidden",
               background: "#fff",
-              padding: 18,
+              padding: 22,
               boxSizing: "border-box",
               filter: "drop-shadow(0 24px 48px rgba(110,138,111,0.35))",
             }}
@@ -89,8 +76,8 @@ export function Slide14Cta(_props: { totalPages: number }) {
             <Image
               src="/deck/qr-bematist.png"
               alt="QR code — bematist.dev"
-              width={280}
-              height={280}
+              width={380}
+              height={380}
               priority
               style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
             />
@@ -129,12 +116,10 @@ export function Slide14Cta(_props: { totalPages: number }) {
             style={{
               position: "relative",
               zIndex: 2,
-              width: 720,
-              transform: "scale(0.86)",
-              transformOrigin: "center",
+              width: 900,
             }}
           >
-            <CardMount demoData={DEMO_CARD} compact />
+            <CardMount demoData={DEMO_CARD} compact autoAdvanceMs={5000} />
           </div>
         </div>
       </div>
