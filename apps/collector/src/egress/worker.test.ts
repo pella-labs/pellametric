@@ -67,7 +67,7 @@ test("202 marks all submitted", async () => {
   expect(j.pendingCount()).toBe(0);
 });
 
-test("207 splits succeeded vs failed per index", async () => {
+test("207 splits succeeded vs failed per index; rejects dead-lettered", async () => {
   j.enqueue(ev(0));
   j.enqueue(ev(1));
   const fetchMock = async () =>
@@ -87,7 +87,9 @@ test("207 splits succeeded vs failed per index", async () => {
   });
   expect(result.submitted).toBe(1);
   expect(result.failed).toBe(1);
-  expect(j.pendingCount()).toBe(1);
+  // Per-row rejects now move to dead_letter (poison-pill fix).
+  expect(j.pendingCount()).toBe(0);
+  expect(j.deadLetterCount()).toBe(1);
 });
 
 test("400 marks failed with non-retry reason", async () => {

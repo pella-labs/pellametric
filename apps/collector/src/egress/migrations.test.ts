@@ -53,30 +53,30 @@ test("inlined migration bodies match the on-disk .sql files", () => {
   // The inlined strings in migrations.ts exist so `bun build --compile`
   // produces a binary that doesn't need the .sql files at runtime. They
   // MUST stay in lockstep with the on-disk SQL — this test is the lock.
-  const onDisk = readFileSync(join(import.meta.dir, "migrations", "001_initial.sql"), "utf8");
-  // Round-trip: use migrate() against a fresh DB; the schema produced by
-  // loadMigrationSql's fallback path (inlined) must equal what the on-disk
-  // SQL produces.
+  const onDiskFiles = ["001_initial.sql", "002_dead_letter.sql"];
   const dbFromFile = new Database(join(dir, "file.sqlite"));
   try {
-    dbFromFile.exec(onDisk);
+    for (const f of onDiskFiles) {
+      const sql = readFileSync(join(import.meta.dir, "migrations", f), "utf8");
+      dbFromFile.exec(sql);
+    }
     const onDiskSchema = dbFromFile
-      .query<{ sql: string }, []>(
+      .query<{ sql: string | null }, []>(
         "SELECT sql FROM sqlite_master WHERE type IN ('table','index') AND sql IS NOT NULL ORDER BY name",
       )
       .all()
-      .map((r) => r.sql)
+      .map((r) => r.sql ?? "")
       .join("\n");
 
     const dbFromMigrate = new Database(join(dir, "migrate.sqlite"));
     try {
       migrate(dbFromMigrate);
       const migrateSchema = dbFromMigrate
-        .query<{ sql: string }, []>(
+        .query<{ sql: string | null }, []>(
           "SELECT sql FROM sqlite_master WHERE type IN ('table','index') AND sql IS NOT NULL AND name != 'schema_migrations' ORDER BY name",
         )
         .all()
-        .map((r) => r.sql)
+        .map((r) => r.sql ?? "")
         .join("\n");
       expect(migrateSchema).toBe(onDiskSchema);
     } finally {
@@ -92,9 +92,10 @@ test("migrate() is idempotent", () => {
   try {
     migrate(db);
     expect(() => migrate(db)).not.toThrow();
-    const rows = db.query<{ version: number }, []>("SELECT version FROM schema_migrations").all();
-    expect(rows.length).toBe(1);
-    expect(rows[0]?.version).toBe(1);
+    const rows = db
+      .query<{ version: number }, []>("SELECT version FROM schema_migrations ORDER BY version")
+      .all();
+    expect(rows.map((r) => r.version)).toEqual([1, 2]);
   } finally {
     db.close();
   }

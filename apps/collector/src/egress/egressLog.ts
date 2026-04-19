@@ -8,6 +8,12 @@
 // sent (or would be sent, in dry-run) — one line per batch, written BEFORE the
 // POST, never rewritten.
 //
+// Durability: we keep a long-lived fd, append via `writeSync`, and fsync after
+// every line. Bill of Rights #1 requires the audit entry to be durable BEFORE
+// the POST lands — without fsync, a SIGKILL after the kernel has accepted the
+// write but before it hits the platter would lose the audit entry while the
+// POST still reached the server.
+//
 // Format, one JSON object per line, newline-delimited:
 //   {
 //     "ts": "2026-04-18T14:00:00.000Z",
@@ -23,7 +29,15 @@
 // needs to inspect it. This log answers "what was sent" and "when", not "what
 // exactly was the content".
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  writeSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 
 export interface EgressLogEntry {
@@ -45,6 +59,7 @@ export interface EgressLogEntry {
 
 export class EgressLog {
   private readonly path: string;
+  private fd: number | null = null;
 
   constructor(dataDir: string) {
     this.path = join(dataDir, "egress.jsonl");
@@ -57,9 +72,34 @@ export class EgressLog {
     return this.path;
   }
 
-  /** Write one entry. Appends synchronously so a crash mid-send still has the audit trail. */
+  private ensureFd(): number {
+    if (this.fd != null) return this.fd;
+    // 'a' = append-only; 0o644 matches fs.appendFileSync's default.
+    this.fd = openSync(this.path, "a", 0o644);
+    return this.fd;
+  }
+
+  /**
+   * Write one entry. Synchronous + fsync so a SIGKILL post-write cannot
+   * separate the audit trail from the actual POST.
+   */
   write(entry: EgressLogEntry): void {
-    appendFileSync(this.path, `${JSON.stringify(entry)}\n`, "utf8");
+    const fd = this.ensureFd();
+    const buf = Buffer.from(`${JSON.stringify(entry)}\n`, "utf8");
+    writeSync(fd, buf);
+    fsyncSync(fd);
+  }
+
+  /** Close the fd. Safe to call multiple times. Mainly for test cleanup. */
+  close(): void {
+    if (this.fd != null) {
+      try {
+        closeSync(this.fd);
+      } catch {
+        // ignore
+      }
+      this.fd = null;
+    }
   }
 
   /**

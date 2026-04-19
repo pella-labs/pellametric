@@ -87,3 +87,41 @@ test("survives a malformed line mid-file", () => {
   // The malformed line is skipped.
   expect(tail.length).toBe(2);
 });
+
+test("entry is durable on disk after write returns (SIGKILL-proxy via separate Bun process)", async () => {
+  // Bill of Rights #1: audit written before POST must survive a SIGKILL.
+  // Spawn a subprocess that writes one line then kills itself with SIGKILL.
+  // Without fsync in write(), the kernel can buffer the write and a hard
+  // kill here would lose the line. With fsync, the line must be on disk by
+  // the time write() returned.
+  const { spawnSync } = require("node:child_process");
+  const fs = require("node:fs");
+  const logPath = join(dir, "egress.jsonl");
+  const scriptPath = join(dir, "_write-and-kill.ts");
+  const egressLogSrc =
+    "/Users/sebastian/dev/gauntlet/analytics-research/.claude/worktrees/agent-a2b1f342/apps/collector/src/egress/egressLog.ts";
+  fs.writeFileSync(
+    scriptPath,
+    `import { EgressLog } from ${JSON.stringify(egressLogSrc)};
+const log = new EgressLog(${JSON.stringify(dir)});
+log.write({
+  ts: "2026-04-18T14:00:00.000Z",
+  endpoint: "https://ingest.test",
+  eventCount: 1,
+  clientEventIds: ["sigkill-proxy"],
+  dryRun: false,
+  bodyBytes: 100,
+});
+// Now SIGKILL self — no graceful shutdown, no close(). The line must have
+// been fsynced before write() returned.
+process.kill(process.pid, "SIGKILL");
+`,
+    "utf8",
+  );
+  const result = spawnSync("bun", [scriptPath], { encoding: "utf8" });
+  if (process.platform !== "win32") {
+    expect(result.signal).toBe("SIGKILL");
+  }
+  const raw = fs.readFileSync(logPath, "utf8");
+  expect(raw).toContain("sigkill-proxy");
+});

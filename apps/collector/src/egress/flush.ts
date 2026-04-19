@@ -8,19 +8,18 @@
 //   3. POST to `${endpoint}/v1/events` with retry via postWithRetry.
 //   4. Interpret the response:
 //      - 202 → all submitted
-//      - 207 → per-index accept/reject
-//      - 400 / 413 → non-retry failure on this batch; mark failed, move on
-//      - 401 / 403 → fatal; caller halts (auth is broken)
-//      - 429 / 5xx → retried within postWithRetry; if still failing, rows
-//        stay pending and we surface retryAfterSeconds to the caller.
-//      - network error → rows stay pending
+//      - 207 → per-index accept/reject — per-row rejects go to dead_letter
+//      - 400 / 413 → permanent batch reject → dead_letter
+//      - 401 / 403 → fatal; caller halts (auth is broken); rows stay pending
+//      - 429 → cooling with server-supplied Retry-After
+//      - 5xx / network error → cooling with per-row exponential backoff
 //
 // Tested in flush.test.ts.
 
 import { log } from "../logger";
 import type { EgressLog } from "./egressLog";
 import { postWithRetry } from "./httpClient";
-import type { Journal } from "./journal";
+import type { Journal, PendingRow } from "./journal";
 
 export interface FlushOptions {
   endpoint: string;
@@ -38,6 +37,57 @@ export interface FlushResult {
   fatal: boolean;
   retryAfterSeconds: number | null;
   note?: string;
+}
+
+/**
+ * Per-row exponential backoff with ±10% jitter.
+ *   base = 200ms; cap = 30min.
+ * Reading: attempt 0 → ~200ms; attempt 5 → ~6.4s; attempt 10 → ~3.4min;
+ * attempt 12 → cap (30min). MAX_RETRIES=12 in journal.ts so we never exceed.
+ */
+export function computeBackoffMs(retryCount: number): number {
+  const BASE_MS = 200;
+  const CAP_MS = 30 * 60 * 1000;
+  const exp = Math.min(CAP_MS, BASE_MS * 2 ** retryCount);
+  // ±10% jitter — avoid thundering herd without breaking determinism too much.
+  const jitter = exp * 0.1 * (Math.random() * 2 - 1);
+  return Math.max(0, Math.round(exp + jitter));
+}
+
+/**
+ * Mark an entire batch as cooling with per-row backoff keyed on that row's
+ * current retry_count. Rows in the same batch may have different retry_counts
+ * (a cooling row could be re-selected alongside a fresh pending row); we
+ * compute the cooldown per-row so neither gets punished by the other.
+ */
+function markBatchCooling(journal: Journal, rows: PendingRow[], reason: string): void {
+  // Group by retry_count so we make one journal.markFailed call per group.
+  const groups = new Map<number, string[]>();
+  for (const r of rows) {
+    const list = groups.get(r.retry_count) ?? [];
+    list.push(r.client_event_id);
+    groups.set(r.retry_count, list);
+  }
+  for (const [retryCount, ids] of groups) {
+    journal.markFailed(ids, reason, { retryAfterMs: computeBackoffMs(retryCount) });
+  }
+}
+
+/**
+ * Variant of markBatchCooling that uses a caller-supplied fixed delay (429's
+ * Retry-After). retry_count still increments per row.
+ */
+function markBatchCoolingFixed(
+  journal: Journal,
+  rows: PendingRow[],
+  reason: string,
+  retryAfterMs: number,
+): void {
+  journal.markFailed(
+    rows.map((r) => r.client_event_id),
+    reason,
+    { retryAfterMs },
+  );
 }
 
 export async function flushBatch(
@@ -97,9 +147,9 @@ export async function flushBatch(
     httpOpts,
   );
 
-  // Retries exhausted + network error → rows stay pending, retry next cycle.
+  // Retries exhausted + network error → cooling with per-row backoff.
   if (result.error) {
-    journal.markFailed(ids, `network: ${result.error.message}`);
+    markBatchCooling(journal, pending, `network: ${result.error.message}`);
     return {
       submitted: 0,
       failed: pending.length,
@@ -111,7 +161,7 @@ export async function flushBatch(
 
   const res = result.response;
   if (!res) {
-    journal.markFailed(ids, "no response");
+    markBatchCooling(journal, pending, "no response");
     return {
       submitted: 0,
       failed: pending.length,
@@ -143,7 +193,12 @@ export async function flushBatch(
       (rejectedIdx.has(i) ? failedIds : submittedIds).push(row.client_event_id);
     }
     journal.markSubmitted(submittedIds);
-    journal.markFailed(failedIds, `207 partial: ${JSON.stringify(payload.rejected ?? "unknown")}`);
+    // Per-row server rejects are permanent — the same payload will be rejected
+    // by any replay. Move them straight to dead_letter so they never block
+    // newer rows behind them.
+    journal.markFailed(failedIds, `207 partial: ${JSON.stringify(payload.rejected ?? "unknown")}`, {
+      permanent: true,
+    });
     return {
       submitted: submittedIds.length,
       failed: failedIds.length,
@@ -154,10 +209,13 @@ export async function flushBatch(
 
   if (res.status === 400 || res.status === 413) {
     const text = await res.text().catch(() => "");
-    journal.markFailed(ids, `${res.status}: ${text}`);
+    // Schema violation (400) and payload-too-large (413) are both caller-side
+    // problems — retrying the SAME bytes won't help. Dead-letter immediately
+    // so the poison pill stops blocking the queue behind it.
+    journal.markFailed(ids, `${res.status}: ${text}`, { permanent: true });
     log.warn(
-      { status: res.status, body: text },
-      "egress non-retry 4xx — dropping batch from active retry",
+      { status: res.status, body: text, count: pending.length },
+      "egress permanent 4xx — dead-lettering batch",
     );
     return {
       submitted: 0,
@@ -169,6 +227,8 @@ export async function flushBatch(
   }
 
   if (res.status === 401 || res.status === 403) {
+    // Auth failure — rows are VALID. Halt the worker; leave rows pending so
+    // they flush once the operator fixes BEMATIST_TOKEN. No markFailed call.
     log.fatal({ status: res.status }, "egress auth fatal — halting. check BEMATIST_TOKEN.");
     return {
       submitted: 0,
@@ -180,19 +240,22 @@ export async function flushBatch(
   }
 
   if (res.status === 429) {
-    // postWithRetry already spent its retries; rows remain pending.
+    // Rate-limited. Honor server's Retry-After (or 30s default) — cool the
+    // batch until then, retry_count++ per row so repeated 429s eventually cap.
+    const retryAfterMs = (result.retryAfterSeconds ?? 30) * 1000;
+    markBatchCoolingFixed(journal, pending, "rate-limited", retryAfterMs);
     return {
       submitted: 0,
-      failed: 0,
+      failed: pending.length,
       fatal: false,
       retryAfterSeconds: result.retryAfterSeconds,
       note: "rate-limited",
     };
   }
 
-  // 5xx after retries — leave pending, surface the status as a note.
+  // 5xx after retries exhausted in postWithRetry — cool per-row.
   const text = await res.text().catch(() => "");
-  journal.markFailed(ids, `${res.status}: ${text}`);
+  markBatchCooling(journal, pending, `${res.status}: ${text}`);
   return {
     submitted: 0,
     failed: pending.length,

@@ -127,7 +127,7 @@ test("transient 503 recovers on retry", async () => {
   expect(j.pendingCount()).toBe(0);
 });
 
-test("network error keeps rows pending", async () => {
+test("network error cools rows; not immediately reselectable", async () => {
   j.enqueue(ev(0));
   const fetchMock = async () => {
     throw new Error("ECONNREFUSED");
@@ -141,10 +141,15 @@ test("network error keeps rows pending", async () => {
     ingestOnlyTo: null,
   });
   expect(result.note).toContain("network");
-  expect(j.pendingCount()).toBe(1);
+  // Row is cooling with next_attempt_at > now → not selectable, not dead.
+  expect(j.pendingCount()).toBe(0);
+  expect(j.deadLetterCount()).toBe(0);
+  const forensic = j.tail(1);
+  expect(forensic[0]?.state).toBe("cooling");
+  expect(forensic[0]?.next_attempt_at).toBeTruthy();
 }, 15000);
 
-test("207 partial splits by index", async () => {
+test("207 partial: accepted submitted, rejected dead-lettered", async () => {
   j.enqueue(ev(0));
   j.enqueue(ev(1));
   const fetchMock = async () =>
@@ -165,7 +170,11 @@ test("207 partial splits by index", async () => {
   });
   expect(result.submitted).toBe(1);
   expect(result.failed).toBe(1);
-  expect(j.pendingCount()).toBe(1);
+  // Rejected row moves to dead_letter (permanent server-side reject).
+  expect(j.pendingCount()).toBe(0);
+  expect(j.deadLetterCount()).toBe(1);
+  const dl = j.tailDeadLetter(10);
+  expect(dl[0]?.client_event_id).toBe(ev(1).client_event_id);
 });
 
 test("empty pending is a no-op; no egress log entry", async () => {
@@ -179,4 +188,95 @@ test("empty pending is a no-op; no egress log entry", async () => {
   });
   expect(result.submitted).toBe(0);
   expect(egress.count()).toBe(0);
+});
+
+// --- Poison-pill queue-stall regression (bugs #1/#15/#16) ---
+
+test("poison-pill A does not block B: first flush dead-letters A, second submits B", async () => {
+  // Two events in order A, B. First flush returns 400 → A dead-letters.
+  // Then enqueue B, flush again, server returns 202 → B submitted.
+  j.enqueue(ev(0)); // "A" — the poison pill
+
+  let calls = 0;
+  // First call: 400 (schema violation on the whole batch). Second: 202.
+  const fetchMock = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return new Response(JSON.stringify({ error: "schema" }), { status: 400 });
+    }
+    return new Response(JSON.stringify({ accepted: 1 }), { status: 202 });
+  };
+
+  const flushOpts = {
+    endpoint: "http://h.test",
+    token: "bm_x",
+    fetchImpl: fetchMock as unknown as typeof fetch,
+    dryRun: false,
+    batchSize: 10,
+    ingestOnlyTo: null,
+  };
+
+  const r1 = await flushBatch(j, egress, flushOpts);
+  expect(r1.failed).toBe(1);
+  // A is now dead-lettered — NOT selectable anymore.
+  expect(j.pendingCount()).toBe(0);
+  expect(j.deadLetterCount()).toBe(1);
+
+  // Enqueue B after the poison pill was resolved.
+  j.enqueue(ev(1));
+  expect(j.pendingCount()).toBe(1); // B is pending; A stays dead-lettered.
+
+  const r2 = await flushBatch(j, egress, flushOpts);
+  expect(r2.submitted).toBe(1);
+  expect(j.pendingCount()).toBe(0);
+  // Dead-letter count still 1 (A), and B never touched the dead-letter bin.
+  expect(j.deadLetterCount()).toBe(1);
+});
+
+test("400 dead-letters the batch immediately", async () => {
+  j.enqueue(ev(0));
+  const fetchMock = async () => new Response(JSON.stringify({ error: "bad" }), { status: 400 });
+  const result = await flushBatch(j, egress, {
+    endpoint: "http://h.test",
+    token: "bm_x",
+    fetchImpl: fetchMock as unknown as typeof fetch,
+    dryRun: false,
+    batchSize: 10,
+    ingestOnlyTo: null,
+  });
+  expect(result.failed).toBe(1);
+  expect(j.deadLetterCount()).toBe(1);
+  expect(j.pendingCount()).toBe(0);
+});
+
+test("413 dead-letters the batch immediately", async () => {
+  j.enqueue(ev(0));
+  const fetchMock = async () => new Response(null, { status: 413 });
+  const result = await flushBatch(j, egress, {
+    endpoint: "http://h.test",
+    token: "bm_x",
+    fetchImpl: fetchMock as unknown as typeof fetch,
+    dryRun: false,
+    batchSize: 10,
+    ingestOnlyTo: null,
+  });
+  expect(result.failed).toBe(1);
+  expect(j.deadLetterCount()).toBe(1);
+});
+
+test("401 does NOT mark rows — they stay pending for retry after token fix", async () => {
+  j.enqueue(ev(0));
+  const fetchMock = async () => new Response(null, { status: 401 });
+  const result = await flushBatch(j, egress, {
+    endpoint: "http://h.test",
+    token: "bm_bad",
+    fetchImpl: fetchMock as unknown as typeof fetch,
+    dryRun: false,
+    batchSize: 10,
+    ingestOnlyTo: null,
+  });
+  expect(result.fatal).toBe(true);
+  // Row is still pending — auth is broken, not the payload.
+  expect(j.pendingCount()).toBe(1);
+  expect(j.deadLetterCount()).toBe(0);
 });

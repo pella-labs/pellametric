@@ -71,3 +71,54 @@ test("audit without --tail exits non-zero (usage)", async () => {
   expect(exitCode).toBe(2);
   expect(String(err)).toContain("exit");
 });
+
+test("audit --tail surfaces dead-letter rows when present", async () => {
+  // Seed a journal with a dead-letter row, then verify runAudit prints it.
+  const { Database } = await import("bun:sqlite");
+  const { egressSqlite } = await import("@bematist/config");
+  const { migrate } = await import("../egress/migrations");
+  const { Journal } = await import("../egress/journal");
+
+  const dbPath = egressSqlite();
+  const fs = await import("node:fs");
+  fs.mkdirSync(join(dbPath, ".."), { recursive: true });
+  const db = new Database(dbPath);
+  try {
+    db.exec("PRAGMA journal_mode=DELETE");
+    migrate(db);
+    const j = new Journal(db);
+    j.enqueue({
+      client_event_id: "00000000-0000-0000-0000-00000000dead",
+      schema_version: 1,
+      ts: "2026-04-18T14:00:00.000Z",
+      tenant_id: "org_acme",
+      engineer_id: "eng_x",
+      device_id: "dev_y",
+      source: "claude-code",
+      fidelity: "full",
+      tier: "B",
+      session_id: "s1",
+      event_seq: 0,
+      dev_metrics: { event_kind: "session_start" },
+      cost_estimated: false,
+    } as const);
+    j.markFailed(["00000000-0000-0000-0000-00000000dead"], "400 schema", { permanent: true });
+  } finally {
+    db.close();
+  }
+
+  const { runAudit } = await import("./audit");
+  await runAudit(["--tail", "-n", "10"]);
+
+  const summary = captured.find((line) => {
+    try {
+      const parsed = JSON.parse(line);
+      return parsed._section === "dead_letter" && typeof parsed.count === "number";
+    } catch {
+      return false;
+    }
+  });
+  const rowLine = captured.find((line) => line.includes("00000000-0000-0000-0000-00000000dead"));
+  expect(summary).toBeTruthy();
+  expect(rowLine).toBeTruthy();
+});

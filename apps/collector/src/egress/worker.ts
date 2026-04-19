@@ -70,7 +70,9 @@ export async function flushOnce(j: Journal, opts: FlushOptions): Promise<FlushRe
     }
     j.markSubmitted(submittedIds);
     const reason = JSON.stringify(payload.rejected ?? "unknown");
-    j.markFailed(failedIds, `207 partial: ${reason}`);
+    // Per-row server rejects are permanent — the same payload will be
+    // rejected by any replay. Dead-letter so they stop blocking.
+    j.markFailed(failedIds, `207 partial: ${reason}`, { permanent: true });
     return {
       submitted: submittedIds.length,
       failed: failedIds.length,
@@ -84,6 +86,7 @@ export async function flushOnce(j: Journal, opts: FlushOptions): Promise<FlushRe
     j.markFailed(
       pending.map((r) => r.client_event_id),
       `400: ${text}`,
+      { permanent: true },
     );
     log.warn({ status: 400, body: text }, "egress 400 — do not retry this batch");
     return {
@@ -103,6 +106,7 @@ export async function flushOnce(j: Journal, opts: FlushOptions): Promise<FlushRe
     j.markFailed(
       pending.map((r) => r.client_event_id),
       "413 payload too large",
+      { permanent: true },
     );
     return {
       submitted: 0,

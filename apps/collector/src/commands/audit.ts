@@ -12,9 +12,11 @@ import { migrate } from "../egress/migrations";
  * Satisfies CLAUDE.md Bill of Rights #1: every operator must be able to see
  * every byte that left this machine in the last session.
  *
- * Two sources are tailed:
+ * Three sources are surfaced:
  *   - the per-batch egress.jsonl (high-level: "batch of N events went to
  *     https://..."); one line per batch.
+ *   - a dead-letter section (up to 10 most recent dead-letter rows) so the
+ *     operator can see rows that were permanently rejected rather than sent.
  *   - optionally --verbose: SQLite journal rows (per-event body + submission
  *     status) for deeper forensic tailing.
  */
@@ -39,28 +41,60 @@ export async function runAudit(args: string[]): Promise<void> {
   const entries = egress.tail(n);
   for (const e of entries) console.log(JSON.stringify(e));
 
-  if (!verbose) return;
-
-  // Forensic tail of per-event SQLite rows.
+  // Dead-letter summary — always shown so poison-pill accumulation is visible
+  // even when the operator didn't pass --verbose. We open the SQLite journal
+  // only if it exists (the collector creates it lazily on first enqueue).
   const dbPath = egressSqlite();
-  const dbDir = dirname(dbPath);
-  if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
-  const db = new Database(dbPath);
-  migrate(db);
-  const j = new Journal(db);
-  const rows = j.tail(n);
-  for (const r of rows) {
-    console.log(
-      JSON.stringify({
-        _verbose: true,
-        client_event_id: r.client_event_id,
-        enqueued_at: r.enqueued_at,
-        submitted_at: r.submitted_at,
-        retry_count: r.retry_count,
-        last_error: r.last_error,
-        event: JSON.parse(r.body_json),
-      }),
-    );
+  if (existsSync(dbPath)) {
+    const dbDir = dirname(dbPath);
+    if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
+    const db = new Database(dbPath);
+    try {
+      migrate(db);
+      const j = new Journal(db);
+      const deadCount = j.deadLetterCount();
+      if (deadCount > 0) {
+        console.log(
+          JSON.stringify({
+            _section: "dead_letter",
+            count: deadCount,
+          }),
+        );
+        const deadRows = j.tailDeadLetter(Math.min(10, deadCount));
+        for (const r of deadRows) {
+          console.log(
+            JSON.stringify({
+              _section: "dead_letter",
+              client_event_id: r.client_event_id,
+              enqueued_at: r.enqueued_at,
+              retry_count: r.retry_count,
+              last_error: r.last_error,
+            }),
+          );
+        }
+      }
+
+      if (verbose) {
+        // Forensic tail of per-event SQLite rows.
+        const rows = j.tail(n);
+        for (const r of rows) {
+          console.log(
+            JSON.stringify({
+              _verbose: true,
+              client_event_id: r.client_event_id,
+              enqueued_at: r.enqueued_at,
+              submitted_at: r.submitted_at,
+              state: r.state,
+              next_attempt_at: r.next_attempt_at,
+              retry_count: r.retry_count,
+              last_error: r.last_error,
+              event: JSON.parse(r.body_json),
+            }),
+          );
+        }
+      }
+    } finally {
+      db.close();
+    }
   }
-  db.close();
 }

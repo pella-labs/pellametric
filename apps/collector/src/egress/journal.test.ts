@@ -110,3 +110,94 @@ test("tail returns most recent N rows including submitted", () => {
   const tail = j.tail(10);
   expect(tail.length).toBe(3);
 });
+
+// --- Dead-letter / cooling state tests (bugs #1/#15/#16) ---
+
+test("markFailed with permanent=true moves to dead_letter immediately", () => {
+  j.enqueue(sampleEvent);
+  j.markFailed([sampleEvent.client_event_id], "400 schema", { permanent: true });
+  expect(j.pendingCount()).toBe(0);
+  expect(j.deadLetterCount()).toBe(1);
+  // Poison pill no longer blocks the queue.
+  expect(j.selectPending(10).length).toBe(0);
+});
+
+test("markFailed with retryAfterMs sets state=cooling and next_attempt_at", () => {
+  j.enqueue(sampleEvent);
+  j.markFailed([sampleEvent.client_event_id], "500", { retryAfterMs: 60_000 });
+  const row = j.tail(1)[0];
+  expect(row?.state).toBe("cooling");
+  expect(row?.next_attempt_at).toBeTruthy();
+  // Not reselectable yet (window hasn't elapsed).
+  expect(j.selectPending(10).length).toBe(0);
+  expect(j.pendingCount()).toBe(0);
+});
+
+test("cooling row becomes reselectable after next_attempt_at elapses", () => {
+  j.enqueue(sampleEvent);
+  j.markFailed([sampleEvent.client_event_id], "500", { retryAfterMs: 1 });
+  Bun.sleepSync(25);
+  expect(j.selectPending(10).length).toBe(1);
+  expect(j.pendingCount()).toBe(1);
+});
+
+test("retry_count cap → forced dead_letter at MAX_RETRIES", () => {
+  j.enqueue(sampleEvent);
+  // Call markFailed until the cap is hit. Each call uses retryAfterMs=0 so
+  // the row alternates cooling -> pending quickly, accumulating retry_count.
+  const MAX = 12;
+  for (let i = 0; i < MAX; i++) {
+    j.markFailed([sampleEvent.client_event_id], `try ${i}`, { retryAfterMs: 0 });
+  }
+  expect(j.deadLetterCount()).toBe(1);
+  expect(j.pendingCount()).toBe(0);
+  const row = j.tail(1)[0];
+  expect(row?.state).toBe("dead_letter");
+  expect(row?.retry_count).toBe(12);
+});
+
+test("deadLetterCount + tailDeadLetter surface dead rows", () => {
+  for (let i = 0; i < 3; i++) {
+    j.enqueue({
+      ...sampleEvent,
+      client_event_id: `00000000-0000-0000-0000-00000000000${i}`,
+      event_seq: i,
+    });
+    j.markFailed([`00000000-0000-0000-0000-00000000000${i}`], `bad ${i}`, { permanent: true });
+  }
+  expect(j.deadLetterCount()).toBe(3);
+  const dl = j.tailDeadLetter(2);
+  expect(dl.length).toBe(2);
+  for (const r of dl) expect(r.state).toBe("dead_letter");
+});
+
+test("prune drops old submitted + dead_letter rows at configured thresholds", () => {
+  j.enqueue({ ...sampleEvent, client_event_id: "00000000-0000-0000-0000-000000000001" });
+  j.enqueue({ ...sampleEvent, client_event_id: "00000000-0000-0000-0000-000000000002" });
+  j.enqueue({ ...sampleEvent, client_event_id: "00000000-0000-0000-0000-000000000003" });
+  j.markSubmitted(["00000000-0000-0000-0000-000000000001"]);
+  j.markFailed(["00000000-0000-0000-0000-000000000002"], "bad", { permanent: true });
+
+  const twentyDaysAgo = new Date(Date.now() - 20 * 86_400_000).toISOString();
+  const hundredDaysAgo = new Date(Date.now() - 100 * 86_400_000).toISOString();
+  db.run("UPDATE events SET submitted_at = ? WHERE client_event_id = ?", [
+    twentyDaysAgo,
+    "00000000-0000-0000-0000-000000000001",
+  ]);
+  db.run("UPDATE events SET enqueued_at = ? WHERE client_event_id = ?", [
+    hundredDaysAgo,
+    "00000000-0000-0000-0000-000000000002",
+  ]);
+
+  const result = j.prune({ submittedRetentionDays: 14, deadLetterRetentionDays: 90 });
+  expect(result.submittedDeleted).toBe(1);
+  expect(result.deadLetterDeleted).toBe(1);
+  expect(j.pendingCount()).toBe(1);
+});
+
+test("prune keeps rows newer than retention window", () => {
+  j.enqueue(sampleEvent);
+  j.markSubmitted([sampleEvent.client_event_id]);
+  const result = j.prune({ submittedRetentionDays: 14, deadLetterRetentionDays: 90 });
+  expect(result.submittedDeleted).toBe(0);
+});
