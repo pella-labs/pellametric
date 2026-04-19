@@ -132,8 +132,20 @@ async function findSessionFiles(root: string): Promise<string[]> {
     }
     for (const e of entries) {
       const p = join(dir, e.name);
-      if (e.isDirectory()) await walk(p);
-      else if (e.isFile() && e.name.endsWith(".jsonl")) out.push(p);
+      if (e.isDirectory()) {
+        // Skip `subagents/` subdirectories. Every Claude Code Task-tool
+        // invocation writes a subagent JSONL with its own fresh sessionId;
+        // walking into these directories inflates session counts drastically
+        // (observed ratio ~1.6× subagent files per parent session on real
+        // ~/.claude/projects/ installs). The subagent LLM turn *cost* is
+        // tiny (~$0.02/session in the M4 rehearsal sample — ~1% of total),
+        // and the parent session's tool_call events already attribute the
+        // delegation, so skipping them here trades a rounding-error of cost
+        // for a session count that matches "conversations a human would
+        // recognize as distinct."
+        if (e.name === "subagents") continue;
+        await walk(p);
+      } else if (e.isFile() && e.name.endsWith(".jsonl")) out.push(p);
     }
   }
   await walk(root);

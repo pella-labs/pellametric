@@ -145,6 +145,66 @@ test("poll() skips files whose (size, mtime) signature is unchanged since last e
   }
 });
 
+test("poll() skips subagents/ subdirectories", async () => {
+  // Regression test for M4 rehearsal: a teammate's dashboard showed ~5700
+  // "sessions" (versus ~1300 real conversations) because every Claude Code
+  // Task-tool spawn writes a subagent JSONL with its own sessionId. The
+  // adapter now skips any `subagents/` subtree during the walk.
+  const fs = require("node:fs") as typeof import("node:fs");
+  const path = require("node:path") as typeof import("node:path");
+  const os = require("node:os") as typeof import("node:os");
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "bematist-cc-subagent-"));
+  const proj = path.join(dir, "projects", "proj-sa");
+  const subagents = path.join(proj, "subagents");
+  fs.mkdirSync(subagents, { recursive: true });
+
+  // Parent session file.
+  fs.copyFileSync(
+    path.join(__dirname, "fixtures", "real-session.jsonl"),
+    path.join(proj, "parent.jsonl"),
+  );
+  // Subagent file — same fixture, different path. Must be ignored.
+  fs.copyFileSync(
+    path.join(__dirname, "fixtures", "real-session.jsonl"),
+    path.join(subagents, "sub-1.jsonl"),
+  );
+
+  const prev = process.env.CLAUDE_CONFIG_DIR;
+  try {
+    process.env.CLAUDE_CONFIG_DIR = dir;
+    const a = new ClaudeCodeAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
+    const store = new Map<string, string>();
+    const ctx: AdapterContext = {
+      ...mkCtx(),
+      cursor: {
+        get: async (k: string) => store.get(k) ?? null,
+        set: async (k: string, v: string) => {
+          store.set(k, v);
+        },
+      },
+    };
+    await a.init(ctx);
+    const events = await a.poll(ctx, new AbortController().signal);
+
+    // Only the parent file's events should be emitted. If we'd walked into
+    // subagents/ we'd have double the events (same fixture parsed twice).
+    const parentEventCount = events.length;
+    expect(parentEventCount).toBeGreaterThan(0);
+
+    // Cursor should have a signature for parent.jsonl but NOT for the
+    // subagent path — proves the subagent dir wasn't traversed.
+    const signatureKeys = Array.from(store.keys()).filter((k) => k.startsWith("signature:"));
+    expect(signatureKeys.length).toBe(1);
+    expect(signatureKeys[0]).toContain("parent.jsonl");
+    expect(signatureKeys[0]).not.toContain("subagents");
+  } finally {
+    if (prev === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+    else process.env.CLAUDE_CONFIG_DIR = prev;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("poll() emits ONLY new events when a session file grows (active-session case)", async () => {
   // Regression test for M4 rehearsal drift: Sandesh's MV grew 3× faster
   // than raw events because an actively-coding session file kept passing
