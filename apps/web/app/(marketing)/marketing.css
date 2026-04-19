@@ -1308,6 +1308,14 @@
   overflow: hidden;
 }
 
+/* Constrain the card wrapper to the demo host — `card-root`'s default
+   `min-height: max(900px, calc(100vh - 100px))` overflows the 5:7 host
+   and pushes the page dots below the `overflow: hidden` clip. */
+.bematist-marketing .mk-demo-card-host .card-root {
+  min-height: 0;
+  height: 100%;
+}
+
 /* Embed the shareable card inside the demo column (originally position:fixed) */
 .bematist-marketing .mk-demo-card-host .card-scene {
   position: absolute;

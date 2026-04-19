@@ -1,7 +1,7 @@
 "use client";
 
 import gsap from "gsap";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { signIn, useSession } from "@/lib/auth-client";
 
 type Flow = "oauth" | "manual";
@@ -168,7 +168,19 @@ export function GetStarted() {
     }
   };
 
-  const cliCommand = cardToken ? `npx grammata ${cardToken}` : "";
+  // When served from a non-prod origin (localhost, staging, previews) the
+  // token is in *that* DB, not prod's — grammata's default --api-url
+  // (https://bematist.dev/api) would 401 the submit. Append an explicit
+  // --api-url so copy-paste just works from wherever the page is served.
+  const cliCommand = useMemo(() => {
+    if (!cardToken) return "";
+    if (typeof window === "undefined") return `npx grammata ${cardToken}`;
+    const origin = window.location.origin;
+    const isProd = /^https:\/\/(www\.)?bematist\.dev$/.test(origin);
+    return isProd
+      ? `npx grammata ${cardToken}`
+      : `npx grammata ${cardToken} --api-url ${origin}/api`;
+  }, [cardToken]);
 
   const handleCopy = () => {
     if (!cliCommand) return;

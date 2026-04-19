@@ -1,3 +1,4 @@
+import { isComplianceEnabled } from "@bematist/api";
 import { Badge, Card, CardHeader, CardTitle } from "@bematist/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -89,15 +90,17 @@ export default async function WelcomePage() {
             </Link>{" "}
             for CI / bots that can't run `bematist login`.
           </li>
-          <li>
-            <Link
-              href="/privacy"
-              className="cursor-pointer underline underline-offset-2 hover:text-foreground"
-            >
-              Read the Bill of Rights
-            </Link>{" "}
-            so you know exactly what bytes leave each dev's machine.
-          </li>
+          {isComplianceEnabled() ? (
+            <li>
+              <Link
+                href="/privacy"
+                className="cursor-pointer underline underline-offset-2 hover:text-foreground"
+              >
+                Read the Bill of Rights
+              </Link>{" "}
+              so you know exactly what bytes leave each dev's machine.
+            </li>
+          ) : null}
         </ul>
       </section>
     </div>
