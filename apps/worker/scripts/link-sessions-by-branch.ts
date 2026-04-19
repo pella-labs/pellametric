@@ -163,10 +163,16 @@ async function main() {
                (tenant_id, session_id, repo_id_hash, match_reason,
                 provider_repo_id, evidence, confidence, inputs_sha256,
                 computed_at, stale_at)
-             VALUES ($1::uuid, $2, $3::bytea, 'branch_time_match',
-                     $4, $5::jsonb, 60, $6::bytea, now(), NULL)
-             ON CONFLICT (tenant_id, session_id, repo_id_hash, match_reason)
-               DO NOTHING
+             SELECT $1::uuid, $2, $3::bytea, 'branch_time_match',
+                    $4, $5::jsonb, 60, $6::bytea, now(), NULL
+             WHERE NOT EXISTS (
+               SELECT 1 FROM session_repo_links
+                WHERE tenant_id = $1::uuid
+                  AND session_id = $2
+                  AND repo_id_hash = $3::bytea
+                  AND match_reason = 'branch_time_match'
+                  AND stale_at IS NULL
+             )
              RETURNING session_id`,
             [
               tenantId,
