@@ -42,6 +42,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/home",
   "/card",
   "/deck",
+  "/install.sh",
   "/_next",
   "/favicon",
 ];
