@@ -6,11 +6,11 @@ export const alt = "Try Bematist — generate your personal coding-agent card";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
-export default function DemoOg() {
+export default function CardOg() {
   return new ImageResponse(
-    <OgFrame eyebrow="02 / demo">
+    <OgFrame eyebrow="02 / card">
       <OgHeadline
-        eyebrow="sys.demo // personal card"
+        eyebrow="sys.card // personal card"
         title={
           <span style={{ display: "flex", flexWrap: "wrap" }}>
             See yours,&nbsp;

@@ -6,7 +6,14 @@
 import { toPng } from "html-to-image";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getCard } from "@/lib/firebase/api";
+
+// Client-side card fetch via the public /api/card/:id endpoint. Response
+// shape is locked in `apps/web/app/api/card/[id]/route.ts`.
+async function getCard(cardId: string) {
+  const res = await fetch(`/api/card/${cardId}`);
+  if (!res.ok) throw new Error("Card not found");
+  return res.json();
+}
 
 import {
   type AchievementIcon,
@@ -190,19 +197,42 @@ const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
 );
 
 function shortModelName(name: string): string {
+  // Claude
+  if (name.includes("opus-4-7")) return "Opus 4.7";
   if (name.includes("opus-4-6")) return "Opus 4.6";
   if (name.includes("opus-4-5")) return "Opus 4.5";
+  if (name.includes("opus-4")) return "Opus 4";
+  if (name.includes("3-opus") || name.includes("claude-3-opus")) return "Opus 3";
   if (name.includes("opus")) return "Opus";
+  if (name.includes("sonnet-4-7")) return "Sonnet 4.7";
   if (name.includes("sonnet-4-6")) return "Sonnet 4.6";
-  if (name.includes("sonnet-4-2")) return "Sonnet 4";
+  if (name.includes("sonnet-4-5")) return "Sonnet 4.5";
+  if (name.includes("sonnet-4")) return "Sonnet 4";
+  if (name.includes("3-5-sonnet") || name.includes("3.5-sonnet")) return "Sonnet 3.5";
   if (name.includes("sonnet")) return "Sonnet";
+  if (name.includes("haiku-4-5")) return "Haiku 4.5";
+  if (name.includes("haiku-4")) return "Haiku 4";
   if (name.includes("haiku")) return "Haiku 3.5";
-  if (name.includes("gpt-5.4")) return "GPT-5.4";
+  // OpenAI / Codex — longest-match first (spark/mini must come before generic codex)
   if (name.includes("codex-spark")) return "Codex Spark";
   if (name.includes("codex-mini")) return "Codex Mini";
   if (name.includes("gpt-5.3-codex")) return "Codex 5.3";
   if (name.includes("gpt-5.2-codex")) return "Codex 5.2";
   if (name.includes("gpt-5.1-codex")) return "Codex 5.1";
+  if (name.includes("gpt-5.4")) return "GPT-5.4";
+  if (name.includes("gpt-5")) return "GPT-5";
+  if (name.includes("gpt-4o-mini")) return "GPT-4o mini";
+  if (name.includes("gpt-4o")) return "GPT-4o";
+  if (name.includes("gpt-4")) return "GPT-4";
+  if (name.startsWith("o3-mini")) return "o3-mini";
+  if (name.startsWith("o3")) return "o3";
+  if (name.startsWith("o4-mini")) return "o4-mini";
+  // Google
+  if (name.includes("gemini-1.5-pro")) return "Gemini 1.5 Pro";
+  if (name.includes("gemini-pro")) return "Gemini Pro";
+  // Cursor's own
+  if (name.includes("cursor-small")) return "Cursor Small";
+  if (name.includes("cursor-fast")) return "Cursor Fast";
   if (name === "unknown") return "Unknown";
   return name;
 }
@@ -270,7 +300,13 @@ function getDailyColor(
   return "#3a5a45";
 }
 
-export function CardPage({ demoData }: { demoData?: CardData } = {}) {
+export function CardPage({
+  demoData,
+  compact = false,
+}: {
+  demoData?: CardData;
+  compact?: boolean;
+} = {}) {
   const params = useParams<{ id?: string }>();
   const id = params?.id;
   const [data, setData] = useState<CardData | null>(demoData ?? null);
@@ -311,7 +347,11 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
       .catch(() => setError("Card not found"));
   }, [id, demoData]);
 
-  // Card-relative pointer: drives both tilt (mx/my) and holo vars (pointer-x/y, background-x/y)
+  // Card-relative pointer: drives both tilt (mx/my) and holo vars (pointer-x/y, background-x/y).
+  // `data` is listed as a dependency so the effect re-runs after the async
+  // fetch on /card/:id mounts the flipper. See the deps array below for the
+  // full reasoning.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `data` is a re-run trigger, not a consumed value.
   useEffect(() => {
     const flipper = flipperRef.current;
     if (!flipper) return;
@@ -347,7 +387,11 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
       flipper.removeEventListener("pointermove", onMove);
       flipper.removeEventListener("pointerleave", onLeave);
     };
-  }, []);
+    // Depend on `data` so listeners re-attach after the async fetch on
+    // /card/:id mounts the flipper — the first pass runs with data=null,
+    // `if (!data) return null` skips rendering, and flipperRef.current
+    // is null. Without this, the holo hover never wires up on shared cards.
+  }, [data]);
 
   useEffect(() => {
     if (!data) return;
@@ -412,7 +456,10 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
         setShowHint(true);
       }
     }
-    animate();
+    // Schedule via RAF rather than running synchronously so that if React
+    // StrictMode mounts + unmounts + re-mounts in dev, cleanup can cancel
+    // the pending frame before it ever paints — only one animation plays.
+    animId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animId);
   }, [data]);
 
@@ -504,7 +551,13 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
   }, [handleNextPage, handlePrevPage]);
 
   const shareOnTwitter = () => {
-    const text = encodeURIComponent(`Check out my AI coding stats on Bematist! \u{1F680}\n\n`);
+    // Hook → product namecheck → CTA. @bematist_dev threads the tweet
+    // under the profile; the URL carries the sharer's card so viewers
+    // see the stats in the card preview, then click through to mint
+    // their own.
+    const text = encodeURIComponent(
+      `Where did my tokens go? @bematist_dev knows. Grab your card \u2192`,
+    );
     const url = encodeURIComponent(window.location.href);
     window.open(
       `https://x.com/intent/tweet?text=${text}&url=${url}`,
@@ -590,24 +643,28 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
     }
   };
 
-  if (error)
+  if (error) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: "#8FA6BB" }}
+        style={{
+          minHeight: "60vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "rgba(237,232,222,0.6)",
+          fontFamily: "var(--font-mk-mono, monospace)",
+          fontSize: 13,
+          letterSpacing: "0.04em",
+        }}
       >
-        <p className="text-black/40 text-lg">{error}</p>
+        {error}
       </div>
     );
-  if (!data)
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: "#8FA6BB" }}
-      >
-        <div className="w-8 h-8 border-4 border-[#5A7B9B] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+  }
+  // Pre-data: render nothing. Keeps the container transparent so the
+  // marketing shell shows through, and avoids a visible loading spinner
+  // flashing before the flip animation takes over.
+  if (!data) return null;
 
   const s = data.stats;
   const hl = s.highlights;
@@ -1539,10 +1596,14 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
         background: "transparent",
         overflow: "hidden",
         width: "100%",
-        height: "100%",
+        // Compact mode is used when embedded inside another layout (e.g.
+        // the hero column). Full mode is used for the standalone /card
+        // and /card/[id] pages where the card is the whole main pane.
+        minHeight: compact ? 720 : "max(900px, calc(100vh - 100px))",
         WebkitFontSmoothing: "antialiased",
         position: "relative",
       }}
+      data-compact={compact ? "true" : undefined}
     >
       {/* Top bar: source toggle + theme toggle */}
       <div className={`global-toggle ${showShare ? "show" : ""}`}>
@@ -1653,38 +1714,43 @@ export function CardPage({ demoData }: { demoData?: CardData } = {}) {
         ))}
       </div>
 
-      <div className={`share-bar ${showShare ? "show" : ""}`}>
-        <button className="sb" title="Download PNG" onClick={handleDownload}>
-          <DownloadIcon />
-        </button>
-        <button className="sb" title="Copy image to clipboard" onClick={copyImage}>
-          <CopyIcon />
-        </button>
-        <button className="sb" title="Share on X" onClick={shareOnTwitter}>
-          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-        </button>
-        {typeof navigator !== "undefined" && "share" in navigator && (
-          <button
-            className="sb"
-            title="Share"
-            onClick={async () => {
-              try {
-                await navigator.share({
-                  title: `${userName}'s Bematist Card`,
-                  text: "Check out my AI coding stats on Bematist!",
-                  url: window.location.href,
-                });
-              } catch {
-                /* user cancelled */
-              }
-            }}
-          >
-            <ShareIcon />
+      {/* Share bar hides in compact mode — no download/copy/share surface
+          makes sense on the landing hero, where there's no real card to
+          share yet. The full /card and /card/[id] pages keep it. */}
+      {!compact && (
+        <div className={`share-bar ${showShare ? "show" : ""}`}>
+          <button className="sb" title="Download PNG" onClick={handleDownload}>
+            <DownloadIcon />
           </button>
-        )}
-      </div>
+          <button className="sb" title="Copy image to clipboard" onClick={copyImage}>
+            <CopyIcon />
+          </button>
+          <button className="sb" title="Share on X" onClick={shareOnTwitter}>
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </button>
+          {typeof navigator !== "undefined" && "share" in navigator && (
+            <button
+              className="sb"
+              title="Share"
+              onClick={async () => {
+                try {
+                  await navigator.share({
+                    title: `${userName}'s Bematist Card`,
+                    text: "Where did my tokens go? @bematist_dev knows. Grab your card →",
+                    url: window.location.href,
+                  });
+                } catch {
+                  /* user cancelled */
+                }
+              }}
+            >
+              <ShareIcon />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Toast */}
       {toast && <div className="card-toast">{toast}</div>}

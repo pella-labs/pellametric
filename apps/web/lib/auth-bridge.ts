@@ -98,11 +98,18 @@ export async function bridgeBetterAuthUser(
     };
   }
 
-  // Path 3: brand new. Resolve default org, decide admin-vs-ic by
-  // first-user rule, create the row.
+  // Path 3: brand new. Resolve default org, create the row as `ic`.
+  //
+  // We intentionally do NOT auto-promote the first user to admin. The /card
+  // marketing surface funnels strangers into OAuth; on a fresh install the
+  // first random stargazer would otherwise inherit tenant-admin rights.
+  // Admin is now explicitly granted out-of-band (SQL, invite flow, or a
+  // dedicated bootstrap script) — never by sign-in ordering.
+  //
+  // `countUsersInOrg` is no longer consulted in this path but remains on
+  // `BridgeDeps` as a utility callers may want elsewhere.
   const orgId = await deps.getOrCreateDefaultOrg();
-  const existingCount = await deps.countUsersInOrg(orgId);
-  const role: BridgeRole = existingCount === 0 ? "admin" : "ic";
+  const role: BridgeRole = "ic";
   const ssoSubject = `github:${input.betterAuthUserId}`;
   const userId = await deps.createUser({
     orgId,

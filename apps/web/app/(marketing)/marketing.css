@@ -45,6 +45,16 @@
   color: var(--mk-ink-muted);
 }
 
+.bematist-marketing .mk-h3 {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mk-ink);
+  margin: 32px 0 12px;
+}
+
 .bematist-marketing .mk-xs {
   font-size: 11px;
   text-transform: uppercase;
@@ -170,6 +180,17 @@
   background: var(--mk-bg-elevated);
 }
 
+.bematist-marketing .mk-btn-icon {
+  gap: 8px;
+  padding: 0 14px;
+}
+
+.bematist-marketing .mk-btn-icon-label {
+  font-size: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
 /* ─── Hero ─────────────────────────────────────────────────────── */
 .bematist-marketing .mk-hero {
   position: relative;
@@ -235,6 +256,16 @@
     rgba(0, 0, 0, 1) 40%,
     rgba(0, 0, 0, 1) 100%
   );
+}
+
+/* ─── Hero card slot — holds the interactive demo card ────────── */
+.bematist-marketing .mk-hero-card-slot {
+  position: relative;
+  width: 100%;
+  /* matches CardPage compact mode minHeight so the hero grid row
+     reserves the right amount of vertical space without fighting
+     the absolute-positioned controls inside the card pane. */
+  min-height: 720px;
 }
 
 /* ─── Adapters table ───────────────────────────────────────────── */
@@ -332,21 +363,39 @@
   font-size: 12px;
   margin-top: 16px;
   padding: 0;
+  /* Grid at the ul level so every row's term aligns to the widest term
+     (rows share the same tracks via `display: contents` on the li). */
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 48px;
 }
 
 .bematist-marketing .mk-kv li {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  display: contents;
+}
+.bematist-marketing .mk-kv li > * {
   padding: 10px 0;
   border-bottom: 1px dashed var(--mk-border);
 }
-
-.bematist-marketing .mk-kv li:last-child {
+.bematist-marketing .mk-kv li:last-child > * {
   border-bottom: none;
 }
 .bematist-marketing .mk-kv li span:first-child {
   color: var(--mk-ink-muted);
+}
+
+@media (max-width: 640px) {
+  .bematist-marketing .mk-kv {
+    grid-template-columns: 1fr;
+    row-gap: 0;
+  }
+  .bematist-marketing .mk-kv li > *:first-child {
+    padding-bottom: 2px;
+    border-bottom: none;
+  }
+  .bematist-marketing .mk-kv li > *:last-child {
+    padding-top: 0;
+  }
 }
 
 /* ─── Privacy tiers ────────────────────────────────────────────── */
@@ -529,6 +578,112 @@
 }
 .bematist-marketing .mk-term-comment {
   color: #5c6370;
+}
+
+/* ─── AI Leverage Score grid ───────────────────────────────────── */
+.bematist-marketing .mk-score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.bematist-marketing .mk-score-cell {
+  padding: calc(var(--mk-grid-size) * 1.5) var(--mk-grid-size);
+  border-right: 1px solid var(--mk-border);
+  border-bottom: 1px solid var(--mk-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 200px;
+}
+
+.bematist-marketing .mk-score-cell:nth-child(3n) {
+  border-right: none;
+}
+
+.bematist-marketing .mk-score-cell h3 {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--mk-ink);
+}
+
+.bematist-marketing .mk-score-cell p {
+  color: var(--mk-ink-muted);
+  font-size: 14px;
+  line-height: 1.55;
+  flex: 1;
+}
+
+.bematist-marketing .mk-score-weight {
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  color: var(--mk-accent);
+  letter-spacing: 0.06em;
+}
+
+.bematist-marketing .mk-score-gate {
+  background: var(--mk-bg-elevated);
+  grid-column: 1 / -1;
+  border-right: none;
+  border-bottom: none;
+}
+
+.bematist-marketing .mk-score-gate .mk-score-weight {
+  color: var(--mk-warm);
+}
+
+@media (max-width: 860px) {
+  .bematist-marketing .mk-score-grid {
+    grid-template-columns: 1fr;
+  }
+  .bematist-marketing .mk-score-cell {
+    border-right: none;
+    border-bottom: 1px solid var(--mk-border);
+  }
+  .bematist-marketing .mk-score-cell:last-child {
+    border-bottom: none;
+  }
+}
+
+/* ─── Closing quote ────────────────────────────────────────────── */
+.bematist-marketing .mk-closing {
+  padding: calc(var(--mk-grid-size) * 3) var(--mk-grid-size);
+  background: var(--mk-bg-elevated);
+  display: flex;
+  justify-content: center;
+}
+
+.bematist-marketing .mk-closing-inner {
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  text-align: center;
+}
+
+.bematist-marketing .mk-closing-quote {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: clamp(22px, 2.6vw, 32px);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--mk-ink);
+}
+
+.bematist-marketing .mk-closing-body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--mk-ink-muted);
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.bematist-marketing .mk-closing-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 /* ─── License + footer ─────────────────────────────────────────── */
@@ -933,10 +1088,22 @@
   font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
   font-size: 13px;
   color: var(--mk-ink);
-  white-space: pre-wrap;
-  word-break: break-all;
-  overflow: hidden;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
   user-select: all;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.bematist-marketing .mk-getstarted-cmd pre::-webkit-scrollbar {
+  display: none;
+}
+
+.bematist-marketing .mk-getstarted-cmd .mk-btn {
+  flex-shrink: 0;
+  min-width: 84px;
+  justify-content: center;
 }
 
 .bematist-marketing .mk-getstarted-finefoot {

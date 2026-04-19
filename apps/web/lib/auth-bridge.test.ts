@@ -172,29 +172,32 @@ describe("bridgeBetterAuthUser — path 2: claim pre-seeded invite", () => {
 });
 
 describe("bridgeBetterAuthUser — path 3: fresh user creation", () => {
-  test("first user in the org becomes admin; role defaults to `admin`", async () => {
+  test("first user in the org lands as `ic` — no auto-admin promotion", async () => {
     const deps = makeStubs();
-    // Empty org → first user → admin.
+    // Empty org → first user → still `ic`. Admin is granted explicitly
+    // out-of-band; sign-in ordering must not confer tenant-admin rights
+    // (the /card flow funnels strangers through OAuth).
     const result = await bridgeBetterAuthUser(deps, {
       betterAuthUserId: "ba-first",
       email: "first@example.com",
     });
 
     expect(result.action).toBe("created_new_user");
-    expect(result.role).toBe("admin");
+    expect(result.role).toBe("ic");
     expect(result.orgId).toBe("org-default");
     expect(deps._state.createdUsers[0]).toMatchObject({
       orgId: "org-default",
       email: "first@example.com",
-      role: "admin",
+      role: "ic",
       ssoSubject: "github:ba-first",
       betterAuthUserId: "ba-first",
     });
   });
 
-  test("subsequent users in the same org land as `ic`", async () => {
+  test("subsequent users in the same org also land as `ic`", async () => {
     const deps = makeStubs();
-    // Seed the org with an existing user.
+    // Seed the org with an existing user. Role outcome is identical to the
+    // empty-org case now that first-user-admin is gone.
     deps._state.orgCount.set("org-default", 1);
 
     const result = await bridgeBetterAuthUser(deps, {
@@ -216,7 +219,7 @@ describe("bridgeBetterAuthUser — path 3: fresh user creation", () => {
     expect(deps._state.createdUsers[0]?.ssoSubject).toBe("github:ba-abc");
   });
 
-  test("two sign-ins with different emails produce two distinct users; second is `ic`", async () => {
+  test("two sign-ins with different emails produce two distinct users; both `ic`", async () => {
     const deps = makeStubs();
 
     const a = await bridgeBetterAuthUser(deps, {
@@ -228,7 +231,7 @@ describe("bridgeBetterAuthUser — path 3: fresh user creation", () => {
       email: "b@example.com",
     });
 
-    expect(a.role).toBe("admin");
+    expect(a.role).toBe("ic");
     expect(b.role).toBe("ic");
     expect(a.userId).not.toBe(b.userId);
     expect(deps._state.createdUsers).toHaveLength(2);

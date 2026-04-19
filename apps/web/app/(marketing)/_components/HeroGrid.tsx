@@ -65,16 +65,6 @@ export function HeroGrid() {
     const lattice = new THREE.LineSegments(geometry, material);
     scene.add(lattice);
 
-    // Subtle center glow point for depth
-    const coreGeo = new THREE.SphereGeometry(0.35, 16, 16);
-    const coreMat = new THREE.MeshBasicMaterial({
-      color: 0x6e8a6f,
-      transparent: true,
-      opacity: 0.6,
-    });
-    const core = new THREE.Mesh(coreGeo, coreMat);
-    scene.add(core);
-
     // ─── Sizing ────────────────────────────────────────────────────
     const resize = () => {
       const { width, height } = container.getBoundingClientRect();
@@ -129,8 +119,6 @@ export function HeroGrid() {
       io.disconnect();
       geometry.dispose();
       material.dispose();
-      coreGeo.dispose();
-      coreMat.dispose();
       renderer.dispose();
       if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
     };

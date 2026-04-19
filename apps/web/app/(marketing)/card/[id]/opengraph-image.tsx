@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
-import { db, firebaseConfigured } from "@/lib/firebase/admin";
 import { DEMO_CARD } from "../../_card/demo-data";
+import { loadCardServer } from "../../_card/load-card-server";
 import {
   OG_COLORS,
   OG_CONTENT_TYPE,
@@ -38,33 +38,18 @@ function fallbackFromDemo(): CardSnapshot {
 }
 
 async function loadCard(id: string): Promise<CardSnapshot> {
-  if (id === "demo" || !firebaseConfigured) return fallbackFromDemo();
-  try {
-    const doc = await db.collection("cards").doc(id).get();
-    if (!doc.exists) return fallbackFromDemo();
-    const data = doc.data() as {
-      uid: string;
-      stats: typeof DEMO_CARD.stats;
-    };
-    const userDoc = await db.collection("users").doc(data.uid).get();
-    const user = userDoc.exists
-      ? (userDoc.data() as {
-          displayName?: string;
-          githubUsername?: string;
-        })
-      : null;
-    return {
-      displayName: user?.displayName ?? null,
-      githubUsername: user?.githubUsername ?? null,
-      totalCost: data.stats.combined.totalCost,
-      totalSessions: data.stats.combined.totalSessions,
-      activeDays: data.stats.combined.totalActiveDays ?? 0,
-      personality: data.stats.highlights?.personality ?? null,
-      favoriteTool: data.stats.highlights?.favoriteTool ?? null,
-    };
-  } catch {
-    return fallbackFromDemo();
-  }
+  if (id === "demo") return fallbackFromDemo();
+  const card = await loadCardServer(id);
+  if (!card) return fallbackFromDemo();
+  return {
+    displayName: card.user?.displayName ?? null,
+    githubUsername: card.user?.githubUsername ?? null,
+    totalCost: card.stats.combined.totalCost,
+    totalSessions: card.stats.combined.totalSessions,
+    activeDays: card.stats.combined.totalActiveDays ?? 0,
+    personality: card.stats.highlights?.personality ?? null,
+    favoriteTool: card.stats.highlights?.favoriteTool ?? null,
+  };
 }
 
 const fmtMoney = (n: number) =>

@@ -1,7 +1,6 @@
-import { createHash } from "node:crypto";
-import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { db, firebaseConfigured } from "@/lib/firebase/admin";
+import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-backend";
+import { getDbClients } from "@/lib/db";
 import { hasStarred } from "@/lib/github-stars";
 
 // Curated evocative wordlists — materials, textures, architecture, geology.
@@ -268,25 +267,24 @@ const NOUNS = [
   "vesper",
 ];
 
-function hashToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-function mintToken(): string {
+function mintStarToken(): string {
   const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
   const num = Math.floor(Math.random() * 900) + 100;
-  return `${adj}-${noun}-${num}`;
+  // `bm_` prefix required by grammata's `isSubmitToken` guard (cli-args.ts).
+  // Without it the CLI rejects the paste with "Invalid token format" before
+  // it ever hits /api/card/submit.
+  return `bm_${adj}-${noun}-${num}`;
 }
 
 /**
  * Star-gated token issuance. Alternative to OAuth: if the supplied GitHub
  * username has publicly starred the repo, we mint a one-shot card token tied
- * to that login. No Firebase auth, no OAuth popup.
+ * to that login (`gh_<login>`). No sign-in required.
  *
- * Security note: this endpoint trusts the public star as a weak identity
- * signal. The token is single-use and short-lived; the CLI still has to be
- * run on the user's machine to submit stats.
+ * Security note: the public star is a weak identity signal. The token is
+ * single-use and short-lived; the CLI still has to be run on the user's
+ * machine to submit stats.
  */
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as { username?: string } | null;
@@ -304,24 +302,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "not_starred" }, { status: 400 });
   }
 
-  if (!firebaseConfigured) {
-    return NextResponse.json({ error: "Firebase service account not configured" }, { status: 503 });
+  const slug = toCardSlug(username);
+  if (isReservedCardSlug(slug)) {
+    return NextResponse.json(
+      { error: `GitHub username '${username}' collides with a reserved path.` },
+      { status: 400 },
+    );
   }
 
-  const token = mintToken();
-  const tokenHash = hashToken(token);
-
+  const token = mintStarToken();
+  const tokenHash = hashCardToken(token);
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-  const uid = `gh_${username.toLowerCase()}`;
-  await db.collection("api_tokens").doc(tokenHash).set({
-    tokenHash,
-    uid,
-    githubLogin: username,
-    authMethod: "star",
-    expiresAt,
-    used: false,
-    createdAt: FieldValue.serverTimestamp(),
-  });
 
+  const { pg } = getDbClients();
+  await pg.query(
+    `INSERT INTO card_tokens (token_hash, subject_kind, subject_id, github_username, expires_at)
+     VALUES ($1, 'github_star', $2, $3, $4)`,
+    [tokenHash, slug, username, expiresAt],
+  );
   return NextResponse.json({ token });
 }

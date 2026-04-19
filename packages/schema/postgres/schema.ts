@@ -132,6 +132,57 @@ export const betterAuthVerification = pgTable(
   }),
 );
 
+/**
+ * /card flow — one-shot bearer tokens minted for the grammata CLI. Migration
+ * 0005 replaces the Firestore `api_tokens` collection with this table.
+ * Single-use semantics are enforced atomically via
+ *   UPDATE card_tokens SET used_at=now() WHERE token_hash=$1
+ *     AND used_at IS NULL AND expires_at > now() RETURNING ...
+ * which removes the read-then-write race Firestore had.
+ *
+ * subject_kind = 'better_auth_user' (OAuth mint; subject_id = better_auth_user.id)
+ *              | 'github_star'      (star-gate mint; subject_id = 'gh_<login>')
+ */
+export const cardTokens = pgTable(
+  "card_tokens",
+  {
+    token_hash: text("token_hash").primaryKey(),
+    subject_kind: text("subject_kind").notNull(),
+    subject_id: text("subject_id").notNull(),
+    github_username: text("github_username"),
+    expires_at: timestamp("expires_at", { withTimezone: true }).notNull(),
+    used_at: timestamp("used_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    subjectIdx: index("card_tokens_subject_idx").on(table.subject_kind, table.subject_id),
+  }),
+);
+
+/**
+ * /card flow — public shareable cards. Permanent storage; card_id equals the
+ * subject_id of the token that minted it. Display fields are denormalized so
+ * the public render doesn't need a join into Better Auth, and so deleting
+ * the Better Auth user doesn't break an already-shared card URL.
+ */
+export const cards = pgTable(
+  "cards",
+  {
+    card_id: text("card_id").primaryKey(),
+    owner_user_id: text("owner_user_id").references(() => betterAuthUser.id, {
+      onDelete: "set null",
+    }),
+    github_username: text("github_username"),
+    display_name: text("display_name"),
+    avatar_url: text("avatar_url"),
+    stats: jsonb("stats").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    ownerIdx: index("cards_owner_user_id_idx").on(table.owner_user_id),
+  }),
+);
+
 /** Teams added in D1-05 scope bump — required by team_weekly_rollup's dev_team_dict CH dictionary. */
 export const teams = pgTable("teams", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),

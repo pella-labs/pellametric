@@ -183,14 +183,17 @@ testIf("app_bematist role exists and is NOBYPASSRLS + NOSUPERUSER", async () => 
   expect(rows[0]?.rolsuper).toBe(false);
 });
 
-testIf("INT9: without app.current_org_id set, every RLS-protected table returns 0 rows", async () => {
-  for (const { table } of TABLES) {
-    const rows = (await appClient.unsafe(
-      `SELECT count(*)::int AS c FROM ${table}`,
-    )) as unknown as Array<{ c: number }>;
-    expect(rows[0]?.c).toBe(0);
-  }
-});
+testIf(
+  "INT9: without app.current_org_id set, every RLS-protected table returns 0 rows",
+  async () => {
+    for (const { table } of TABLES) {
+      const rows = (await appClient.unsafe(
+        `SELECT count(*)::int AS c FROM ${table}`,
+      )) as unknown as Array<{ c: number }>;
+      expect(rows[0]?.c).toBe(0);
+    }
+  },
+);
 
 testIf("INT9: with org A set, tables return ONLY org A rows (zero leak from org B)", async () => {
   await appClient.begin(async (tx) => {

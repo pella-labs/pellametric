@@ -1,0 +1,225 @@
+/*
+ * Dashboard-scoped theme overrides.
+ *
+ * We reuse the marketing palette (sage + cream on near-black) so the product
+ * surface feels continuous with /home and /card. The shadcn-style primitives
+ * from @bematist/ui read their colors from the Tailwind v4 tokens below, so
+ * re-binding the custom props inside .bematist-dashboard re-skins every
+ * Card/Badge/Chart without touching component code.
+ */
+
+.bematist-dashboard {
+  /* Marketing palette primitives, re-declared so they are addressable inside
+     the dashboard subtree exactly like .bematist-marketing. */
+  --mk-bg: #0a0b0d;
+  --mk-bg-elevated: #111316;
+  --mk-bg-terminal: #050506;
+  --mk-ink: #ede8de;
+  --mk-ink-muted: rgba(237, 232, 222, 0.6);
+  --mk-ink-faint: rgba(237, 232, 222, 0.3);
+  --mk-border: rgba(237, 232, 222, 0.12);
+  --mk-border-hover: rgba(237, 232, 222, 0.3);
+  --mk-accent: #6e8a6f;
+  --mk-accent-muted: rgba(110, 138, 111, 0.15);
+  --mk-warm: #b07b3e;
+
+  /* Remap shadcn/Tailwind tokens to marketing hexes. Scoped to this subtree
+     only — the root `.dark` palette is untouched. */
+  --background: #0a0b0d;
+  --foreground: #ede8de;
+  --card: #111316;
+  --card-foreground: #ede8de;
+  --popover: #111316;
+  --popover-foreground: #ede8de;
+  --primary: #6e8a6f;
+  --primary-foreground: #0a0b0d;
+  --secondary: rgba(237, 232, 222, 0.06);
+  --secondary-foreground: #ede8de;
+  --muted: rgba(237, 232, 222, 0.06);
+  --muted-foreground: rgba(237, 232, 222, 0.6);
+  --accent: #6e8a6f;
+  --accent-foreground: #0a0b0d;
+  --border: rgba(237, 232, 222, 0.12);
+  --input: rgba(237, 232, 222, 0.12);
+  --ring: rgba(110, 138, 111, 0.6);
+  --sidebar: #0a0b0d;
+  --sidebar-foreground: #ede8de;
+  --sidebar-primary: #6e8a6f;
+  --sidebar-primary-foreground: #0a0b0d;
+  --sidebar-accent: rgba(110, 138, 111, 0.15);
+  --sidebar-accent-foreground: #ede8de;
+  --sidebar-border: rgba(237, 232, 222, 0.12);
+  --sidebar-ring: rgba(110, 138, 111, 0.6);
+  --positive: #6e8a6f;
+  --warning: #b07b3e;
+  --destructive: #c76a5a;
+
+  /* Chart palette — sage primary, warm orange accents. */
+  --chart-1: #6e8a6f;
+  --chart-2: #b07b3e;
+  --chart-3: rgba(110, 138, 111, 0.55);
+  --chart-4: rgba(176, 123, 62, 0.55);
+  --chart-5: rgba(237, 232, 222, 0.4);
+
+  background-color: var(--mk-bg);
+  color: var(--mk-ink);
+  font-family: var(--font-mk-sans, "Inter", -apple-system, sans-serif);
+}
+
+/* Display headings — Space Mono, matching marketing hero/sections. */
+.bematist-dashboard h1,
+.bematist-dashboard h2,
+.bematist-dashboard h3 {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  letter-spacing: -0.03em;
+}
+
+/* Small-caps labels that mirror marketing's `.mk-sys`. */
+.bematist-dashboard .dash-eyebrow {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mk-ink-muted);
+}
+
+/* ─── App shell ────────────────────────────────────────────────── */
+.bematist-dashboard .dash-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+  max-width: 1440px;
+  margin: 0 auto;
+  border-left: 1px solid var(--mk-border);
+  border-right: 1px solid var(--mk-border);
+  background: var(--mk-bg);
+}
+
+/* ─── Top chrome (macOS traffic-light bar) ─────────────────────── */
+.bematist-dashboard .dash-chrome {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--mk-border);
+  background: #0d0f12;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.bematist-dashboard .dash-chrome-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.bematist-dashboard .dash-chrome-url {
+  flex: 1;
+  height: 22px;
+  border-radius: 4px;
+  background: rgba(237, 232, 222, 0.04);
+  margin-left: 10px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  color: var(--mk-ink-muted);
+  letter-spacing: 0.02em;
+  min-width: 0;
+}
+
+/* ─── Sidebar ──────────────────────────────────────────────────── */
+.bematist-dashboard .dash-side {
+  border-right: 1px solid var(--mk-border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--mk-bg);
+}
+
+.bematist-dashboard .dash-wordmark {
+  font-family: var(--font-mk-sys, "Space Mono", monospace);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.05em;
+  color: var(--mk-ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  margin-bottom: 20px;
+}
+
+.bematist-dashboard .dash-wordmark-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--mk-accent);
+}
+
+.bematist-dashboard .dash-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.bematist-dashboard .dash-nav-link {
+  padding: 6px 10px;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 12px;
+  color: var(--mk-ink-muted);
+  text-decoration: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.bematist-dashboard .dash-nav-link:hover {
+  color: var(--mk-ink);
+  background: rgba(237, 232, 222, 0.04);
+}
+
+.bematist-dashboard .dash-nav-link[aria-current="page"] {
+  background: rgba(110, 138, 111, 0.12);
+  color: var(--mk-ink);
+}
+
+.bematist-dashboard .dash-nav-meta {
+  border-top: 1px solid var(--mk-border);
+  padding-top: 12px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bematist-dashboard .dash-nav-meta .dash-nav-link {
+  font-size: 11px;
+  color: var(--mk-ink-faint);
+}
+
+.bematist-dashboard .dash-nav-meta .dash-nav-link:hover {
+  color: var(--mk-ink-muted);
+}
+
+/* ─── Main content ─────────────────────────────────────────────── */
+.bematist-dashboard .dash-main {
+  padding: 32px;
+  overflow-y: auto;
+  background: var(--mk-bg);
+}
+
+/* Make shadcn Card feel closer to marketing panels — slightly tighter
+   borders + subtle elevation, using the retuned tokens above. */
+.bematist-dashboard [class*="rounded-xl border"][class*="bg-card"] {
+  border-radius: 8px;
+}

@@ -1,27 +1,17 @@
 import type { Metadata } from "next";
-import { db, firebaseConfigured } from "@/lib/firebase/admin";
 import { CardMount } from "../../_card/CardMount";
 import { DEMO_CARD } from "../../_card/demo-data";
+import { loadCardServer } from "../../_card/load-card-server";
 
 type Params = { id: string };
 
 async function loadOwnerName(id: string): Promise<string | null> {
   if (id === "demo") return DEMO_CARD.user?.displayName ?? "Demo Developer";
-  if (!firebaseConfigured) return null;
-  try {
-    const card = await db.collection("cards").doc(id).get();
-    if (!card.exists) return null;
-    const { uid } = card.data() as { uid: string };
-    const user = await db.collection("users").doc(uid).get();
-    if (!user.exists) return null;
-    const u = user.data() as {
-      displayName?: string;
-      githubUsername?: string;
-    };
-    return u.displayName ?? (u.githubUsername ? `@${u.githubUsername}` : null);
-  } catch {
-    return null;
-  }
+  const card = await loadCardServer(id);
+  if (!card) return null;
+  const displayName = card.user?.displayName ?? null;
+  const githubUsername = card.user?.githubUsername ?? null;
+  return displayName ?? (githubUsername ? `@${githubUsername}` : null);
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {

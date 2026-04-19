@@ -1,15 +1,34 @@
 /* Card Scene */
 .card-scene {
-  position: fixed;
+  position: absolute;
   z-index: 10;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -52%);
-  width: min(380px, calc(100vw - 40px));
-  height: min(540px, calc(100vh - 180px));
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 48px));
+  height: min(560px, calc(100vh - 340px));
   perspective: 1200px;
   -webkit-perspective: 1200px;
   pointer-events: none;
+}
+
+/* Compact mode — embedded card (e.g. hero). Taller scene, no share-bar,
+   dots anchored near bottom. */
+[data-compact="true"] .card-scene {
+  width: min(380px, calc(100% - 32px));
+  height: 560px;
+}
+[data-compact="true"] .global-toggle {
+  top: 24px;
+}
+[data-compact="true"] .card-page-dots {
+  bottom: 36px;
+}
+[data-compact="true"] .card-nav-left {
+  left: 8px;
+}
+[data-compact="true"] .card-nav-right {
+  right: 8px;
 }
 .card-flipper {
   width: 100%;
@@ -845,9 +864,9 @@
 
 /* Global source toggle */
 .global-toggle {
-  position: fixed;
+  position: absolute;
   z-index: 20;
-  top: 28px;
+  top: 56px;
   left: 50%;
   transform: translateX(-50%);
   opacity: 0;
@@ -859,32 +878,33 @@
 .source-toggle {
   display: flex;
   gap: 2px;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 12px;
+  background: var(--mk-bg-elevated, #111316);
+  border: 1px solid var(--mk-border, rgba(237, 232, 222, 0.12));
+  border-radius: 10px;
   padding: 3px;
 }
 .stog {
   border: none;
   background: none;
-  padding: 6px 16px;
-  border-radius: 9px;
+  padding: 6px 14px;
+  border-radius: 7px;
   font-size: 11px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--mk-ink-muted, rgba(237, 232, 222, 0.6));
   cursor: pointer;
-  transition: all 0.25s;
-  letter-spacing: 0.5px;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+  letter-spacing: 0.4px;
   font-family: inherit;
 }
 .stog.active {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  background: rgba(110, 138, 111, 0.18);
+  color: var(--mk-ink, #ede8de);
+  box-shadow: none;
 }
 .stog:hover:not(.active) {
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--mk-ink, #ede8de);
 }
 
 /* Page title */
@@ -1729,40 +1749,44 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-/* Card navigation arrows */
+/* Card navigation arrows — marketing aesthetic (squared, ink/warm hover) */
 .card-nav-side {
-  position: fixed;
+  position: absolute;
   z-index: 20;
-  top: 48%;
+  top: 50%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(20px);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--mk-border, rgba(237, 232, 222, 0.12));
+  background: var(--mk-bg-elevated, #111316);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  color: rgba(255, 255, 255, 0.7);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+  color: var(--mk-ink-muted, rgba(237, 232, 222, 0.6));
   opacity: 0;
 }
 .card-nav-side.show {
   opacity: 1;
 }
 .card-nav-side:hover {
-  background: rgba(139, 92, 246, 0.2);
-  border-color: rgba(139, 92, 246, 0.4);
-  color: #fff;
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.15);
+  border-color: var(--mk-border-hover, rgba(237, 232, 222, 0.3));
+  background: var(--mk-bg-elevated, #111316);
+  color: var(--mk-ink, #ede8de);
+  transform: translateY(-50%) scale(1.04);
+  box-shadow: none;
 }
 .card-nav-left {
-  left: calc(50% - min(250px, 50vw - 8px));
+  left: calc(50% - min(260px, 50vw - 8px));
 }
 .card-nav-right {
-  right: calc(50% - min(250px, 50vw - 8px));
+  right: calc(50% - min(260px, 50vw - 8px));
 }
 
 /* Card stack items */
@@ -1814,12 +1838,12 @@
   pointer-events: none;
 }
 
-/* Page dots — below card */
+/* Page dots — sit well above the share-bar for breathing room. */
 .card-page-dots {
-  position: fixed;
+  position: absolute;
   z-index: 20;
   left: 50%;
-  bottom: 88px;
+  bottom: 128px;
   transform: translateX(-50%);
   display: flex;
   gap: 8px;
@@ -1831,22 +1855,22 @@
   opacity: 1;
 }
 .card-page-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(237, 232, 222, 0.18);
   transition: all 0.3s ease;
 }
 .card-page-dot.active {
-  background: #7a6299;
-  transform: scale(1.4);
-  box-shadow: 0 0 8px rgba(122, 98, 153, 0.4);
+  background: var(--mk-accent, #6e8a6f);
+  transform: scale(1.35);
+  box-shadow: 0 0 8px rgba(110, 138, 111, 0.35);
 }
 
-/* Share bar */
+/* Share bar — squared buttons, marketing palette */
 .share-bar {
-  position: fixed;
-  bottom: 32px;
+  position: absolute;
+  bottom: 48px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -1859,26 +1883,27 @@
   opacity: 1;
 }
 .sb {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(20px);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--mk-border, rgba(237, 232, 222, 0.12));
+  background: var(--mk-bg-elevated, #111316);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  font-size: 17px;
-  color: rgba(255, 255, 255, 0.7);
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+  font-size: 15px;
+  color: var(--mk-ink-muted, rgba(237, 232, 222, 0.6));
 }
 .sb:hover {
-  transform: translateY(-3px);
-  background: rgba(139, 92, 246, 0.2);
-  border-color: rgba(139, 92, 246, 0.4);
-  color: #fff;
-  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.15);
+  transform: translateY(-2px);
+  border-color: var(--mk-border-hover, rgba(237, 232, 222, 0.3));
+  color: var(--mk-ink, #ede8de);
+  box-shadow: none;
 }
 
 /* Toast */

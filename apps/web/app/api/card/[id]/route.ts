@@ -1,29 +1,54 @@
 import { NextResponse } from "next/server";
-import { db, firebaseConfigured } from "@/lib/firebase/admin";
+import { getDbClients } from "@/lib/db";
 
+/**
+ * GET /api/card/:id — public read. Response shape (LOCKED, consumed by
+ * `apps/web/app/(marketing)/_card/CardPage.tsx`):
+ *
+ *   { cardId, stats, user: { displayName, photoURL, githubUsername } | null, createdAt }
+ *
+ * `stats` matches the grammata UsageSummary shape validated at submit time.
+ * Display metadata is denormalized onto `cards` — no auth-table join, so the
+ * public page renders even if the Better Auth user has been deleted.
+ */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!firebaseConfigured) {
-    return NextResponse.json({ error: "Firebase service account not configured" }, { status: 503 });
-  }
   const { id } = await params;
-  const doc = await db.collection("cards").doc(id).get();
-  if (!doc.exists) {
+  // card_id is always stored lowercased at mint time (card-backend.toCardSlug).
+  // Lowercase the URL segment so /card/WalidKhori resolves identically to
+  // /card/walidkhori.
+  const slug = id.toLowerCase();
+
+  const { pg } = getDbClients();
+  const rows = await pg.query<{
+    card_id: string;
+    stats: unknown;
+    display_name: string | null;
+    avatar_url: string | null;
+    github_username: string | null;
+    created_at: Date;
+  }>(
+    `SELECT card_id, stats, display_name, avatar_url, github_username, created_at
+       FROM cards
+      WHERE card_id = $1
+      LIMIT 1`,
+    [slug],
+  );
+  const r = rows[0];
+  if (!r) {
     return NextResponse.json({ error: "Card not found" }, { status: 404 });
   }
-  const data = doc.data()!;
-  const userDoc = await db.collection("users").doc(data.uid).get();
-  const user = userDoc.exists ? userDoc.data() : null;
 
+  const hasUser = Boolean(r.display_name || r.avatar_url || r.github_username);
   return NextResponse.json({
-    cardId: data.cardId,
-    stats: data.stats,
-    user: user
+    cardId: r.card_id,
+    stats: r.stats,
+    user: hasUser
       ? {
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          githubUsername: user.githubUsername,
+          displayName: r.display_name,
+          photoURL: r.avatar_url,
+          githubUsername: r.github_username,
         }
       : null,
-    createdAt: data.createdAt,
+    createdAt: r.created_at,
   });
 }

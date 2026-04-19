@@ -76,28 +76,28 @@ export function BMonogram({
       }
     }
     const geometry = new THREE.ExtrudeGeometry(shapes, {
-      depth: 6,
+      depth: 8,
       bevelEnabled: true,
-      bevelThickness: 0.55,
-      bevelSize: 0.5,
+      bevelThickness: 0.85,
+      bevelSize: 0.7,
       bevelOffset: 0,
-      bevelSegments: 10,
-      curveSegments: 32,
+      bevelSegments: 12,
+      curveSegments: 36,
     });
     geometry.center();
 
     const material = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color(color as THREE.ColorRepresentation),
-      metalness: 0.15,
-      roughness: 0.22,
-      transmission: 0.35,
-      thickness: 3.2,
-      ior: 1.48,
+      metalness: 0.18,
+      roughness: 0.2,
+      transmission: 0.42,
+      thickness: 3.6,
+      ior: 1.5,
       attenuationColor: new THREE.Color(attenuationColor as THREE.ColorRepresentation),
-      attenuationDistance: 1.4,
+      attenuationDistance: 1.5,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.08,
-      envMapIntensity: 1.0,
+      clearcoatRoughness: 0.06,
+      envMapIntensity: 1.05,
     });
 
     const mesh = new THREE.Mesh(geometry, material);
@@ -132,6 +132,15 @@ export function BMonogram({
     );
     back.position.set(0, 3, -12);
     scene.add(back);
+
+    // Passive specular sweep — a directional light that arcs across the B
+    // once every 8s with a sin² intensity envelope so the highlight visibly
+    // travels left→right, then fades out during the back half of the cycle.
+    const sweep = new THREE.DirectionalLight(
+      new THREE.Color(keyColor as THREE.ColorRepresentation),
+      0,
+    );
+    scene.add(sweep);
 
     const s = {
       dragging: false,
@@ -257,6 +266,12 @@ export function BMonogram({
       }
 
       back.intensity = 1.1 + Math.sin(t * 1.3) * 0.35;
+
+      // Specular sweep: 8-second cycle, one visible pass per cycle.
+      const sweepPhase = t * 0.125 * Math.PI * 2;
+      sweep.position.set(Math.sin(sweepPhase) * 12, 5, 6);
+      const sweepEnvelope = Math.max(0, Math.sin(sweepPhase));
+      sweep.intensity = sweepEnvelope * sweepEnvelope * 2.2;
 
       renderer.render(scene, camera);
     };

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import "./dashboard.css";
 
 const NAV = [
   { href: "/", label: "Summary" },
@@ -8,47 +9,45 @@ const NAV = [
   { href: "/outcomes", label: "Outcomes" },
   { href: "/clusters", label: "Clusters" },
   { href: "/insights", label: "Insights" },
-  { href: "/me", label: "Me" },
-  { href: "/me/digest", label: "Digest" },
 ];
 
-const META_LINKS = [{ href: "/privacy", label: "Bill of Rights" }];
+const META_NAV = [
+  { href: "/me/digest", label: "My digest" },
+  { href: "/privacy", label: "Bill of Rights" },
+];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-screen overflow-hidden">
-      <aside
-        aria-label="Primary navigation"
-        className="flex w-56 shrink-0 flex-col border-r border-border bg-card px-4 py-6"
-      >
-        <Link href="/" className="mb-6 flex items-center gap-2 px-2">
-          <span className="inline-block h-6 w-6 rounded-md bg-primary" aria-hidden />
-          <span className="text-sm font-semibold tracking-tight">Bematist</span>
-        </Link>
-        <nav className="flex flex-1 flex-col gap-0.5">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="mt-4 flex flex-col gap-0.5 border-t border-border pt-4">
-          {META_LINKS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              {item.label}
-            </Link>
-          ))}
+    <div className="bematist-dashboard">
+      <div className="dash-shell">
+        <div className="dash-chrome" aria-hidden>
+          <span className="dash-chrome-dot" style={{ background: "#ff5f57" }} />
+          <span className="dash-chrome-dot" style={{ background: "#febc2e" }} />
+          <span className="dash-chrome-dot" style={{ background: "#28c840" }} />
+          <span className="dash-chrome-url">bematist.yourteam.internal</span>
         </div>
-      </aside>
-      <main className="flex-1 overflow-y-auto px-8 py-6">{children}</main>
+        <aside aria-label="Primary navigation" className="dash-side">
+          <Link href="/home" className="dash-wordmark">
+            <span className="dash-wordmark-dot" aria-hidden />
+            bematist
+          </Link>
+          <nav className="dash-nav">
+            {NAV.map((item) => (
+              <Link key={item.href} href={item.href} className="dash-nav-link">
+                {item.label}
+              </Link>
+            ))}
+            <div className="dash-nav-meta">
+              {META_NAV.map((item) => (
+                <Link key={item.href} href={item.href} className="dash-nav-link">
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        </aside>
+        <main className="dash-main">{children}</main>
+      </div>
     </div>
   );
 }

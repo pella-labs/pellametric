@@ -32,6 +32,19 @@ const DATABASE_URL =
 const BETTER_AUTH_SECRET = process.env.BETTER_AUTH_SECRET ?? "dev-only-change-in-prod";
 const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
 
+// Origins Better Auth accepts on `callbackURL`. baseURL is implicitly trusted;
+// we add `http://localhost:3000` + `http://127.0.0.1:3000` so a dev whose
+// BETTER_AUTH_URL is pinned to a Tailscale IP / staging URL can still test
+// from their laptop without flipping env vars. Extras via the comma-separated
+// `BETTER_AUTH_TRUSTED_ORIGINS` env var for ad-hoc preview hosts.
+const TRUSTED_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS?.split(",")
+    .map((s) => s.trim())
+    .filter(Boolean) ?? []),
+];
+
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID ?? "";
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET ?? "";
 
@@ -142,6 +155,7 @@ function makeAuth() {
   return betterAuth({
     secret: BETTER_AUTH_SECRET,
     baseURL: BETTER_AUTH_URL,
+    trustedOrigins: TRUSTED_ORIGINS,
     // basePath defaults to `/api/auth` — matches the catch-all handler at
     // `apps/web/app/api/auth/[...all]/route.ts`.
     database: drizzleAdapter(db, {
@@ -155,6 +169,11 @@ function makeAuth() {
       github: {
         clientId: GITHUB_CLIENT_ID,
         clientSecret: GITHUB_CLIENT_SECRET,
+        // `public_repo` lets /api/card/star-repo send the star on behalf of
+        // the signed-in user. `read:user` is the GitHub default and gives us
+        // login + avatar URL, though we still hit api.github.com/user/{id}
+        // to resolve the numeric provider account_id → login.
+        scope: ["read:user", "public_repo"],
       },
     },
     emailAndPassword: {

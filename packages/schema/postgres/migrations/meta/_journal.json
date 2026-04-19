@@ -36,6 +36,13 @@
       "when": 1776800000000,
       "tag": "0004_better_auth_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776900000000,
+      "tag": "0005_card_flow",
+      "breakpoints": true
     }
   ]
 }

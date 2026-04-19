@@ -2,27 +2,27 @@
 
 import gsap from "gsap";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { signIn, useSession } from "@/lib/auth-client";
 
 type Flow = "oauth" | "manual";
 type Step = "entry" | "signin" | "star" | "username" | "generate" | "command";
 
 const GITHUB_REPO_URL = "https://github.com/pella-labs/bematist";
 
-function parseRepo(url: string) {
-  const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
-  return match ? { owner: match[1], repo: match[2] } : null;
-}
-
 /**
- * GetStarted flow. Two entry points the user picks on the landing panel:
- *   1. "Sign in with GitHub"      — OAuth-backed one-click star via PUT /user/starred
- *   2. "Star this repo on GitHub" — opens github.com, user stars manually,
- *                                   we verify via the public starred endpoint
- * Both converge at: generate one-shot card token -> copy npx command.
+ * GetStarted flow — the marketing entry point to /card.
  *
- * Gracefully degrades to demo mode when Firebase isn't configured.
+ * Two identity paths that both converge on `POST /api/card/token` → copy
+ * `npx grammata ...`:
+ *   1. OAuth — `Sign in with GitHub`. Full-page redirect through Better
+ *      Auth → GitHub → `/api/auth/callback/github`, which sets the session
+ *      cookie and returns the user to `/?getstarted=1#get-started`.
+ *   2. Star-gate — `Star manually, no sign-in`. Public-star check via
+ *      `/api/card/token-by-star`; no session required.
  */
 export function GetStarted() {
+  const session = useSession() as { data?: { user?: { id: string } } | null };
+
   const [step, setStep] = useState<Step>("entry");
   const [flow, setFlow] = useState<Flow>("oauth");
   const [cardToken, setCardToken] = useState<string | null>(null);
@@ -30,32 +30,21 @@ export function GetStarted() {
   const [copied, setCopied] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [manualUsername, setManualUsername] = useState("");
-  const [firebaseReady, setFirebaseReady] = useState(false);
-  const [authModule, setAuthModule] = useState<null | typeof import("firebase/auth")>(null);
-  const [auth, setAuth] = useState<null | import("firebase/auth").Auth>(null);
-  const [provider, setProvider] = useState<null | import("firebase/auth").GithubAuthProvider>(null);
   const starRef = useRef<HTMLDivElement>(null);
 
+  // On return from GitHub OAuth, Better Auth drops us back at
+  // /?getstarted=1#get-started. If we're signed in and still on "entry",
+  // jump to "star" so the user doesn't re-click the sign-in button.
   useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) return;
-    let cancelled = false;
-    (async () => {
-      const [mod, clientMod] = await Promise.all([
-        import("firebase/auth"),
-        import("@/lib/firebase/client"),
-      ]);
-      if (cancelled) return;
-      setAuthModule(mod);
-      setAuth(clientMod.auth);
-      setProvider(clientMod.githubProvider);
-      setFirebaseReady(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (session.data?.user && step === "entry") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("getstarted") === "1") {
+        setFlow("oauth");
+        setStep("star");
+      }
+    }
+  }, [session.data, step]);
 
-  // ─── Entry ────────────────────────────────────────────────────────
   const handlePickOAuth = () => {
     setFlow("oauth");
     setStep("signin");
@@ -63,30 +52,17 @@ export function GetStarted() {
 
   const handlePickManual = () => {
     setFlow("manual");
-    // Open the repo in a new tab so the user can star it right now.
     window.open(GITHUB_REPO_URL, "_blank", "noopener,noreferrer");
     setStep("username");
   };
 
-  // ─── Sign in ─────────────────────────────────────────────────────
   const handleSignIn = async () => {
-    if (!firebaseReady || !authModule || !auth || !provider) {
-      setStep("star");
-      return;
-    }
-    try {
-      const result = await authModule.signInWithPopup(auth, provider);
-      const credential = authModule.GithubAuthProvider.credentialFromResult(result);
-      if (credential?.accessToken) {
-        sessionStorage.setItem("github_token", credential.accessToken);
-      }
-      setStep("star");
-    } catch (err) {
-      console.error("GitHub sign-in failed", err);
-    }
+    await signIn.social({
+      provider: "github",
+      callbackURL: "/card?getstarted=1",
+    });
   };
 
-  // ─── Star burst confetti ─────────────────────────────────────────
   const playStarBurst = useCallback(() => {
     const container = starRef.current;
     if (!container) return;
@@ -127,21 +103,12 @@ export function GetStarted() {
     });
   }, []);
 
-  // ─── Star via OAuth (flow=oauth) ─────────────────────────────────
+  // Star the repo via `/api/card/star-repo`, which uses the session's
+  // stored GitHub access_token (Better Auth `better_auth_account`).
   const handleStarOAuth = async () => {
     setWorking(true);
     try {
-      const token = sessionStorage.getItem("github_token");
-      const parsed = parseRepo(GITHUB_REPO_URL);
-      if (firebaseReady && token && parsed) {
-        await fetch(`https://api.github.com/user/starred/${parsed.owner}/${parsed.repo}`, {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Length": "0",
-          },
-        });
-      }
+      await fetch("/api/card/star-repo", { method: "POST", credentials: "include" });
       playStarBurst();
       setTimeout(() => setStep("generate"), 900);
     } finally {
@@ -149,7 +116,6 @@ export function GetStarted() {
     }
   };
 
-  // ─── Verify-and-issue by username (flow=manual, no OAuth) ────────
   const handleVerifyByUsername = async () => {
     setVerifyError(null);
     const username = manualUsername.trim();
@@ -159,34 +125,6 @@ export function GetStarted() {
     }
     setWorking(true);
     try {
-      if (!firebaseReady) {
-        // Demo mode: still verify the star against GitHub, but mint a stub
-        // token since Firestore isn't available.
-        const checkRes = await fetch(
-          `/api/github/check-star?username=${encodeURIComponent(username)}`,
-        );
-        const checkData = (await checkRes.json()) as {
-          starred?: boolean;
-          error?: string;
-        };
-        if (checkData.starred) {
-          const adjPool = ["sable", "halcyon", "vesper", "gilded", "obsidian", "moonlit"];
-          const nounPool = ["reliquary", "cairn", "cipher", "penumbra", "menhir", "horizon"];
-          const adj = adjPool[Math.floor(Math.random() * adjPool.length)];
-          const noun = nounPool[Math.floor(Math.random() * nounPool.length)];
-          const num = Math.floor(Math.random() * 900) + 100;
-          setCardToken(`${adj}-${noun}-${num}`);
-          playStarBurst();
-          setTimeout(() => setStep("command"), 900);
-        } else if (checkData.starred === false) {
-          setVerifyError(
-            "We don't see a star from that account yet. Double-check your GitHub username, make sure you starred the repo, then try again.",
-          );
-        } else {
-          setVerifyError(checkData.error ?? "Could not verify. Try again in a moment.");
-        }
-        return;
-      }
       const res = await fetch("/api/card/token-by-star", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -211,16 +149,18 @@ export function GetStarted() {
     }
   };
 
-  // ─── Generate + copy ─────────────────────────────────────────────
   const handleGenerate = async () => {
     setWorking(true);
     try {
-      if (firebaseReady && auth?.currentUser) {
-        const { generateCardToken } = await import("@/lib/firebase/api");
-        const { token } = await generateCardToken();
-        setCardToken(token);
+      const res = await fetch("/api/card/token", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = (await res.json()) as { token?: string; error?: string };
+      if (res.ok && data.token) {
+        setCardToken(data.token);
       } else {
-        setCardToken(`bematist_demo-${Math.random().toString(36).slice(2, 10)}`);
+        setVerifyError(data.error ?? "Could not generate token. Try signing in again.");
       }
       setStep("command");
     } finally {
@@ -228,7 +168,7 @@ export function GetStarted() {
     }
   };
 
-  const cliCommand = cardToken ? `npx bematist card --token ${cardToken}` : "";
+  const cliCommand = cardToken ? `npx grammata ${cardToken}` : "";
 
   const handleCopy = () => {
     if (!cliCommand) return;
@@ -237,19 +177,8 @@ export function GetStarted() {
     setTimeout(() => setCopied(false), 1800);
   };
 
-  // ─── Render ──────────────────────────────────────────────────────
   return (
     <div className="mk-getstarted">
-      {!firebaseReady && (
-        <div className="mk-getstarted-note">
-          <span className="mk-sys">Demo mode</span>
-          <p>
-            Firebase isn't wired up yet, so each step advances with stub data. Click through to see
-            the full flow.
-          </p>
-        </div>
-      )}
-
       {step === "entry" && (
         <div className="mk-getstarted-entry">
           <button

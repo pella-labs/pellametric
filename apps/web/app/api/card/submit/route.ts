@@ -1,8 +1,7 @@
-import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db, firebaseConfigured } from "@/lib/firebase/admin";
-import { hashToken } from "../token/route";
+import { hashCardToken } from "@/lib/card-backend";
+import { getDbClients } from "@/lib/db";
 
 // Narrow, strict shape for CLI-submitted stats. Matches CardData.stats in
 // apps/web/app/(marketing)/_card/card-utils.ts. Unknown fields at the top
@@ -77,21 +76,127 @@ const statsSchema = z
               cost: z.number(),
               claudeSessions: z.number(),
               codexSessions: z.number(),
+              cursorSessions: z.number(),
+              gooseSessions: z.number(),
             }),
           )
           .optional(),
       })
       .strict(),
-    // highlights is optional and accepts an open shape for forward-compat
-    highlights: z.record(z.string(), z.unknown()).optional(),
+    cursor: z
+      .object({
+        sessions: z.number(),
+        cost: z.number(),
+        inputTokens: z.number(),
+        outputTokens: z.number(),
+        models: numberDict,
+        topTools: toolList,
+        totalToolCalls: z.number(),
+        activeDays: z.number(),
+        projects: z.array(
+          z.object({
+            name: z.string().max(200),
+            sessions: z.number(),
+          }),
+        ),
+        totalMessages: z.number(),
+        totalLinesAdded: z.number(),
+        totalLinesRemoved: z.number(),
+        totalFilesCreated: z.number(),
+        thinkingTimeMs: z.number(),
+        turnTimeMs: z.number(),
+        dailyActivity: z.array(
+          z.object({
+            date: z.string().max(40),
+            messages: z.number(),
+            toolCalls: z.number(),
+          }),
+        ),
+        totalTabSuggestedLines: z.number(),
+        totalTabAcceptedLines: z.number(),
+        totalComposerSuggestedLines: z.number(),
+        totalComposerAcceptedLines: z.number(),
+      })
+      .strict(),
+    goose: z
+      .object({
+        sessions: z.number(),
+        cost: z.number(),
+        inputTokens: z.number(),
+        outputTokens: z.number(),
+        models: numberDict,
+        providers: numberDict,
+        activeDays: z.number(),
+        projects: z.array(
+          z.object({
+            name: z.string().max(200),
+            sessions: z.number(),
+            cost: z.number(),
+          }),
+        ),
+      })
+      .strict(),
+    highlights: z
+      .object({
+        favoriteModel: z.string().max(200),
+        favoriteTool: z.string().max(200),
+        peakHour: z.number(),
+        peakHourLabel: z.string().max(40),
+        personality: z.string().max(200),
+        totalToolCalls: z.number(),
+        cacheHitRate: z.number(),
+        longestStreak: z.number(),
+        mostExpensiveSession: z
+          .object({
+            cost: z.number(),
+            model: z.string().max(200),
+            project: z.string().max(200),
+            date: z.string().max(40),
+          })
+          .strict()
+          .nullable(),
+        avgCostPerSession: z.number(),
+        avgSessionsPerDay: z.number(),
+        mcpServers: z.array(
+          z.object({
+            name: z.string().max(200),
+            totalCalls: z.number(),
+            tools: toolList,
+          }),
+        ),
+        totalMcpCalls: z.number(),
+        skillInvocations: z.number(),
+        builtinTools: toolList,
+        readWriteRatio: z
+          .object({
+            reads: z.number(),
+            writes: z.number(),
+            ratio: z.string().max(40),
+          })
+          .strict(),
+        costWithoutCache: z.number(),
+        activityCategories: z.array(
+          z.object({
+            category: z.string().max(200),
+            description: z.string().max(500),
+            sessions: z.number(),
+            cost: z.number(),
+            sessionPct: z.number(),
+            costPct: z.number(),
+          }),
+        ),
+      })
+      .strict(),
   })
   .strict();
 
+/**
+ * POST /api/card/submit — CLI contract (LOCKED):
+ *   `Authorization: Bearer <token>`, UsageSummary payload (validated by the
+ *   strict zod schema above), `{ cardUrl, cardId }` response. grammata's
+ *   `--api-url` target.
+ */
 export async function POST(req: Request) {
-  if (!firebaseConfigured) {
-    return NextResponse.json({ error: "Firebase service account not configured" }, { status: 503 });
-  }
-
   const header = req.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) {
     return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
@@ -100,24 +205,7 @@ export async function POST(req: Request) {
   if (!token) {
     return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
   }
-  const tokenHash = hashToken(token);
-
-  const tokenDoc = await db.collection("api_tokens").doc(tokenHash).get();
-  if (!tokenDoc.exists) {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-  }
-
-  const tokenData = tokenDoc.data()!;
-  if (tokenData.used) {
-    return NextResponse.json({ error: "Token has already been used" }, { status: 401 });
-  }
-
-  const expiresAt = tokenData.expiresAt.toDate
-    ? tokenData.expiresAt.toDate()
-    : new Date(tokenData.expiresAt);
-  if (expiresAt < new Date()) {
-    return NextResponse.json({ error: "Token has expired" }, { status: 401 });
-  }
+  const tokenHash = hashCardToken(token);
 
   const body = await req.json().catch(() => null);
   const parse = statsSchema.safeParse(body);
@@ -127,36 +215,79 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-
   const serialized = JSON.stringify(parse.data);
   if (serialized.length > 500 * 1024) {
     return NextResponse.json({ error: "Stats payload too large (max 500KB)" }, { status: 400 });
   }
 
-  const uid = tokenData.uid;
-  const cardId = uid;
+  const { pg } = getDbClients();
 
-  await db.collection("cards").doc(cardId).set({
-    cardId,
-    uid,
-    stats: parse.data,
-    createdAt: FieldValue.serverTimestamp(),
-  });
-  await db.collection("api_tokens").doc(tokenHash).update({ used: true });
+  // Atomic single-use: a 0-row return means the token is unknown, already
+  // used, or expired. We don't distinguish between these — the right privacy
+  // posture is one error message so an attacker can't probe token state.
+  const claimed = await pg.query<{
+    subject_id: string;
+    subject_kind: string;
+    github_username: string | null;
+  }>(
+    `UPDATE card_tokens
+        SET used_at = now()
+      WHERE token_hash = $1
+        AND used_at IS NULL
+        AND expires_at > now()
+     RETURNING subject_id, subject_kind, github_username`,
+    [tokenHash],
+  );
+  const row = claimed[0];
+  if (!row) {
+    return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+  }
+  const cardId = row.subject_id;
 
-  const oldTokens = await db
-    .collection("api_tokens")
-    .where("uid", "==", uid)
-    .where("used", "==", true)
-    .get();
-  if (!oldTokens.empty) {
-    const batch = db.batch();
-    for (const d of oldTokens.docs) {
-      batch.delete(d.ref);
+  let displayName: string | null = null;
+  let avatarUrl: string | null = null;
+  let ownerUserId: string | null = null;
+
+  if (row.subject_kind === "better_auth_user") {
+    const ownerRows = await pg.query<{ name: string; image: string | null }>(
+      `SELECT name, image FROM better_auth_user WHERE id = $1 LIMIT 1`,
+      [row.subject_id],
+    );
+    const owner = ownerRows[0];
+    if (owner) {
+      displayName = owner.name;
+      avatarUrl = owner.image;
+      ownerUserId = row.subject_id;
     }
-    await batch.commit();
+  } else if (row.subject_kind === "github_star") {
+    // subject_id is the lowercase slug (= card_id). github_username preserves
+    // the original case from the user's input on the marketing page. Fall
+    // back to the slug if it somehow didn't land.
+    const login = row.github_username ?? row.subject_id;
+    displayName = `@${login}`;
+    avatarUrl = `https://github.com/${login}.png`;
   }
 
-  const baseUrl = process.env.APP_URL || "http://localhost:3000";
+  // Upsert so re-submitting (after minting a fresh token) replaces the card
+  // rather than 500-ing on PK collision. created_at is refreshed so the
+  // public page shows the latest capture time.
+  // pg-js auto-serializes an object param to JSON text for a jsonb column;
+  // do NOT pre-stringify (doing so turned `stats` into a string-typed jsonb
+  // value and blew up `data.stats.combined` on the render side).
+  await pg.query(
+    `INSERT INTO cards
+       (card_id, owner_user_id, github_username, display_name, avatar_url, stats, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, now())
+     ON CONFLICT (card_id) DO UPDATE SET
+       owner_user_id   = EXCLUDED.owner_user_id,
+       github_username = EXCLUDED.github_username,
+       display_name    = EXCLUDED.display_name,
+       avatar_url      = EXCLUDED.avatar_url,
+       stats           = EXCLUDED.stats,
+       created_at      = EXCLUDED.created_at`,
+    [cardId, ownerUserId, row.github_username, displayName, avatarUrl, parse.data],
+  );
+
+  const baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
   return NextResponse.json({ cardUrl: `${baseUrl}/card/${cardId}`, cardId });
 }
