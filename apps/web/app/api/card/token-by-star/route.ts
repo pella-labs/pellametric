@@ -271,7 +271,10 @@ function mintStarToken(): string {
   const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
   const num = Math.floor(Math.random() * 900) + 100;
-  return `${adj}-${noun}-${num}`;
+  // `bm_` prefix required by grammata's `isSubmitToken` guard (cli-args.ts).
+  // Without it the CLI rejects the paste with "Invalid token format" before
+  // it ever hits /api/card/submit.
+  return `bm_${adj}-${noun}-${num}`;
 }
 
 /**
