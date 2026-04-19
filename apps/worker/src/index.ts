@@ -10,9 +10,15 @@ import {
 import { prompt_clusters } from "@bematist/schema/postgres";
 import type { ClickHouseClient } from "@clickhouse/client";
 import PgBoss from "pg-boss";
+import {
+  createKafkaWebhookBus,
+  parseBrokersEnv,
+} from "../../ingest/src/github-app/kafkaWebhookBus";
+import { GITHUB_WEBHOOKS_TOPIC } from "../../ingest/src/github-app/webhookBus";
 import { ch } from "./clickhouse";
 import { db, pgClient } from "./db";
 import { startKafkaGithubConsumer } from "./github/kafkaConsumer";
+import { dispatcherTick as historyBackfillTick } from "./github-history-backfill/dispatcher";
 import {
   createLocalSemaphore,
   createNoopRecomputeEmitter,
@@ -48,6 +54,8 @@ const RECLUSTER_MAX_PROMPTS_PER_ORG = Number(process.env.RECLUSTER_MAX_PROMPTS_P
 // scheduler, not the per-event worker.
 const GITHUB_SYNC_DISPATCHER_SCHEDULE =
   process.env.GITHUB_SYNC_DISPATCHER_SCHEDULE ?? "*/1 * * * *";
+const GITHUB_HISTORY_BACKFILL_SCHEDULE =
+  process.env.GITHUB_HISTORY_BACKFILL_SCHEDULE ?? "*/1 * * * *";
 // G1-linker crons — all PgBoss, per CLAUDE.md Architecture Rule #4.
 //
 // `github.linker.partition_creator` runs at 01:00 UTC on the 25th of every
@@ -96,6 +104,12 @@ export async function startWorker() {
   });
   await boss.schedule("github.initial_sync_dispatcher", GITHUB_SYNC_DISPATCHER_SCHEDULE);
 
+  await boss.work("github.history_backfill_dispatcher", async () => {
+    const report = await runGithubHistoryBackfillDispatcher();
+    return report;
+  });
+  await boss.schedule("github.history_backfill_dispatcher", GITHUB_HISTORY_BACKFILL_SCHEDULE);
+
   // G1-linker crons — partition creator (monthly), alias retirement (daily),
   // reconciliation scaffold (hourly). Per CLAUDE.md Architecture Rule #4:
   // PgBoss for crons only. Per-event linker work runs through the Redis
@@ -115,23 +129,6 @@ export async function startWorker() {
     return await runReconcileScaffold(pgClient);
   });
   await boss.schedule("github.linker.reconcile_scaffold", LINKER_RECONCILE_SCAFFOLD_SCHEDULE);
-
-  console.log(
-    "[worker] started; gdpr.partition_drop:",
-    GDPR_CRON_SCHEDULE,
-    "anomaly.hourly:",
-    ANOMALY_CRON_SCHEDULE,
-    "cluster.recluster_nightly:",
-    RECLUSTER_CRON_SCHEDULE,
-    "github.initial_sync_dispatcher:",
-    GITHUB_SYNC_DISPATCHER_SCHEDULE,
-    "github.linker.partition_creator:",
-    LINKER_PARTITION_CREATOR_SCHEDULE,
-    "github.linker.alias_retirement:",
-    LINKER_ALIAS_RETIREMENT_SCHEDULE,
-    "github.linker.reconcile_scaffold:",
-    LINKER_RECONCILE_SCAFFOLD_SCHEDULE,
-  );
 
   // G2 — Kafka consumer for `github.webhooks`. Opt-in via
   // KAFKA_TRANSPORT=kafkajs; stays off in solo/embedded mode (no Redpanda
@@ -174,7 +171,6 @@ export async function startWorker() {
 async function startKafkaGithubConsumerLoop(): Promise<void> {
   const transport = (process.env.KAFKA_TRANSPORT ?? "kafkajs").toLowerCase();
   if (transport !== "kafkajs") {
-    console.log("[worker] KAFKA_TRANSPORT=memory — skipping kafka consumer");
     return;
   }
   const brokersRaw = process.env.KAFKA_BROKERS ?? process.env.REDPANDA_BROKERS ?? "";
@@ -228,10 +224,6 @@ async function startKafkaGithubConsumerLoop(): Promise<void> {
       recompute,
     },
   );
-  console.log("[worker] kafka github consumer started", {
-    brokers: finalBrokers,
-    topic: "github.webhooks",
-  });
 }
 
 /**
@@ -242,7 +234,6 @@ async function startKafkaGithubConsumerLoop(): Promise<void> {
  */
 async function startLinkerConsumerLoop(): Promise<void> {
   if (process.env.LINKER_CONSUMER_ENABLED === "0") {
-    console.log("[worker] github-linker consumer disabled (LINKER_CONSUMER_ENABLED=0)");
     return;
   }
   const mod = await import("redis");
@@ -648,6 +639,81 @@ async function runGithubInitialSyncDispatcher(): Promise<
     getInstallationToken,
     emitRecompute,
   });
+}
+
+/**
+ * PgBoss cron body for `github.history_backfill_dispatcher`. Reuses the
+ * same installation-token resolver + token-bucket semaphore pattern as the
+ * initial-sync dispatcher. Publishes synthesized webhook payloads onto the
+ * real Kafka `github.webhooks` topic so the existing consumer is the
+ * single write path (no parallel DB writer to maintain).
+ */
+async function runGithubHistoryBackfillDispatcher(): Promise<
+  import("./github-history-backfill/dispatcher").HistoryDispatcherTickReport
+> {
+  const appId = process.env.GITHUB_APP_ID;
+  const privateKeyPem = process.env.GITHUB_APP_PRIVATE_KEY_PEM;
+  if (!appId || !privateKeyPem) {
+    console.error(
+      JSON.stringify({
+        level: "warn",
+        app: "worker-github-history-backfill",
+        msg: "skipping tick — GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY_PEM not set",
+      }),
+    );
+    return { autoEnqueued: 0, picked: 0, completed: 0, failed: 0 };
+  }
+
+  const brokers = parseBrokersEnv(process.env);
+  if (brokers.length === 0) {
+    console.error(
+      JSON.stringify({
+        level: "warn",
+        app: "worker-github-history-backfill",
+        msg: "skipping tick — KAFKA_BROKERS not set",
+      }),
+    );
+    return { autoEnqueued: 0, picked: 0, completed: 0, failed: 0 };
+  }
+
+  const mem = new Map<string, string>();
+  const tokenBucket = createTokenBucket({
+    store: {
+      async get(key) {
+        return mem.get(key) ?? null;
+      },
+      async set(key, value) {
+        mem.set(key, value);
+      },
+    },
+    refillPerSecond: 1,
+    burst: 10,
+  });
+
+  const tokenCache = createInMemoryInstallationTokenCache();
+  const getInstallationToken = async (installationId: bigint): Promise<string> => {
+    return resolveInstallationToken({
+      installationId: installationId.toString(),
+      appId,
+      privateKeyPem,
+      cache: tokenCache,
+    });
+  };
+
+  const bus = createKafkaWebhookBus({ brokers, clientId: "bematist-history-backfill" });
+  try {
+    await bus.ensureTopic(GITHUB_WEBHOOKS_TOPIC, 4);
+    return await historyBackfillTick({
+      sql: pgClient,
+      semaphore: githubInitialSyncSemaphore,
+      tokenBucket,
+      getInstallationToken,
+      publish: (topic, msg) => bus.publish(topic, msg),
+      log: (entry) => console.log(JSON.stringify({ ...entry, app: "worker-history-backfill" })),
+    });
+  } finally {
+    await bus.close();
+  }
 }
 
 if (import.meta.main) {
