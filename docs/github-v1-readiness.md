@@ -39,7 +39,7 @@
 | **MAE ≤ 3 on 650-case main + 150 held-out** | **Green** (MAE 0.025 main; 0.024 held-out; 666+150 cases) | `bun run test:scoring` output |
 | **LLM-judge adversarial eval ≥ 0.7** | Green (carried from G2) | Scoring eval runner |
 | **Privacy adversarial gate (INT10)** | Green | G1/G2 — no G3 regressions |
-| **F15 Bun↔ClickHouse soak — 24h at 100 evt/s** | **Compressed proxy PASSED locally at 10 min** (60k writes, 0 failures, p99 15.88ms, drift 0). **CI default runs 6s (SOAK_COMPRESSED_MINUTES=0.1)** — this is a fast-feedback loop, not a soak gate. A distinct 10-min CI job (M7 follow-up) is needed to call the soak gate green in CI. Full 24h deferred per Architecture Rule #7 Plan B posture. | `tests/soak/compressed-proxy.test.ts` |
+| **F15 Bun↔ClickHouse soak — 24h at 100 evt/s** | **Green via 10-min compressed proxy in CI** (`.github/workflows/ci.yml` job `soak-compressed` — `SOAK_COMPRESSED_MINUTES=10`). The per-PR `bun run test` path keeps the fast 6 s default so unrelated PRs stay fast; the dedicated job exercises the real gate thresholds (≥3 ECONNRESET / 100k inserts, p99 <500 ms, no row-count drift). Full 24h soak remains Phase-2 per CLAUDE.md Architecture Rule #7 Plan B posture. | `tests/soak/compressed-proxy.test.ts` + `.github/workflows/ci.yml` |
 | **Fixture redaction privacy test** | Green (47 fixtures, +3 G3 deploys) | `packages/fixtures/github/fixtures.redaction.test.ts` |
 
 ## Known gaps pending subsequent PR
@@ -61,7 +61,7 @@ to a distinct PR with its own contract tests:
 | H3 | Fail-closed boot (Kafka / PG / GITHUB_APP_ID) | **Landed** |
 | H6 | Strict installation-status allowlist w/ distinct codes | **Landed** |
 | M1 | `repos.full_name` column + ILIKE search path | **Pending follow-up** |
-| M7 | F15 10-min CI soak gate (separate job) | **Pending follow-up** |
+| M7 | F15 10-min CI soak gate (separate job) | **Landed** — `soak-compressed` job in `.github/workflows/ci.yml` |
 | M13 | PR-local lint debt (biome organize-imports + non-null assertions) | **Landed** |
 
 ## Explicitly deferred to Phase 2 (§5 / §13.G4)
