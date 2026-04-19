@@ -369,7 +369,12 @@ jobs:
 
   release:
     name: publish GH release
-    needs: [meta, build, verify, collect-hashes, provenance, package, sbom]
+    # `package` temporarily dropped from the needs list — distro-package
+    # rendering (Homebrew / AUR / Chocolatey templates) still hard-codes
+    # darwin-x64, which we skip in v0.1.x. Re-add once render scripts handle
+    # a missing arch gracefully OR once darwin-x64 is back in the matrix.
+    # Distro publishing itself is still `if: false` on every channel.
+    needs: [meta, build, verify, collect-hashes, provenance, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -456,13 +461,10 @@ jobs:
           prerelease: ${{ contains(needs.meta.outputs.tag, '-') }}
           files: |
             release/${{ env.BINARY_NAME }}-*
-            release/*.deb
-            release/bematist.rb
-            release/PKGBUILD
-            release/bematist.nuspec
             release/manifest.sha256
             release/*.intoto.jsonl
             release/*.cdx.json
+            packaging/install.sh
 
   # ---------------------------------------------------------------------------
   # Registry-publish jobs.
