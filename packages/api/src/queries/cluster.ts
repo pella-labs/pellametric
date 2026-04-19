@@ -325,7 +325,7 @@ async function findSessionTwinsReal(ctx: Ctx, input: TwinFinderInput): Promise<T
        a.cluster_id AS cluster_id,
        e.prompt_embedding AS prompt_embedding
      FROM events AS e
-     LEFT JOIN cluster_assignment_mv FINAL AS a
+     LEFT JOIN cluster_assignment_mv AS a FINAL
        ON a.org_id = e.org_id
       AND a.session_id = e.session_id
       AND a.prompt_index = e.prompt_index
@@ -362,7 +362,7 @@ async function findSessionTwinsReal(ctx: Ctx, input: TwinFinderInput): Promise<T
          e.engineer_id AS engineer_id,
          a.cluster_id AS cluster_id,
          e.prompt_embedding AS prompt_embedding
-       FROM cluster_assignment_mv FINAL AS a
+       FROM cluster_assignment_mv AS a FINAL
        INNER JOIN events AS e
          ON e.org_id = a.org_id
         AND e.session_id = a.session_id
@@ -608,7 +608,7 @@ async function listClusterContributorsReal(
       `SELECT
          e.engineer_id AS engineer_id,
          uniq(e.session_id) AS session_count
-       FROM cluster_assignment_mv FINAL AS a
+       FROM cluster_assignment_mv AS a FINAL
        INNER JOIN events AS e
          ON e.org_id = a.org_id
         AND e.session_id = a.session_id
