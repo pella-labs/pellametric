@@ -383,6 +383,10 @@ export function CardPage({
     const flipper = flipperRef.current;
     if (!flipper) return;
     const onMove = (e: PointerEvent) => {
+      // Ignore touch/pen — those devices can fire pointermove without a
+      // matching pointerleave, which leaves `is-hovering` stuck on after a
+      // swipe and paints the card in the hot red/pink hover palette.
+      if (e.pointerType !== "mouse") return;
       const rect = flipper.getBoundingClientRect();
       const px = Math.max(
         0,
@@ -405,20 +409,33 @@ export function CardPage({
       animRef.current.hover = 1;
     };
     // Drive glow via JS class so it works on Windows/touch devices that don't reliably fire :hover
-    const onEnter = () => flipper.classList.add("is-hovering");
+    const onEnter = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse") return;
+      flipper.classList.add("is-hovering");
+    };
     const onLeave = () => {
       animRef.current.mx = 0;
       animRef.current.my = 0;
       animRef.current.hover = 0;
       flipper.classList.remove("is-hovering");
     };
+    // Any touch anywhere on the doc clears the stuck hover, defending
+    // against the "swipe then card stays red" case.
+    const clearHover = () => {
+      flipper.classList.remove("is-hovering");
+      animRef.current.hover = 0;
+    };
     flipper.addEventListener("pointerenter", onEnter);
     flipper.addEventListener("pointermove", onMove);
     flipper.addEventListener("pointerleave", onLeave);
+    flipper.addEventListener("pointercancel", onLeave);
+    document.addEventListener("touchstart", clearHover, { passive: true });
     return () => {
       flipper.removeEventListener("pointerenter", onEnter);
       flipper.removeEventListener("pointermove", onMove);
       flipper.removeEventListener("pointerleave", onLeave);
+      flipper.removeEventListener("pointercancel", onLeave);
+      document.removeEventListener("touchstart", clearHover);
     };
     // Depend on `data` so listeners re-attach after the async fetch on
     // /card/:id mounts the flipper — the first pass runs with data=null,
