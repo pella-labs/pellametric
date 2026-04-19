@@ -64,6 +64,13 @@ export {
 } from "./queries/cluster";
 // Queries
 export { getSummary } from "./queries/dashboard";
+export {
+  activityOverview,
+  codeDelivery,
+  cohortFilters,
+  sessionDetail,
+  sessionsFeed,
+} from "./queries/new-dashboard";
 export { getGithubAdminBanners } from "./queries/github/banners";
 export { getGithubConnection } from "./queries/github/connection";
 export { listGithubRepos } from "./queries/github/repos";
