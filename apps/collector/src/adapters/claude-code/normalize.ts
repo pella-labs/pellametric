@@ -11,6 +11,16 @@ export interface ServerIdentity {
   tier: "A" | "B" | "C";
 }
 
+/** Extra context the adapter resolves outside the JSONL (git branch / HEAD). */
+export interface NormalizeExtras {
+  /** Active git branch at poll time. Falls back to each line's `gitBranch`
+   *  field (Claude Code v2.1.x+) when the adapter can't resolve from cwd. */
+  branch?: string;
+  /** HEAD commit SHA for the session's cwd; feeds the GitHub-App linker that
+   *  joins sessions to PRs and merged commits. */
+  commit_sha?: string;
+}
+
 const MODEL_PRICING_PER_MTOK: Record<
   string,
   { input: number; output: number; cacheRead: number; cacheCreation: number }
@@ -29,10 +39,19 @@ export function normalizeSession(
   parsed: ParsedSession,
   id: ServerIdentity,
   sourceVersion: string,
+  extras: NormalizeExtras = {},
 ): Event[] {
   const session_id = parsed.sessionId ?? "unknown";
   const events: Event[] = [];
   let seq = 0;
+
+  // Fall back to the in-line `gitBranch` field Claude Code stamps on every
+  // line (v2.1.x+) when the adapter didn't resolve a branch from cwd.
+  const resolvedExtras: NormalizeExtras = { ...extras };
+  if (!resolvedExtras.branch) {
+    const firstBranch = parsed.entries.find((l) => l.gitBranch)?.gitBranch;
+    if (firstBranch) resolvedExtras.branch = firstBranch;
+  }
 
   // Real-format sessions (`~/.claude/projects/**.jsonl`) never emit an explicit
   // `session_start` line — the session begins at the first user message. The
@@ -47,7 +66,16 @@ export function normalizeSession(
       timestamp: parsed.firstTimestamp,
     };
     if (parsed.sessionId) synthetic.sessionId = parsed.sessionId;
-    const startEvents = mapLine(synthetic, -1, parsed, id, sourceVersion, session_id, seq);
+    const startEvents = mapLine(
+      synthetic,
+      -1,
+      parsed,
+      id,
+      sourceVersion,
+      session_id,
+      seq,
+      resolvedExtras,
+    );
     for (const e of startEvents) {
       events.push(e);
       seq++;
@@ -57,7 +85,16 @@ export function normalizeSession(
   for (let idx = 0; idx < parsed.entries.length; idx++) {
     const line = parsed.entries[idx];
     if (!line) continue;
-    const eventsForLine = mapLine(line, idx, parsed, id, sourceVersion, session_id, seq);
+    const eventsForLine = mapLine(
+      line,
+      idx,
+      parsed,
+      id,
+      sourceVersion,
+      session_id,
+      seq,
+      resolvedExtras,
+    );
     for (const e of eventsForLine) {
       events.push(e);
       seq++;
@@ -74,7 +111,19 @@ function mapLine(
   sourceVersion: string,
   session_id: string,
   seq: number,
+  extras: NormalizeExtras,
 ): Event[] {
+  // Branch: adapter-resolved (extras.branch) is the session-wide authoritative
+  // value; fall back to the per-line `gitBranch` only when the adapter
+  // couldn't resolve one. Matches codex-adapter semantics — a session
+  // targets one working tree, and denormalizing the session's HEAD branch on
+  // every event is what the outcome linker expects.
+  const lineBranch = extras.branch ?? line.gitBranch;
+  const rawAttrsAccum: Record<string, unknown> = {};
+  if (lineBranch) rawAttrsAccum.branch = lineBranch;
+  if (extras.commit_sha) rawAttrsAccum.commit_sha = extras.commit_sha;
+  const raw_attrs = Object.keys(rawAttrsAccum).length > 0 ? rawAttrsAccum : undefined;
+
   const base = {
     schema_version: 1 as const,
     ts: line.timestamp ?? new Date().toISOString(),
@@ -88,6 +137,7 @@ function mapLine(
     tier: id.tier,
     session_id,
     event_seq: seq,
+    ...(raw_attrs ? { raw_attrs } : {}),
   };
 
   if (line.type === "session_start") {

@@ -289,4 +289,4 @@ export function loadConfigWithSources(
  *  Keep in sync with apps/collector/package.json at release time. A future
  *  improvement is to inject this from package.json via a build step; for
  *  now it's manually bumped per tag. */
-export const COLLECTOR_VERSION = "0.1.6";
+export const COLLECTOR_VERSION = "0.1.7";

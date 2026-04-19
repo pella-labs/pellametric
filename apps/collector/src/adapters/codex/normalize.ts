@@ -53,6 +53,9 @@ export interface NormalizeExtras {
   /** Active git branch for the session's `cwd`. Denormalized onto every event
    *  via `raw_attrs.branch`; ingest copies it into CH column `branch`. */
   branch?: string;
+  /** HEAD commit SHA at the time the session ran; feeds the GitHub-App linker
+   *  that joins sessions to merged PRs / commits. */
+  commit_sha?: string;
 }
 
 export function normalizeSession(
@@ -88,12 +91,13 @@ function mapLine(
   if (!kind) return [];
   const payload = extractPayload(line);
 
-  // Attach the resolved git branch on every event via raw_attrs — ingest
-  // canonicalize() copies raw_attrs.branch into CH column `branch` so outcome
-  // attribution joins (PR/commit) work for Codex sessions the same as Claude.
-  const raw_attrs: Record<string, unknown> | undefined = extras.branch
-    ? { branch: extras.branch }
-    : undefined;
+  // Attach the resolved git context on every event via raw_attrs — ingest
+  // canonicalize() copies raw_attrs.{branch,commit_sha} into typed CH columns
+  // so the GitHub-App linker can join sessions to PRs and merged commits.
+  const rawAttrsAccum: Record<string, unknown> = {};
+  if (extras.branch) rawAttrsAccum.branch = extras.branch;
+  if (extras.commit_sha) rawAttrsAccum.commit_sha = extras.commit_sha;
+  const raw_attrs = Object.keys(rawAttrsAccum).length > 0 ? rawAttrsAccum : undefined;
 
   const base = {
     schema_version: 1 as const,

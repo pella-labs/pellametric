@@ -3,8 +3,9 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Event } from "@bematist/schema";
 import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import { resolveGitContext } from "../../lib/git-context";
 import { type DiscoverySources, discoverSources } from "./discovery";
-import { normalizeSession } from "./normalize";
+import { normalizeSession, type NormalizeExtras } from "./normalize";
 import { parseSessionFile } from "./parsers/parseSessionFile";
 
 const SOURCE_VERSION_DEFAULT = "1.0.x";
@@ -77,10 +78,32 @@ export class ClaudeCodeAdapter implements Adapter {
       const prevMax = prevMaxStr === null ? -1 : Number.parseInt(prevMaxStr, 10);
 
       const parsed = await parseSessionFile(path);
+
+      // Resolve commit_sha once per session — cached in ctx.cursor keyed by
+      // session_id so long-running sessions don't spawn `git rev-parse` on
+      // every poll. `cwd` comes from the first line that carries it
+      // (~/.claude/projects/**.jsonl stamps cwd on user/assistant messages).
+      const sessionId = parsed.sessionId ?? `file:${path}`;
+      const commitShaKey = `commit_sha:${sessionId}`;
+      let commit_sha: string | undefined = (await ctx.cursor.get(commitShaKey)) ?? undefined;
+      if (!commit_sha) {
+        const cwd = parsed.entries.find((l) => typeof l.cwd === "string" && l.cwd)?.cwd;
+        if (cwd) {
+          const git = await resolveGitContext(cwd);
+          if (git.head_sha) {
+            commit_sha = git.head_sha;
+            await ctx.cursor.set(commitShaKey, commit_sha);
+          }
+        }
+      }
+      const extras: NormalizeExtras = {};
+      if (commit_sha) extras.commit_sha = commit_sha;
+
       const events = normalizeSession(
         parsed,
         { ...this.identity, tier: ctx.tier },
         SOURCE_VERSION_DEFAULT,
+        extras,
       );
 
       let newHighWatermark = prevMax;

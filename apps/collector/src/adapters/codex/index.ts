@@ -2,8 +2,9 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Event } from "@bematist/schema";
 import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import { resolveGitContext } from "../../lib/git-context";
 import { type CodexDiscoverySources, discoverSources } from "./discovery";
-import { normalizeSession } from "./normalize";
+import { normalizeSession, type NormalizeExtras } from "./normalize";
 import {
   type CodexUsageSnapshot,
   parseLines,
@@ -48,24 +49,42 @@ export class CodexAdapter implements Adapter {
       const offsetKey = `offset:${path}`;
       const cumulativeKey = `cumulative:${path}`;
       const branchKey = `branch:${path}`;
+      const commitShaKey = `commit_sha:${path}`;
       const prevOffset = Number.parseInt((await ctx.cursor.get(offsetKey)) ?? "0", 10);
       const priorCumulative = parseCumulative(await ctx.cursor.get(cumulativeKey));
       let branch: string | undefined = (await ctx.cursor.get(branchKey)) ?? undefined;
+      let commit_sha: string | undefined = (await ctx.cursor.get(commitShaKey)) ?? undefined;
 
       if (prevOffset === 0) {
         const parsed = await parseSessionFile(path, { priorCumulative });
+        const cwd = parsed.sessionMeta?.cwd;
         // Resolve git branch from session_meta.gitBranch (future Codex) OR the
         // `cwd` repo's current HEAD. Cached per rollout so later polls skip it.
         if (!branch) {
-          branch = await resolveBranch(parsed.sessionMeta?.gitBranch, parsed.sessionMeta?.cwd);
+          branch = await resolveBranch(parsed.sessionMeta?.gitBranch, cwd);
           if (branch) await ctx.cursor.set(branchKey, branch);
         }
+        // Resolve commit_sha once per rollout file — spawning `git rev-parse
+        // HEAD` is only acceptable if we amortize it across the lifetime of
+        // the session. `cwd` may be undefined on older Codex rollouts; fall
+        // back to process.cwd() when capturing live. Documented fidelity loss.
+        if (!commit_sha) {
+          const ctxCwd = cwd ?? process.cwd();
+          const git = await resolveGitContext(ctxCwd);
+          if (git.head_sha) {
+            commit_sha = git.head_sha;
+            await ctx.cursor.set(commitShaKey, commit_sha);
+          }
+        }
+        const extras: NormalizeExtras = {};
+        if (branch) extras.branch = branch;
+        if (commit_sha) extras.commit_sha = commit_sha;
         out.push(
           ...normalizeSession(
             parsed,
             { ...this.identity, tier: ctx.tier },
             SOURCE_VERSION_DEFAULT,
-            branch ? { branch } : {},
+            extras,
           ),
         );
         const { nextOffset } = await readLinesFromOffset(path, 0);
@@ -80,12 +99,15 @@ export class CodexAdapter implements Adapter {
       if (lines.length === 0) continue;
       const parsed = parseLines(lines, { priorCumulative });
       parsed.sessionId = parsed.sessionId ?? sessionIdFromPath(path);
+      const extras: NormalizeExtras = {};
+      if (branch) extras.branch = branch;
+      if (commit_sha) extras.commit_sha = commit_sha;
       out.push(
         ...normalizeSession(
           parsed,
           { ...this.identity, tier: ctx.tier },
           SOURCE_VERSION_DEFAULT,
-          branch ? { branch } : {},
+          extras,
         ),
       );
       await ctx.cursor.set(offsetKey, String(nextOffset));

@@ -141,3 +141,32 @@ test("real-projects fixture: file-history-snapshot is skipped, not mapped", asyn
   // (from asst-2's tool_use) + 1 llm_request (from plain user prompt "refactor...") + 2 tool_result.
   expect(events.length).toBe(8);
 });
+
+test("extras.commit_sha lands in raw_attrs.commit_sha on every emitted event", async () => {
+  const parsed = await parseSessionFile(join(FIX, "real-session.jsonl"));
+  const sha = "deadbeef".repeat(5);
+  const events = normalizeSession(parsed, baseIdentity, "1.0.35", { commit_sha: sha });
+  expect(events.length).toBeGreaterThan(0);
+  for (const e of events) {
+    expect(e.raw_attrs?.commit_sha).toBe(sha);
+  }
+});
+
+test("in-line gitBranch is promoted to raw_attrs.branch when adapter didn't resolve one", async () => {
+  const parsed = await parseSessionFile(join(FIX, "real-projects-session.jsonl"));
+  // Inject gitBranch on the first entry to simulate v2.1.x+ Claude Code.
+  const first = parsed.entries[0];
+  if (first) first.gitBranch = "feature/x";
+  const events = normalizeSession(parsed, baseIdentity, "1.0.35");
+  const withBranch = events.filter((e) => e.raw_attrs?.branch === "feature/x");
+  expect(withBranch.length).toBeGreaterThan(0);
+});
+
+test("extras.branch wins over in-line gitBranch", async () => {
+  const parsed = await parseSessionFile(join(FIX, "real-projects-session.jsonl"));
+  for (const e of parsed.entries) e.gitBranch = "ignored";
+  const events = normalizeSession(parsed, baseIdentity, "1.0.35", { branch: "winning-branch" });
+  const branched = events.filter((e) => e.raw_attrs?.branch);
+  expect(branched.length).toBeGreaterThan(0);
+  for (const e of branched) expect(e.raw_attrs?.branch).toBe("winning-branch");
+});
