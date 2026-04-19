@@ -94,8 +94,12 @@ if [[ "$RUN_TYPECHECK" == "1" ]]; then
 fi
 
 # ------------------------------------------------------------------ test
-say "test (PG_INTEGRATION_TESTS=1)"
-bun run test
+# Go through `bun test` directly (not `bun run test`) so we can raise the
+# per-test default timeout. The dry-run collector test does a cold `await
+# import(...)` inside a 5 s default window and times out on cold runs
+# (~18 s observed). Keeping CI parity otherwise.
+say "test (PG_INTEGRATION_TESTS=1, --timeout 30000)"
+bun --env-file=.env test --timeout 30000
 
 # ------------------------------------------------------------------ opt-ins
 if [[ "$RUN_E2E_USE_FIXTURES" == "1" ]]; then
