@@ -26,14 +26,14 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-8 gap-1.5 px-2.5",
-        xs: "h-6 gap-1 px-2 text-xs [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1 px-2.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-9 gap-1.5 px-3",
-        icon: "size-8",
-        "icon-xs": "size-6 [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-7",
-        "icon-lg": "size-9",
+        default: "h-9 gap-1.5 px-4",
+        xs: "h-7 gap-1 px-2.5 text-xs [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-8 gap-1 px-3 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-10 gap-1.5 px-5",
+        icon: "size-9",
+        "icon-xs": "size-7 [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-8",
+        "icon-lg": "size-10",
       },
     },
     defaultVariants: {
@@ -44,7 +44,8 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
+  extends
+    ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }

@@ -152,26 +152,21 @@
 }
 
 .bematist-dashboard .dash-nav-link[aria-current="page"] {
-  background: rgba(110, 138, 111, 0.12);
+  background: rgba(110, 138, 111, 0.15);
   color: var(--mk-ink);
+  position: relative;
 }
 
-.bematist-dashboard .dash-nav-meta {
-  border-top: 1px solid var(--mk-border);
-  padding-top: 12px;
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.bematist-dashboard .dash-nav-meta .dash-nav-link {
-  font-size: 11px;
-  color: var(--mk-ink-faint);
-}
-
-.bematist-dashboard .dash-nav-meta .dash-nav-link:hover {
-  color: var(--mk-ink-muted);
+/* Accent bar on the left edge of the active tab, matching the wordmark dot. */
+.bematist-dashboard .dash-nav-link[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--mk-accent);
 }
 
 /* ─── Main content ─────────────────────────────────────────────── */
@@ -179,6 +174,33 @@
   padding: 32px;
   overflow-y: auto;
   background: var(--mk-bg);
+}
+
+/* ─── Custom scrollbars (matches the muted palette) ────────────── */
+.bematist-dashboard *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.bematist-dashboard *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.bematist-dashboard *::-webkit-scrollbar-thumb {
+  background: rgba(237, 232, 222, 0.08);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.bematist-dashboard *::-webkit-scrollbar-thumb:hover {
+  background: rgba(237, 232, 222, 0.18);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+.bematist-dashboard *::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.bematist-dashboard {
+  scrollbar-color: rgba(237, 232, 222, 0.12) transparent;
+  scrollbar-width: thin;
 }
 
 /* Make shadcn Card feel closer to marketing panels — slightly tighter

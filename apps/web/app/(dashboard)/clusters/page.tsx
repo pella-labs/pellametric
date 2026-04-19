@@ -1,5 +1,17 @@
-import { findSessionTwins, listClusterContributors, listClusters } from "@bematist/api";
-import { Badge, Card, CardHeader, CardTitle, FidelityChip } from "@bematist/ui";
+import {
+  findSessionTwins,
+  listClusterContributors,
+  listClusters,
+} from "@bematist/api";
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  FidelityChip,
+  Input,
+} from "@bematist/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSessionCtx } from "@/lib/session";
@@ -30,7 +42,9 @@ interface ClustersPageProps {
   }>;
 }
 
-export default async function ClustersPage({ searchParams }: ClustersPageProps) {
+export default async function ClustersPage({
+  searchParams,
+}: ClustersPageProps) {
   const ctx = await getSessionCtx();
   const sp = (await searchParams) ?? {};
   const [data, twins, contributors] = await Promise.all([
@@ -52,9 +66,10 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Clusters</h1>
         <p className="text-sm text-muted-foreground">
-          Prompt-pattern clusters from the on-device Clio pipeline. Labels are 3–5 words,
-          regex-validated — no URLs, no proper nouns, no PII. The k≥3 contributor floor is enforced
-          server-side: clusters below the floor are computed but never surfaced.
+          Prompt-pattern clusters from the on-device Clio pipeline. Labels are
+          3–5 words, regex-validated — no URLs, no proper nouns, no PII. The k≥3
+          contributor floor is enforced server-side: clusters below the floor
+          are computed but never surfaced.
         </p>
       </header>
 
@@ -62,15 +77,23 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
         <Badge tone="neutral">30-day window</Badge>
         <Badge tone="accent">{data.clusters.length} clusters</Badge>
         {data.suppressed_below_floor > 0 ? (
-          <Badge tone="warning">{data.suppressed_below_floor} suppressed · below k=3 floor</Badge>
+          <Badge tone="warning">
+            {data.suppressed_below_floor} suppressed · below k=3 floor
+          </Badge>
         ) : null}
       </div>
 
-      <section aria-label="Cluster list" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <section
+        aria-label="Cluster list"
+        className="grid grid-cols-1 gap-4 md:grid-cols-2"
+      >
         {data.clusters.map((c) => {
-          const merged = c.top_outcomes.find((o) => o.kind === "merged_pr")?.count ?? 0;
-          const green = c.top_outcomes.find((o) => o.kind === "green_test")?.count ?? 0;
-          const reverts = c.top_outcomes.find((o) => o.kind === "revert")?.count ?? 0;
+          const merged =
+            c.top_outcomes.find((o) => o.kind === "merged_pr")?.count ?? 0;
+          const green =
+            c.top_outcomes.find((o) => o.kind === "green_test")?.count ?? 0;
+          const reverts =
+            c.top_outcomes.find((o) => o.kind === "revert")?.count ?? 0;
           const isSelected = sp.cluster_id === c.id;
           return (
             <Link
@@ -90,13 +113,16 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
                     <FidelityChip fidelity={c.fidelity} />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {c.contributor_count} contributors · {c.session_count} sessions
+                    {c.contributor_count} contributors · {c.session_count}{" "}
+                    sessions
                   </p>
                 </CardHeader>
                 <dl className="grid grid-cols-4 gap-3 text-xs">
                   <div>
                     <dt className="text-muted-foreground">Avg cost</dt>
-                    <dd className="mt-0.5 font-medium text-sm">{USD.format(c.avg_cost_usd)}</dd>
+                    <dd className="mt-0.5 font-medium text-sm">
+                      {USD.format(c.avg_cost_usd)}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Merged PRs</dt>
@@ -126,13 +152,19 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
       </section>
 
       {contributors ? (
-        <section aria-label="Cluster contributors" className="flex flex-col gap-3">
+        <section
+          aria-label="Cluster contributors"
+          className="flex flex-col gap-3"
+        >
           <header>
-            <h2 className="text-lg font-semibold tracking-tight">Cluster contributors</h2>
+            <h2 className="text-lg font-semibold tracking-tight">
+              Cluster contributors
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Distinct engineers who contributed prompts to the selected cluster. IC names are
-              hidden by default per CLAUDE.md §Scoring Rules — each dot is an opaque engineer hash.
-              Reveal requires IC opt-in.
+              Distinct engineers who contributed prompts to the selected
+              cluster. IC names are hidden by default per CLAUDE.md §Scoring
+              Rules — each dot is an opaque engineer hash. Reveal requires IC
+              opt-in.
             </p>
           </header>
           {contributors.ok ? (
@@ -141,12 +173,15 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
                 <CardTitle className="text-base">
                   {contributors.contributor_count} contributor
                   {contributors.contributor_count === 1 ? "" : "s"} in{" "}
-                  <code className="font-mono text-sm">{contributors.cluster_id}</code>
+                  <code className="font-mono text-sm">
+                    {contributors.cluster_id}
+                  </code>
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Showing top {contributors.contributors.length} by session count. Color is derived
-                  deterministically from the engineer hash — same engineer always paints the same
-                  dot across Twin Finder + this view.
+                  Showing top {contributors.contributors.length} by session
+                  count. Color is derived deterministically from the engineer
+                  hash — same engineer always paints the same dot across Twin
+                  Finder + this view.
                 </p>
               </CardHeader>
               <ul className="flex flex-wrap items-center gap-3">
@@ -156,9 +191,12 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
                     className="flex items-center gap-2 rounded-full border border-border bg-background/50 px-2 py-1 text-xs"
                   >
                     <ContributorDot hash={c.engineer_id_hash} />
-                    <span className="font-mono text-muted-foreground">{c.engineer_id_hash}</span>
+                    <span className="font-mono text-muted-foreground">
+                      {c.engineer_id_hash}
+                    </span>
                     <span className="tabular-nums">
-                      {c.session_count} session{c.session_count === 1 ? "" : "s"}
+                      {c.session_count} session
+                      {c.session_count === 1 ? "" : "s"}
                     </span>
                   </li>
                 ))}
@@ -179,8 +217,9 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
       {data.clusters.length === 0 ? (
         <Card>
           <p className="text-sm text-muted-foreground">
-            No clusters pass the k≥3 floor for this window. This is the privacy-preserving default —
-            clusters emerge as more engineers contribute prompts in the same pattern.
+            No clusters pass the k≥3 floor for this window. This is the
+            privacy-preserving default — clusters emerge as more engineers
+            contribute prompts in the same pattern.
           </p>
         </Card>
       ) : null}
@@ -189,52 +228,48 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
         <header>
           <h2 className="text-lg font-semibold tracking-tight">Twin Finder</h2>
           <p className="text-sm text-muted-foreground">
-            Find sessions whose prompt embeddings cluster near a query session. The k≥3 contributor
-            floor is enforced server-side: candidate clusters with fewer than 3 distinct engineers
-            are never surfaced. Engineer ids are returned as opaque hashes.
+            Find sessions whose prompt embeddings cluster near a query session.
+            The k≥3 contributor floor is enforced server-side: candidate
+            clusters with fewer than 3 distinct engineers are never surfaced.
+            Engineer ids are returned as opaque hashes.
           </p>
         </header>
 
         <Card>
           <form className="flex flex-wrap items-end gap-3" method="get">
-            <label className="flex flex-col gap-1 text-xs">
+            <label className="flex flex-col gap-1.5 text-xs">
               <span className="text-muted-foreground">Session id</span>
-              <input
+              <Input
                 type="text"
                 name="session_id"
                 defaultValue={sp.session_id ?? ""}
                 placeholder="ses_query_42"
-                className="rounded-md border border-border bg-background px-2 py-1 text-sm"
                 required
+                className="w-56"
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs">
+            <label className="flex flex-col gap-1.5 text-xs">
               <span className="text-muted-foreground">Prompt index</span>
-              <input
+              <Input
                 type="number"
                 name="prompt_index"
                 min={0}
                 defaultValue={sp.prompt_index ?? "0"}
-                className="w-24 rounded-md border border-border bg-background px-2 py-1 text-sm"
+                className="w-24"
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs">
+            <label className="flex flex-col gap-1.5 text-xs">
               <span className="text-muted-foreground">Top K</span>
-              <input
+              <Input
                 type="number"
                 name="top_k"
                 min={1}
                 max={25}
                 defaultValue={sp.top_k ?? "10"}
-                className="w-24 rounded-md border border-border bg-background px-2 py-1 text-sm"
+                className="w-24"
               />
             </label>
-            <button
-              type="submit"
-              className="cursor-pointer rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
-            >
-              Find twins
-            </button>
+            <Button type="submit">Find twins</Button>
           </form>
         </Card>
 
@@ -243,11 +278,17 @@ export default async function ClustersPage({ searchParams }: ClustersPageProps) 
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
-                  {twins.matches.length} twin{twins.matches.length === 1 ? "" : "s"} for{" "}
-                  <code className="font-mono text-sm">{twins.query_session_id}</code>
+                  {twins.matches.length} twin
+                  {twins.matches.length === 1 ? "" : "s"} for{" "}
+                  <code className="font-mono text-sm">
+                    {twins.query_session_id}
+                  </code>
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Query cluster: <code className="font-mono">{twins.query_cluster_id ?? "—"}</code>{" "}
+                  Query cluster:{" "}
+                  <code className="font-mono">
+                    {twins.query_cluster_id ?? "—"}
+                  </code>{" "}
                   · {twins.latency_ms}ms
                 </p>
               </CardHeader>
