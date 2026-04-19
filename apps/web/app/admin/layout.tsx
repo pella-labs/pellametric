@@ -37,9 +37,21 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <nav className="flex flex-1 flex-col gap-0.5">
           <Link
             href="/admin/ingest-keys"
-            className="rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="cursor-pointer rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             Ingest keys
+          </Link>
+          <Link
+            href="/admin/github"
+            className="cursor-pointer rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            GitHub
+          </Link>
+          <Link
+            href="/admin/github/repos"
+            className="cursor-pointer rounded-md px-4 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            ↳ Repos
           </Link>
         </nav>
         <div className="mt-4 flex flex-col gap-0.5 border-t border-border pt-4">

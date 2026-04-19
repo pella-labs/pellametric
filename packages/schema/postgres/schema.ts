@@ -631,3 +631,28 @@ export const repo_id_hash_aliases = pgTable("repo_id_hash_aliases", {
   retires_at: timestamp("retires_at", { withTimezone: true }).notNull(),
   archived_at: timestamp("archived_at", { withTimezone: true }),
 });
+
+/** PRD §13 Phase G1 step 2b — initial-sync progress. One row per
+ *  (tenant_id, installation_id). Written by the initial-sync worker;
+ *  read by `/api/admin/github/connection`. */
+export const github_sync_progress = pgTable("github_sync_progress", {
+  tenant_id: uuid("tenant_id")
+    .notNull()
+    .references(() => orgs.id, { onDelete: "cascade" }),
+  installation_id: bigint("installation_id", { mode: "bigint" }).notNull(),
+  /** 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' */
+  status: text("status").notNull(),
+  total_repos: integer("total_repos"),
+  fetched_repos: integer("fetched_repos").notNull().default(0),
+  pages_fetched: integer("pages_fetched").notNull().default(0),
+  /** Opaque GitHub pagination cursor (next `page` integer or full URL). */
+  next_page_cursor: text("next_page_cursor"),
+  started_at: timestamp("started_at", { withTimezone: true }),
+  completed_at: timestamp("completed_at", { withTimezone: true }),
+  last_progress_at: timestamp("last_progress_at", { withTimezone: true }).notNull().defaultNow(),
+  last_error: text("last_error"),
+  retry_count: integer("retry_count").notNull().default(0),
+  requested_by: uuid("requested_by").references(() => users.id, { onDelete: "set null" }),
+  created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
