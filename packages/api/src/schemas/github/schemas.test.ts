@@ -3,12 +3,8 @@
 // (CLAUDE.md §API Rules).
 
 import { describe, expect, test } from "bun:test";
-import {
-  PatchRepoTrackingInput,
-  PatchTrackingModeInput,
-  TrackingPreviewInput,
-} from "./tracking";
 import { REDELIVER_WINDOW_DAYS, RedeliverWebhooksInput } from "./redeliver";
+import { PatchRepoTrackingInput, PatchTrackingModeInput, TrackingPreviewInput } from "./tracking";
 import { ROTATION_WINDOW_MINUTES, RotateWebhookSecretInput } from "./webhookSecret";
 
 describe("PatchTrackingModeInput", () => {
@@ -72,9 +68,7 @@ describe("RotateWebhookSecretInput", () => {
     expect(() => RotateWebhookSecretInput.parse({ new_secret_ref: "" })).toThrow();
   });
   test("rejects ref > 255", () => {
-    expect(() =>
-      RotateWebhookSecretInput.parse({ new_secret_ref: "x".repeat(256) }),
-    ).toThrow();
+    expect(() => RotateWebhookSecretInput.parse({ new_secret_ref: "x".repeat(256) })).toThrow();
   });
   test("ROTATION_WINDOW_MINUTES is 10", () => {
     expect(ROTATION_WINDOW_MINUTES).toBe(10);

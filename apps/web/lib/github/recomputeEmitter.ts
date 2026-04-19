@@ -1,9 +1,5 @@
 import "server-only";
-import type { Ctx } from "@bematist/api";
-import type {
-  RecomputeEmitter,
-  RecomputeScopedEmitter,
-} from "@bematist/api";
+import type { Ctx, RecomputeEmitter, RecomputeScopedEmitter } from "@bematist/api";
 import type { RedisClientType } from "redis";
 import { createClient as createRedisClient } from "redis";
 
@@ -27,9 +23,7 @@ async function getRedis(): Promise<RedisClientType> {
     const client = createRedisClient({ url: REDIS_URL }) as RedisClientType;
     client.on("error", (err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(
-        JSON.stringify({ level: "error", module: "web/github/recompute", msg }),
-      );
+      console.error(JSON.stringify({ level: "error", module: "web/github/recompute", msg }));
     });
     shared = client;
   }
@@ -76,9 +70,7 @@ export async function getGithubRecomputeEmitter(_ctx: Ctx): Promise<RecomputeEmi
  * → sessions` projection runs inside the consumer (already wired in PR #88
  * for new-repo events — same code path).
  */
-export async function getGithubRepoRecomputeEmitter(
-  _ctx: Ctx,
-): Promise<RecomputeScopedEmitter> {
+export async function getGithubRepoRecomputeEmitter(_ctx: Ctx): Promise<RecomputeScopedEmitter> {
   return {
     async emitRepoTrackingFlipped(args) {
       const redis = await getRedis();

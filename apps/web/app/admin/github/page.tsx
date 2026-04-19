@@ -3,8 +3,11 @@ import { Badge, Button, Card, CardHeader, CardTitle } from "@bematist/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSessionCtx } from "@/lib/session";
+import { RedeliverPanel } from "./_components/RedeliverPanel";
+import { RotateSecretPanel } from "./_components/RotateSecretPanel";
 import { StartSyncButton } from "./_components/StartSyncButton";
 import { SyncProgressBar } from "./_components/SyncProgressBar";
+import { TrackingModeControl } from "./_components/TrackingModeControl";
 
 export const metadata: Metadata = {
   title: "Admin · GitHub",
@@ -112,6 +115,10 @@ export default async function AdminGithubPage() {
               </div>
             </dl>
 
+            <div className="border-t border-border pt-4">
+              <TrackingModeControl currentMode={connection.tracking_mode} />
+            </div>
+
             {connection.installation.sync ? (
               <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <div className="flex items-center justify-between">
@@ -140,21 +147,41 @@ export default async function AdminGithubPage() {
                   View repos
                 </Button>
               </Link>
-              {/* G2-admin-apis owns tracking-mode editing. Slot stays here
-                  with a disabled button + tooltip so the UX shape is present
-                  in G1 but the behavior is explicitly gated. */}
-              <span
-                title="Available in G2 — tracking-mode editing not yet wired"
-                className="inline-flex"
-              >
-                <Button type="button" variant="outline" disabled className="cursor-not-allowed">
-                  Dry-run preview
-                </Button>
-              </span>
             </div>
           </div>
         )}
       </Card>
+
+      {connection.installation !== null ? (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Webhook secret rotation</CardTitle>
+            </CardHeader>
+            <p className="text-sm text-muted-foreground">
+              Atomic two-column swap. Old secret continues to validate signatures for 10 minutes;
+              the eviction cron nulls it out when the window closes (PRD §11.5 / D55).
+            </p>
+            <div className="mt-3">
+              <RotateSecretPanel />
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Webhook redelivery</CardTitle>
+            </CardHeader>
+            <p className="text-sm text-muted-foreground">
+              Replay GitHub webhooks in a time window. 1 req/s floor per installation; 429 backoff
+              honors <code className="mx-1 font-mono text-xs">Retry-After</code>. Useful when an
+              ingest outage missed a range.
+            </p>
+            <div className="mt-3">
+              <RedeliverPanel />
+            </div>
+          </Card>
+        </>
+      ) : null}
     </div>
   );
 }

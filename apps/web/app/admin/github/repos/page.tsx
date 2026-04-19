@@ -3,6 +3,7 @@ import { Badge, Card, CardHeader, CardTitle } from "@bematist/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSessionCtx } from "@/lib/session";
+import { RepoTrackingDropdown } from "../_components/RepoTrackingDropdown";
 
 export const metadata: Metadata = {
   title: "Admin · GitHub repos",
@@ -93,7 +94,14 @@ export default async function AdminGithubReposPage({
                     <td className="py-2 font-mono text-xs">{r.full_name}</td>
                     <td className="py-2 font-mono text-xs">{r.default_branch ?? "—"}</td>
                     <td className="py-2">
-                      <Badge tone="neutral">{r.tracking_state}</Badge>
+                      {r.provider_repo_id ? (
+                        <RepoTrackingDropdown
+                          providerRepoId={r.provider_repo_id}
+                          currentState={r.tracking_state}
+                        />
+                      ) : (
+                        <Badge tone="neutral">{r.tracking_state}</Badge>
+                      )}
                     </td>
                     <td className="py-2">
                       <Badge tone={r.effective_tracked ? "positive" : "negative"}>

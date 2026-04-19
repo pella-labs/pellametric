@@ -46,10 +46,10 @@ export async function patchTrackingMode(
   const unchanged = existingMode === input.mode;
 
   if (!unchanged) {
-    await ctx.db.pg.query(
-      `UPDATE orgs SET github_repo_tracking_mode = $2 WHERE id = $1`,
-      [ctx.tenant_id, input.mode],
-    );
+    await ctx.db.pg.query(`UPDATE orgs SET github_repo_tracking_mode = $2 WHERE id = $1`, [
+      ctx.tenant_id,
+      input.mode,
+    ]);
   }
 
   // Emit recompute fan-out (D56). No-op if unchanged (consumer would dedup

@@ -16,7 +16,11 @@ function mintAppJwt({
   appId,
   privateKeyPem,
   now = Date.now,
-}: { appId: string | number; privateKeyPem: string; now?: () => number }): string {
+}: {
+  appId: string | number;
+  privateKeyPem: string;
+  now?: () => number;
+}): string {
   const nowSec = Math.floor(now() / 1000);
   const header = { alg: "RS256", typ: "JWT" };
   const payload = {
@@ -48,7 +52,8 @@ function mintAppJwt({
 export async function getGithubRedeliveryDeps(): Promise<RedeliveryDeps> {
   const appId = process.env.GITHUB_APP_ID;
   const privateKeyPem =
-    process.env.GITHUB_APP_PRIVATE_KEY_PEM ?? resolveFromRef(process.env.GITHUB_APP_PRIVATE_KEY_REF);
+    process.env.GITHUB_APP_PRIVATE_KEY_PEM ??
+    resolveFromRef(process.env.GITHUB_APP_PRIVATE_KEY_REF);
   if (!appId) {
     throw new Error(
       "GITHUB_APP_ID is not set — cannot mint GitHub App JWT for /redeliver. See dev-docs/PRD-github-integration.md §19.",

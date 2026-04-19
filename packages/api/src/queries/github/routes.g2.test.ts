@@ -9,10 +9,10 @@
 
 import { describe, expect, test } from "bun:test";
 import { AuthError, type Ctx } from "../../auth";
-import { patchRepoTracking } from "../../mutations/github/repoTracking";
-import { patchTrackingMode } from "../../mutations/github/trackingMode";
-import { rotateWebhookSecret } from "../../mutations/github/rotateWebhookSecret";
 import { redeliverWebhooks } from "../../mutations/github/redeliver";
+import { patchRepoTracking } from "../../mutations/github/repoTracking";
+import { rotateWebhookSecret } from "../../mutations/github/rotateWebhookSecret";
+import { patchTrackingMode } from "../../mutations/github/trackingMode";
 import { getTrackingPreview } from "./trackingPreview";
 
 const TENANT = "11111111-2222-3333-4444-555555555555";
@@ -241,9 +241,9 @@ describe("getTrackingPreview", () => {
 
   test("non-admin: FORBIDDEN", async () => {
     const ctx = makeCtx("engineer", () => []);
-    await expect(
-      getTrackingPreview(ctx, { mode: "all", included_repos: [] }),
-    ).rejects.toThrow(AuthError);
+    await expect(getTrackingPreview(ctx, { mode: "all", included_repos: [] })).rejects.toThrow(
+      AuthError,
+    );
   });
 });
 
@@ -271,11 +271,7 @@ describe("rotateWebhookSecret", () => {
       pgCalls,
     );
     const fixedNow = () => new Date("2026-04-18T12:00:00Z");
-    const out = await rotateWebhookSecret(
-      ctx,
-      { new_secret_ref: "new_ref_v2" },
-      { now: fixedNow },
-    );
+    const out = await rotateWebhookSecret(ctx, { new_secret_ref: "new_ref_v2" }, { now: fixedNow });
     expect(out.installation_id).toBe("777");
     expect(out.new_secret_ref).toBe("new_ref_v2");
     expect(out.rotated_at).toBe("2026-04-18T12:00:00.000Z");
@@ -286,16 +282,12 @@ describe("rotateWebhookSecret", () => {
 
   test("no installation → FORBIDDEN", async () => {
     const ctx = makeCtx("admin", () => []);
-    await expect(
-      rotateWebhookSecret(ctx, { new_secret_ref: "x" }),
-    ).rejects.toThrow(AuthError);
+    await expect(rotateWebhookSecret(ctx, { new_secret_ref: "x" })).rejects.toThrow(AuthError);
   });
 
   test("non-admin: FORBIDDEN", async () => {
     const ctx = makeCtx("viewer", () => []);
-    await expect(
-      rotateWebhookSecret(ctx, { new_secret_ref: "x" }),
-    ).rejects.toThrow(AuthError);
+    await expect(rotateWebhookSecret(ctx, { new_secret_ref: "x" })).rejects.toThrow(AuthError);
   });
 });
 

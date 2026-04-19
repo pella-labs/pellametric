@@ -25,10 +25,7 @@ import { z } from "zod";
  */
 
 export const RotateWebhookSecretInput = z.object({
-  installation_id: z
-    .string()
-    .regex(/^\d+$/, "installation_id must be a numeric string")
-    .optional(),
+  installation_id: z.string().regex(/^\d+$/, "installation_id must be a numeric string").optional(),
   /**
    * Pointer into the secrets store — matches the shape of
    * `webhook_secret_active_ref` (opaque string, max 255 chars,

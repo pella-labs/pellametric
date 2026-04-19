@@ -1,8 +1,5 @@
 import { assertRole, type Ctx } from "../../auth";
-import type {
-  TrackingPreviewOutput,
-  TrackingPreviewParsed,
-} from "../../schemas/github/tracking";
+import type { TrackingPreviewOutput, TrackingPreviewParsed } from "../../schemas/github/tracking";
 
 /**
  * PRD §14 — `GET /api/admin/github/tracking-preview`.

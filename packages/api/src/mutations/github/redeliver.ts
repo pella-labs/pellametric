@@ -114,8 +114,7 @@ export async function redeliverWebhooks(
 
   while (pagesRead < MAX_PAGES) {
     await pacerSleep(sleep);
-    const url =
-      `${apiBase}/app/hook/deliveries?per_page=100` + (cursor ? `&cursor=${cursor}` : "");
+    const url = `${apiBase}/app/hook/deliveries?per_page=100` + (cursor ? `&cursor=${cursor}` : "");
     const res = await executeWithBackoff(() => deps.http.get(url, hdrs()), sleep);
     pagesRead++;
     if (res.status < 200 || res.status >= 300) {
@@ -234,9 +233,7 @@ async function executeWithBackoff(
     const retryAfterSec = Number(res.headers["retry-after"] ?? res.headers["Retry-After"] ?? "0");
     if (attempt >= MAX_RETRIES) return res;
     const backoffMs =
-      retryAfterSec > 0
-        ? retryAfterSec * 1000
-        : Math.min(60_000 * 2 ** attempt, 900_000); // 60s, 120s, 240s, 480s, 900s cap
+      retryAfterSec > 0 ? retryAfterSec * 1000 : Math.min(60_000 * 2 ** attempt, 900_000); // 60s, 120s, 240s, 480s, 900s cap
     const jitter = Math.floor(backoffMs * (Math.random() * 0.2)); // ±20% jitter
     await sleep(backoffMs + jitter);
     attempt++;
