@@ -17,7 +17,10 @@
 //      Worker does the UPSERTs out-of-band.
 
 import type { DedupStore } from "../dedup/checkDedup";
+import { getDeps } from "../deps";
 import { logger } from "../logger";
+import { emitTrailerOutcomes } from "../webhooks/emitTrailerOutcomes";
+import type { OutcomesStore } from "../webhooks/outcomesStore";
 import { verifiers, type WebhookDelivery } from "../webhooks/verify";
 import type { InstallationResolver } from "./installationResolver";
 import { incrCounter, observeHistogram } from "./metrics";
@@ -46,6 +49,12 @@ export interface WebhookRouteDeps {
   webhookDedup: DedupStore;
   bus: WebhookBusProducer;
   auditSink: AuditLogSink;
+  /**
+   * Outcomes store for D29 Layer-2 trailer attribution. Optional so the
+   * in-memory tests that don't care about trailers can leave it unset —
+   * production boot always wires it from `getDeps().outcomesStore`.
+   */
+  outcomesStore?: OutcomesStore;
   clock?: () => Date;
 }
 
@@ -222,6 +231,39 @@ export async function handleGithubWebhookByInstallation(
     }
     if (!firstSight) {
       return json({ dedup: true, request_id: requestId }, { status: 200 });
+    }
+  }
+
+  // D29 Layer-2 trailer outcome emission. We JSON-parse the body inline here
+  // (post-HMAC, post-dedup) so trailer-derived outcome rows land in Postgres
+  // synchronously — the bus-fed worker path doesn't know about the outcomes
+  // table and re-parsing the body twice is cheap. On parse failure we log
+  // and skip; the bus still receives the raw bytes so the worker can try
+  // again. NEVER let trailer extraction fail the HTTP response.
+  //
+  // The store defaults to `getDeps().outcomesStore` when the caller (server.ts
+  // wiring) doesn't pass one explicitly — keeps server.ts out of this change.
+  const outcomesStore: OutcomesStore | undefined = deps.outcomesStore ?? getDeps().outcomesStore;
+  if (outcomesStore && (event === "push" || event === "pull_request")) {
+    try {
+      const parsedBody = JSON.parse(new TextDecoder().decode(rawBody)) as unknown;
+      await emitTrailerOutcomes({
+        orgId: installation.tenant_id,
+        event,
+        body: parsedBody,
+        outcomesStore,
+        requestId,
+      });
+    } catch (err) {
+      logger.warn(
+        {
+          request_id: requestId,
+          tenant_id: installation.tenant_id,
+          event,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        "trailer outcome extraction skipped (bad json)",
+      );
     }
   }
 

@@ -10,6 +10,7 @@ import { InMemoryDedupStore } from "../dedup/checkDedup";
 import { resetDeps, setDeps } from "../deps";
 import { handle } from "../server";
 import { InMemoryOrgPolicyStore } from "../tier/enforceTier";
+import { createInMemoryOutcomesStore } from "../webhooks/outcomesStore";
 import {
   createInMemoryInstallationResolver,
   type InstallationRecord,
@@ -279,6 +280,84 @@ describe("POST /v1/webhooks/github/:installation_id — path-param route", () =>
     expect(res.status).toBe(400);
     const j = (await res.json()) as { code: string };
     expect(j.code).toBe("BAD_INSTALLATION_ID");
+  });
+
+  test("D29 Layer-2 trailer — push with trailer creates outcome row under tenant_id", async () => {
+    makeCtx();
+    const outcomesStore = createInMemoryOutcomesStore();
+    setDeps({ outcomesStore });
+    const pushBody = JSON.stringify({
+      ref: "refs/heads/main",
+      before: "0000",
+      after: "sha-inst-1",
+      repository: { node_id: "R_INST" },
+      commits: [
+        {
+          id: "sha-inst-1",
+          sha: "sha-inst-1",
+          message: "fix: bug\n\nbody\n\nAI-Assisted: bematist-inst_sess_001",
+          author: { email: "dev@example.com", name: "Dev" },
+        },
+      ],
+    });
+    const res = await postPath(INSTALLATION_ID.toString(), pushBody, {
+      signature: sig(pushBody, ACTIVE_SECRET),
+      event: "push",
+      deliveryId: "d-inst-push-1",
+    });
+    expect(res.status).toBe(200);
+    expect(await outcomesStore.count(TENANT_ID)).toBe(1);
+    const row = await outcomesStore.findByCommit(TENANT_ID, "sha-inst-1", "inst_sess_001");
+    expect(row?.trailer_source).toBe("push");
+    expect(row?.kind).toBe("commit_landed");
+  });
+
+  test("D29 Layer-2 trailer — merged PR webhook creates pr_merged outcome", async () => {
+    makeCtx();
+    const outcomesStore = createInMemoryOutcomesStore();
+    setDeps({ outcomesStore });
+    const prBody = JSON.stringify({
+      action: "closed",
+      pull_request: {
+        node_id: "PR_INST",
+        number: 77,
+        title: "feat: x",
+        body: "description\n\nAI-Assisted: bematist-inst_pr_sess_001",
+        merged: true,
+        merge_commit_sha: "merge-inst-1",
+        merged_at: "2026-04-16T12:00:00Z",
+      },
+      repository: { node_id: "R_INST" },
+    });
+    const res = await postPath(INSTALLATION_ID.toString(), prBody, {
+      signature: sig(prBody, ACTIVE_SECRET),
+      event: "pull_request",
+      deliveryId: "d-inst-pr-1",
+    });
+    expect(res.status).toBe(200);
+    expect(await outcomesStore.count(TENANT_ID)).toBe(1);
+    const row = await outcomesStore.findByCommit(TENANT_ID, "merge-inst-1", "inst_pr_sess_001");
+    expect(row?.kind).toBe("pr_merged");
+    expect(row?.pr_number).toBe(77);
+    expect(row?.trailer_source).toBe("pull_request");
+  });
+
+  test("D29 Layer-2 trailer — non-push/pull_request events do NOT emit outcomes", async () => {
+    makeCtx();
+    const outcomesStore = createInMemoryOutcomesStore();
+    setDeps({ outcomesStore });
+    const body = JSON.stringify({
+      action: "completed",
+      check_suite: { head_sha: "sha-x" },
+      repository: { node_id: "R_INST" },
+    });
+    const res = await postPath(INSTALLATION_ID.toString(), body, {
+      signature: sig(body, ACTIVE_SECRET),
+      event: "check_suite",
+      deliveryId: "d-inst-cs-1",
+    });
+    expect(res.status).toBe(200);
+    expect(await outcomesStore.count(TENANT_ID)).toBe(0);
   });
 });
 

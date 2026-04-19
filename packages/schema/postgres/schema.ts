@@ -475,12 +475,21 @@ export const outcomes = pgTable("outcomes", {
   org_id: uuid("org_id")
     .notNull()
     .references(() => orgs.id),
-  engineer_id: text("engineer_id").notNull(),
+  // D29: `engineer_id` was originally NOT NULL but trailer-derived rows
+  // (Layer 2) arrive before the worker has resolved `commit.author.email`
+  // → engineer_id. custom/0013 drops the NOT NULL; the Drizzle type is
+  // relaxed to `text | null` so ingest code can write null on the trailer
+  // path and the backfill cron populates the real id later.
+  engineer_id: text("engineer_id"),
   kind: text("kind").notNull(), // pr_merged | commit_landed | test_passed
   pr_number: integer("pr_number"),
   commit_sha: text("commit_sha"),
   session_id: text("session_id"),
   ai_assisted: boolean("ai_assisted").notNull().default(false),
+  // D29 Layer-2 trailer attribution: 'push' | 'pull_request' | 'reconcile'
+  // (nullable for legacy Layer-1 rows). CHECK constraint applied in custom
+  // migration 0013.
+  trailer_source: text("trailer_source"),
 });
 
 /** Per contract 05 §Postgres canonical shape. */

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { GitEventRow } from "../webhooks/gitEventsStore";
+import { createInMemoryOutcomesStore } from "../webhooks/outcomesStore";
 import { reconcilePrs } from "./reconcile";
 
 interface LoggedMsg {
@@ -164,6 +165,198 @@ describe("reconcilePrs", () => {
     });
     // 100 (primary) + 3 (one per day in fallback) = 103.
     expect(out.upserted).toBe(103);
+  });
+
+  test("trailer on merge commit → outcome row emitted (pr_merged)", async () => {
+    const upsertRow = async (_row: GitEventRow) => ({ inserted: true });
+    const outcomesStore = createInMemoryOutcomesStore();
+    const TENANT = "tenant-uuid-1";
+    const node = {
+      id: "PR_TRAILER",
+      number: 7,
+      merged: true,
+      mergedAt: "2026-04-10T00:00:00Z",
+      mergeCommit: {
+        oid: "merge-sha-1",
+        message: "fix: bug\n\nbody\n\nAI-Assisted: bematist-recon_session_001",
+      },
+      repository: { id: "R_A" },
+      title: "fix: bug",
+      body: "",
+      commits: { nodes: [] },
+    };
+    const fetchFn = mockFetch([page([node], false, null)]);
+    const { logger } = makeLogger();
+    const out = await reconcilePrs({
+      token: "t",
+      org: "acme",
+      tenantOrgId: TENANT,
+      sinceDate: "2026-04-09",
+      fetchFn,
+      upsertRow,
+      outcomesStore,
+      logger,
+    });
+    expect(out.upserted).toBe(1);
+    expect(out.trailerOutcomes).toBe(1);
+    const row = await outcomesStore.findByCommit(TENANT, "merge-sha-1", "recon_session_001");
+    expect(row).not.toBeNull();
+    expect(row?.kind).toBe("pr_merged");
+    expect(row?.trailer_source).toBe("reconcile");
+    expect(row?.pr_number).toBe(7);
+  });
+
+  test("trailer on squash-merged PR body (merge commit msg clean) → outcome row", async () => {
+    const upsertRow = async (_row: GitEventRow) => ({ inserted: true });
+    const outcomesStore = createInMemoryOutcomesStore();
+    const TENANT = "tenant-uuid-2";
+    const node = {
+      id: "PR_SQUASH",
+      number: 8,
+      merged: true,
+      mergedAt: "2026-04-10T00:00:00Z",
+      mergeCommit: { oid: "squash-sha", message: "feat: widget (#8)" },
+      repository: { id: "R_B" },
+      title: "feat: widget",
+      body: "Description\n\nAI-Assisted: bematist-squash_sess_12",
+      commits: { nodes: [] },
+    };
+    const fetchFn = mockFetch([page([node], false, null)]);
+    const { logger } = makeLogger();
+    const out = await reconcilePrs({
+      token: "t",
+      org: "acme",
+      tenantOrgId: TENANT,
+      sinceDate: "2026-04-09",
+      fetchFn,
+      upsertRow,
+      outcomesStore,
+      logger,
+    });
+    expect(out.trailerOutcomes).toBe(1);
+    const row = await outcomesStore.findByCommit(TENANT, "squash-sha", "squash_sess_12");
+    expect(row?.trailer_source).toBe("reconcile");
+  });
+
+  test("trailer on head-branch commit (pre-squash) → outcome row (commit_landed)", async () => {
+    const upsertRow = async (_row: GitEventRow) => ({ inserted: true });
+    const outcomesStore = createInMemoryOutcomesStore();
+    const TENANT = "tenant-uuid-3";
+    const node = {
+      id: "PR_HEAD",
+      number: 9,
+      merged: true,
+      mergedAt: "2026-04-10T00:00:00Z",
+      mergeCommit: { oid: "merge-squashed-2", message: "feat: x (#9)" },
+      repository: { id: "R_C" },
+      title: "feat: x",
+      body: "clean PR body, no trailer",
+      commits: {
+        nodes: [
+          {
+            commit: {
+              oid: "head-sha-a",
+              message: "feat(x): initial\n\nbody\n\nAI-Assisted: bematist-head_sess_001",
+            },
+          },
+          {
+            commit: {
+              oid: "head-sha-b",
+              message: "feat(x): polish (no trailer)",
+            },
+          },
+        ],
+      },
+    };
+    const fetchFn = mockFetch([page([node], false, null)]);
+    const { logger } = makeLogger();
+    const out = await reconcilePrs({
+      token: "t",
+      org: "acme",
+      tenantOrgId: TENANT,
+      sinceDate: "2026-04-09",
+      fetchFn,
+      upsertRow,
+      outcomesStore,
+      logger,
+    });
+    expect(out.trailerOutcomes).toBe(1);
+    const row = await outcomesStore.findByCommit(TENANT, "head-sha-a", "head_sess_001");
+    expect(row?.kind).toBe("commit_landed");
+    expect(row?.trailer_source).toBe("reconcile");
+  });
+
+  test("idempotent: re-running reconcile for same PRs does not duplicate outcomes", async () => {
+    const upsertRow = async (_row: GitEventRow) => ({ inserted: true });
+    const outcomesStore = createInMemoryOutcomesStore();
+    const TENANT = "tenant-uuid-4";
+    const node = {
+      id: "PR_IDEMP",
+      number: 10,
+      merged: true,
+      mergedAt: "2026-04-10T00:00:00Z",
+      mergeCommit: {
+        oid: "idemp-merge-sha",
+        message: "fix\n\nAI-Assisted: bematist-idempsess01",
+      },
+      repository: { id: "R_D" },
+      title: "fix",
+      body: "",
+      commits: { nodes: [] },
+    };
+    const fetchFn1 = mockFetch([page([node], false, null)]);
+    const fetchFn2 = mockFetch([page([node], false, null)]);
+    const { logger } = makeLogger();
+    const r1 = await reconcilePrs({
+      token: "t",
+      org: "acme",
+      tenantOrgId: TENANT,
+      sinceDate: "2026-04-09",
+      fetchFn: fetchFn1,
+      upsertRow,
+      outcomesStore,
+      logger,
+    });
+    const r2 = await reconcilePrs({
+      token: "t",
+      org: "acme",
+      tenantOrgId: TENANT,
+      sinceDate: "2026-04-09",
+      fetchFn: fetchFn2,
+      upsertRow,
+      outcomesStore,
+      logger,
+    });
+    expect(r1.trailerOutcomes).toBe(1);
+    expect(r2.trailerOutcomes).toBe(0);
+    expect(await outcomesStore.count(TENANT)).toBe(1);
+  });
+
+  test("no outcomesStore/tenantOrgId → backwards-compatible, trailerOutcomes=0", async () => {
+    const upsertRow = async (_row: GitEventRow) => ({ inserted: true });
+    const node = {
+      id: "PR_NOSTORE",
+      number: 11,
+      merged: true,
+      mergedAt: "2026-04-10T00:00:00Z",
+      mergeCommit: {
+        oid: "nostore-sha",
+        message: "AI-Assisted: bematist-wontemit01",
+      },
+      repository: { id: "R_E" },
+    };
+    const fetchFn = mockFetch([page([node], false, null)]);
+    const { logger } = makeLogger();
+    const out = await reconcilePrs({
+      token: "t",
+      org: "acme",
+      sinceDate: "2026-04-09",
+      fetchFn,
+      upsertRow,
+      logger,
+    });
+    expect(out.upserted).toBe(1);
+    expect(out.trailerOutcomes).toBe(0);
   });
 
   test("rateLimit.remaining < 500 → warning logged", async () => {

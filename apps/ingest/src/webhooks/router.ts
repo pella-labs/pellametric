@@ -17,6 +17,7 @@
 import type { Deps } from "../deps";
 import { logger } from "../logger";
 import { parseBitbucketWebhook } from "./bitbucket";
+import { emitTrailerOutcomes } from "./emitTrailerOutcomes";
 import type { GitEventRow } from "./gitEventsStore";
 import { parseGitHubWebhook } from "./github";
 import { parseGitLabWebhook } from "./gitlab";
@@ -238,6 +239,23 @@ export async function handleWebhook(
     },
     "webhook accepted",
   );
+
+  // D29 Layer-2 outcome attribution: parse `AI-Assisted: bematist-<sessionId>`
+  // trailers from push commits and merged PR bodies. The emitter is a
+  // no-op for non-github sources and for events that carry no trailers, so
+  // we can call it unconditionally without branching. Failures are logged
+  // inside the emitter and MUST NOT affect the HTTP response — a broken
+  // trailer path must never poison the rest of the webhook pipeline.
+  if (source === "github") {
+    await emitTrailerOutcomes({
+      orgId,
+      event: delivery.event,
+      body,
+      outcomesStore: deps.outcomesStore,
+      requestId,
+    });
+  }
+
   return json(
     { inserted: result.inserted, pr_node_id: row.pr_node_id, request_id: requestId },
     { status: 200 },

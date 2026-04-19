@@ -5,6 +5,7 @@ import { createInMemoryOrgResolver, resetDeps, setDeps } from "../deps";
 import { _testHooks, handle } from "../server";
 import { InMemoryOrgPolicyStore, type OrgPolicy } from "../tier/enforceTier";
 import { createInMemoryGitEventsStore, type GitEventsStore } from "./gitEventsStore";
+import { createInMemoryOutcomesStore, type OutcomesStore } from "./outcomesStore";
 
 const SECRET = "hooksecret";
 
@@ -14,10 +15,12 @@ function seedDeps(
     webhookSecrets?: OrgPolicy["webhook_secrets"];
     ipAllowlist?: string[];
     gitEventsStore?: GitEventsStore;
+    outcomesStore?: OutcomesStore;
     webhookDedup?: InMemoryDedupStore;
   } = {},
 ): {
   store: GitEventsStore;
+  outcomesStore: OutcomesStore;
   dedup: InMemoryDedupStore;
 } {
   const policyStore = new InMemoryOrgPolicyStore();
@@ -35,11 +38,13 @@ function seedDeps(
   const resolver = createInMemoryOrgResolver();
   resolver.seed("dev", "org_internal_id");
   const gitEventsStore = overrides.gitEventsStore ?? createInMemoryGitEventsStore();
+  const outcomesStore = overrides.outcomesStore ?? createInMemoryOutcomesStore();
   const webhookDedup = overrides.webhookDedup ?? new InMemoryDedupStore();
   setDeps({
     orgPolicyStore: policyStore,
     orgResolver: resolver,
     gitEventsStore,
+    outcomesStore,
     webhookDedup,
     flags: {
       ENFORCE_TIER_A_ALLOWLIST: false,
@@ -50,7 +55,7 @@ function seedDeps(
       CLICKHOUSE_WRITER: "client",
     },
   });
-  return { store: gitEventsStore, dedup: webhookDedup };
+  return { store: gitEventsStore, outcomesStore, dedup: webhookDedup };
 }
 
 function sigHex(body: string, secret = SECRET): string {
@@ -249,6 +254,175 @@ describe("webhooks router — /v1/webhooks/github", () => {
       }),
     );
     expect(res.status).toBe(200);
+  });
+
+  test("trailer integration — push with trailer-bearing commit → outcomes row created", async () => {
+    const { outcomesStore } = seedDeps();
+    const body = JSON.stringify({
+      ref: "refs/heads/main",
+      before: "0000",
+      after: "sha-trailer-1",
+      repository: { node_id: "R_TRAILER" },
+      commits: [
+        {
+          id: "sha-trailer-1",
+          sha: "sha-trailer-1",
+          message: "fix: auth bug\n\nDescription.\n\nAI-Assisted: bematist-router_sess_12345",
+          author: { email: "dev@example.com", name: "Dev" },
+        },
+      ],
+    });
+    const res = await postGithub(body, { event: "push", deliveryId: "d-trailer-1" });
+    expect(res.status).toBe(200);
+    expect(await outcomesStore.count("org_internal_id")).toBe(1);
+    const row = await outcomesStore.findByCommit(
+      "org_internal_id",
+      "sha-trailer-1",
+      "router_sess_12345",
+    );
+    expect(row).not.toBeNull();
+    expect(row?.trailer_source).toBe("push");
+    expect(row?.kind).toBe("commit_landed");
+    expect(row?.ai_assisted).toBe(true);
+  });
+
+  test("trailer integration — push with plain commit → no outcome row", async () => {
+    const { outcomesStore } = seedDeps();
+    const body = JSON.stringify({
+      ref: "refs/heads/main",
+      before: "0000",
+      after: "sha-plain",
+      repository: { node_id: "R_PLAIN" },
+      commits: [
+        {
+          id: "sha-plain",
+          sha: "sha-plain",
+          message: "fix: no trailer here",
+          author: { email: "dev@example.com", name: "Dev" },
+        },
+      ],
+    });
+    const res = await postGithub(body, { event: "push", deliveryId: "d-plain-1" });
+    expect(res.status).toBe(200);
+    expect(await outcomesStore.count("org_internal_id")).toBe(0);
+  });
+
+  test("trailer integration — duplicate delivery → no duplicate outcome row", async () => {
+    const { outcomesStore } = seedDeps();
+    const body = JSON.stringify({
+      ref: "refs/heads/main",
+      before: "0000",
+      after: "sha-dup-1",
+      repository: { node_id: "R_DUP" },
+      commits: [
+        {
+          id: "sha-dup-1",
+          sha: "sha-dup-1",
+          message: "fix\n\nAI-Assisted: bematist-dup_session_01",
+          author: { email: "dev@example.com", name: "Dev" },
+        },
+      ],
+    });
+    const r1 = await postGithub(body, { event: "push", deliveryId: "d-dup-shared" });
+    expect(r1.status).toBe(200);
+    const r2 = await postGithub(body, { event: "push", deliveryId: "d-dup-shared" });
+    // Transport dedup kicks in before our handler runs — outcome still 1.
+    expect(r2.status).toBe(200);
+    expect(((await r2.json()) as { dedup?: boolean }).dedup).toBe(true);
+    expect(await outcomesStore.count("org_internal_id")).toBe(1);
+  });
+
+  test("trailer integration — same trailer via different deliveries → idempotent (1 row)", async () => {
+    // Different delivery IDs (transport dedup doesn't block) but same
+    // (org, commit_sha, session_id) → the in-memory store dedupes.
+    const { outcomesStore } = seedDeps();
+    const body = JSON.stringify({
+      ref: "refs/heads/main",
+      before: "0000",
+      after: "sha-idemp-1",
+      repository: { node_id: "R_IDEMP" },
+      commits: [
+        {
+          id: "sha-idemp-1",
+          sha: "sha-idemp-1",
+          message: "x\n\nAI-Assisted: bematist-idemp_sess_01",
+          author: { email: "dev@example.com", name: "Dev" },
+        },
+      ],
+    });
+    const r1 = await postGithub(body, { event: "push", deliveryId: "d-idemp-1" });
+    expect(r1.status).toBe(200);
+    const r2 = await postGithub(body, { event: "push", deliveryId: "d-idemp-2" });
+    expect(r2.status).toBe(200);
+    expect(await outcomesStore.count("org_internal_id")).toBe(1);
+  });
+
+  test("trailer integration — injection-shaped sessionId rejected, no row", async () => {
+    const { outcomesStore } = seedDeps();
+    const body = JSON.stringify({
+      ref: "refs/heads/main",
+      before: "0000",
+      after: "sha-inj",
+      repository: { node_id: "R_INJ" },
+      commits: [
+        {
+          id: "sha-inj",
+          sha: "sha-inj",
+          message: "feat\n\nAI-Assisted: bematist-abc'; DROP TABLE outcomes;--",
+          author: { email: "dev@example.com", name: "Dev" },
+        },
+      ],
+    });
+    const res = await postGithub(body, { event: "push", deliveryId: "d-inj" });
+    expect(res.status).toBe(200);
+    expect(await outcomesStore.count("org_internal_id")).toBe(0);
+  });
+
+  test("trailer integration — merged PR with trailer in PR body → outcome row", async () => {
+    const { outcomesStore } = seedDeps();
+    const body = JSON.stringify({
+      action: "closed",
+      pull_request: {
+        node_id: "PR_MERGE",
+        number: 42,
+        title: "feat: add widget",
+        body: "Description of the PR.\n\nAI-Assisted: bematist-pr_merge_sess_01",
+        merged: true,
+        merge_commit_sha: "merge-sha-pr-1",
+        merged_at: "2026-04-16T12:00:00Z",
+      },
+      repository: { node_id: "R_MERGE" },
+    });
+    const res = await postGithub(body, { event: "pull_request", deliveryId: "d-pr-1" });
+    expect(res.status).toBe(200);
+    expect(await outcomesStore.count("org_internal_id")).toBe(1);
+    const row = await outcomesStore.findByCommit(
+      "org_internal_id",
+      "merge-sha-pr-1",
+      "pr_merge_sess_01",
+    );
+    expect(row?.kind).toBe("pr_merged");
+    expect(row?.pr_number).toBe(42);
+    expect(row?.trailer_source).toBe("pull_request");
+  });
+
+  test("trailer integration — PR not merged → no outcome row", async () => {
+    const { outcomesStore } = seedDeps();
+    const body = JSON.stringify({
+      action: "closed",
+      pull_request: {
+        node_id: "PR_NOTMERGED",
+        number: 43,
+        title: "feat: abandoned",
+        body: "AI-Assisted: bematist-notmerged_sess_01",
+        merged: false,
+        merge_commit_sha: null,
+      },
+      repository: { node_id: "R_NOTMERGED" },
+    });
+    const res = await postGithub(body, { event: "pull_request", deliveryId: "d-pr-nm" });
+    expect(res.status).toBe(200);
+    expect(await outcomesStore.count("org_internal_id")).toBe(0);
   });
 
   test("M1: XFF with a non-allowlisted leftmost entry → 401", async () => {

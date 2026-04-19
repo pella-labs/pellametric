@@ -34,6 +34,7 @@ import type { RedactionAuditSink } from "./redact/hotpath";
 import { InMemoryOrgPolicyStore, type OrgPolicyStore } from "./tier/enforceTier";
 import { createInMemoryWalAppender, type WalAppender } from "./wal/append";
 import { createInMemoryGitEventsStore, type GitEventsStore } from "./webhooks/gitEventsStore";
+import { createInMemoryOutcomesStore, type OutcomesStore } from "./webhooks/outcomesStore";
 
 /** Resolves an org slug from a webhook URL query param → internal org id. */
 export interface OrgResolver {
@@ -73,6 +74,14 @@ export interface Deps {
   webhookDedup: DedupStore;
   /** Git events store (Phase 6) — backs /v1/webhooks/{github,gitlab,bitbucket}. */
   gitEventsStore: GitEventsStore;
+  /**
+   * Outcomes store (D29, CLAUDE.md §Outcome Attribution Layer 2). Receives
+   * `AI-Assisted: bematist-<sessionId>` trailer-derived outcome rows parsed
+   * out of push / pull_request webhooks + reconcile GraphQL responses.
+   * Separate from `gitEventsStore` because outcomes are keyed on
+   * (org, commit_sha, session_id) rather than on `pr_node_id`.
+   */
+  outcomesStore: OutcomesStore;
   /** Resolves ?org=<slug> on webhook paths to an internal org id. */
   orgResolver: OrgResolver;
   /**
@@ -119,6 +128,7 @@ function makeDefaultDeps(): Deps {
     walConsumerLag: null,
     webhookDedup: new InMemoryDedupStore(),
     gitEventsStore: createInMemoryGitEventsStore(),
+    outcomesStore: createInMemoryOutcomesStore(),
     orgResolver: createInMemoryOrgResolver(),
     policyFlip: null,
     installationResolver: createInMemoryInstallationResolver(),
