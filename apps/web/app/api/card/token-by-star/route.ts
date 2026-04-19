@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hashCardToken } from "@/lib/card-backend";
+import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-backend";
 import { getDbClients } from "@/lib/db";
 import { hasStarred } from "@/lib/github-stars";
 
@@ -302,16 +302,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "not_starred" }, { status: 400 });
   }
 
+  const slug = toCardSlug(username);
+  if (isReservedCardSlug(slug)) {
+    return NextResponse.json(
+      { error: `GitHub username '${username}' collides with a reserved path.` },
+      { status: 400 },
+    );
+  }
+
   const token = mintStarToken();
   const tokenHash = hashCardToken(token);
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-  const subjectId = `gh_${username.toLowerCase()}`;
 
   const { pg } = getDbClients();
   await pg.query(
     `INSERT INTO card_tokens (token_hash, subject_kind, subject_id, github_username, expires_at)
      VALUES ($1, 'github_star', $2, $3, $4)`,
-    [tokenHash, subjectId, username, expiresAt],
+    [tokenHash, slug, username, expiresAt],
   );
   return NextResponse.json({ token });
 }

@@ -260,9 +260,10 @@ export async function POST(req: Request) {
       ownerUserId = row.subject_id;
     }
   } else if (row.subject_kind === "github_star") {
-    // subject_id = `gh_<login>`; fall back to the stripped suffix if the
-    // denormalized github_username somehow didn't land at mint time.
-    const login = row.github_username ?? row.subject_id.replace(/^gh_/, "");
+    // subject_id is the lowercase slug (= card_id). github_username preserves
+    // the original case from the user's input on the marketing page. Fall
+    // back to the slug if it somehow didn't land.
+    const login = row.github_username ?? row.subject_id;
     displayName = `@${login}`;
     avatarUrl = `https://github.com/${login}.png`;
   }

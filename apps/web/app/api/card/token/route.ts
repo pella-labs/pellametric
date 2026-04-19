@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth";
-import { hashCardToken } from "@/lib/card-backend";
+import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-backend";
 import { getDbClients } from "@/lib/db";
 
 const adjectives = [
@@ -101,7 +101,25 @@ export async function POST(req: Request) {
   if (!session?.user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  // Pretty URLs require a resolvable GitHub login: /card/<slug> IS the
+  // username (lowercased). Fail the mint if we can't resolve — better to
+  // surface a clean error than to issue a token the submit step can't
+  // turn into a valid card_id.
   const githubUsername = await resolveGithubUsernameForUser(session.user.id);
+  if (!githubUsername) {
+    return NextResponse.json(
+      { error: "Could not resolve your GitHub username. Try signing out and back in." },
+      { status: 400 },
+    );
+  }
+  const slug = toCardSlug(githubUsername);
+  if (isReservedCardSlug(slug)) {
+    return NextResponse.json(
+      { error: `GitHub username '${githubUsername}' collides with a reserved path.` },
+      { status: 400 },
+    );
+  }
 
   const token = mintPlainToken();
   const tokenHash = hashCardToken(token);
@@ -111,7 +129,7 @@ export async function POST(req: Request) {
   await pg.query(
     `INSERT INTO card_tokens (token_hash, subject_kind, subject_id, github_username, expires_at)
      VALUES ($1, 'better_auth_user', $2, $3, $4)`,
-    [tokenHash, session.user.id, githubUsername, expiresAt],
+    [tokenHash, slug, githubUsername, expiresAt],
   );
   return NextResponse.json({ token });
 }

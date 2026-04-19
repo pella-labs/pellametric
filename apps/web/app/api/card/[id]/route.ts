@@ -13,6 +13,10 @@ import { getDbClients } from "@/lib/db";
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // card_id is always stored lowercased at mint time (card-backend.toCardSlug).
+  // Lowercase the URL segment so /card/WalidKhori resolves identically to
+  // /card/walidkhori.
+  const slug = id.toLowerCase();
 
   const { pg } = getDbClients();
   const rows = await pg.query<{
@@ -27,7 +31,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
        FROM cards
       WHERE card_id = $1
       LIMIT 1`,
-    [id],
+    [slug],
   );
   const r = rows[0];
   if (!r) {

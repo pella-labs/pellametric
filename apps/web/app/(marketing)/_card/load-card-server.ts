@@ -25,6 +25,9 @@ export type LoadedCard = {
 export async function loadCardServer(id: string): Promise<LoadedCard | null> {
   try {
     const { pg } = getDbClients();
+    // card_id is always stored lowercased at mint time. Lowercase the URL
+    // segment so SSR resolves /card/WalidKhori identically to
+    // /card/walidkhori.
     const rows = await pg.query<{
       card_id: string;
       stats: CardData["stats"];
@@ -36,7 +39,7 @@ export async function loadCardServer(id: string): Promise<LoadedCard | null> {
          FROM cards
         WHERE card_id = $1
         LIMIT 1`,
-      [id],
+      [id.toLowerCase()],
     );
     const r = rows[0];
     if (!r) return null;
