@@ -6,8 +6,8 @@
 // behind `E2E_KAFKA=1` so CI can skip when no broker is available.
 
 import { describe, expect, test } from "bun:test";
-import { createInMemoryWebhookBus, GITHUB_WEBHOOKS_TOPIC } from "./webhookBus";
 import type { WebhookBusProducer } from "./webhookBus";
+import { createInMemoryWebhookBus, GITHUB_WEBHOOKS_TOPIC } from "./webhookBus";
 
 const ENABLED_KAFKA = process.env.E2E_KAFKA === "1";
 const BROKERS = (process.env.KAFKA_BROKERS ?? "localhost:9092")

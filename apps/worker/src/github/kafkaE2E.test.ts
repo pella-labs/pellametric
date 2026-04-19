@@ -18,8 +18,8 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Sql } from "postgres";
 import { Kafka } from "kafkajs";
+import type { Sql } from "postgres";
 import { createKafkaWebhookBus } from "../../../ingest/src/github-app/kafkaWebhookBus";
 import {
   createInMemoryRecomputeStream,
@@ -129,9 +129,7 @@ describe.skipIf(!ENABLED)("kafka-e2e — ingest → redpanda → worker", () => 
     let prUpsertSeen = false;
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 250));
-      prUpsertSeen = recorded.some((r) =>
-        /INSERT INTO github_pull_requests/i.test(r.sql),
-      );
+      prUpsertSeen = recorded.some((r) => /INSERT INTO github_pull_requests/i.test(r.sql));
       if (prUpsertSeen) break;
     }
 

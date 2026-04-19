@@ -17,11 +17,11 @@
 //      OLD secret still referenceable for dual-accept in the webhook route.
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import postgres from "postgres";
 import type { Ctx } from "../../auth";
 import { rotateWebhookSecret } from "../../mutations/github/rotateWebhookSecret";
 import { patchTrackingMode } from "../../mutations/github/trackingMode";
 import { getTrackingPreview } from "./trackingPreview";
-import postgres from "postgres";
 
 const PG_LIVE = process.env.DATABASE_URL !== undefined;
 const SUPER_URL =
@@ -92,11 +92,19 @@ function ctx(role: "admin" | "viewer" = "admin"): Ctx {
           return rows;
         },
       },
-      ch: { async query() { return []; } },
+      ch: {
+        async query() {
+          return [];
+        },
+      },
       redis: {
-        async get() { return null; },
+        async get() {
+          return null;
+        },
         async set() {},
-        async setNx() { return true; },
+        async setNx() {
+          return true;
+        },
       },
     },
   };
@@ -174,9 +182,7 @@ describe("G2 integration — real Postgres", () => {
       expect(out.installation_id).toBe(INSTALLATION_ID);
       expect(out.new_secret_ref).toBe("sm/g2-rotated-v2");
       expect(out.rotated_at).toBe(fixedNow.toISOString());
-      expect(out.window_expires_at).toBe(
-        new Date(fixedNow.getTime() + 10 * 60_000).toISOString(),
-      );
+      expect(out.window_expires_at).toBe(new Date(fixedNow.getTime() + 10 * 60_000).toISOString());
 
       const [row] = await sql<
         {
@@ -197,9 +203,7 @@ describe("G2 integration — real Postgres", () => {
       expect(row?.webhook_secret_rotated_at?.toISOString()).toBe(fixedNow.toISOString());
 
       // Audit row lands.
-      const audit = await sql<
-        { action: string }[]
-      >`SELECT action FROM audit_log
+      const audit = await sql<{ action: string }[]>`SELECT action FROM audit_log
          WHERE org_id = ${TENANT_ID} AND action = 'github.webhook_secret_rotated'`;
       expect(audit.length).toBeGreaterThanOrEqual(1);
     },

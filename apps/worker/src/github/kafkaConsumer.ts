@@ -10,7 +10,7 @@
 //   - consume handler delegates to `consumeMessage` in ./consumer.ts — the
 //     same decoder/writer as the in-memory path.
 
-import { Kafka, logLevel, type Consumer, type ConsumerConfig } from "kafkajs";
+import { type Consumer, type ConsumerConfig, Kafka, logLevel } from "kafkajs";
 import type { ConsumerDeps } from "./consumer";
 import { consumeMessage } from "./consumer";
 

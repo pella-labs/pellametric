@@ -20,10 +20,10 @@ import {
   type Admin,
   CompressionTypes,
   Kafka,
+  logLevel,
   type Producer,
   type ProducerConfig,
   type RecordMetadata,
-  logLevel,
 } from "kafkajs";
 import { logger } from "../logger";
 import type { WebhookBusMessage, WebhookBusProducer } from "./webhookBus";
