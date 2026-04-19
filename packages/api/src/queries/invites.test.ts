@@ -45,6 +45,8 @@ interface Invite {
   accepted_at: Date | null;
   revoked_at: Date | null;
   created_at: Date;
+  max_uses: number | null;
+  uses: number;
 }
 interface AuditRow {
   org_id: string;
@@ -96,12 +98,13 @@ function makeFakeDb() {
 
       // --- INSERT org_invite ----
       if (q.startsWith("INSERT INTO org_invites")) {
-        const [orgId, token, role, createdBy, daysRaw] = p as [
+        const [orgId, token, role, createdBy, daysRaw, maxUsesRaw] = p as [
           string,
           string,
           string,
           string,
           string,
+          number | null,
         ];
         const now = new Date();
         const days = parseDaysInterval(daysRaw);
@@ -116,6 +119,8 @@ function makeFakeDb() {
           accepted_at: null,
           revoked_at: null,
           created_at: now,
+          max_uses: maxUsesRaw ?? null,
+          uses: 0,
         };
         invites.push(row);
         return [{ id: row.id, created_at: row.created_at, expires_at: row.expires_at }] as T[];
@@ -124,14 +129,13 @@ function makeFakeDb() {
       // --- list invites ---
       if (q.startsWith("SELECT i.id, i.token, i.role")) {
         const [orgId] = p as [string];
-        const includeInactive = !q.includes("AND i.revoked_at IS NULL AND i.accepted_at IS NULL");
+        const includeInactive = !q.includes("AND i.revoked_at IS NULL");
         const list = invites
           .filter((i) => i.org_id === orgId)
           .filter((i) => {
             if (includeInactive) return true;
-            return (
-              i.revoked_at === null && i.accepted_at === null && i.expires_at.getTime() > Date.now()
-            );
+            const underCap = i.max_uses === null || i.uses < i.max_uses;
+            return i.revoked_at === null && underCap && i.expires_at.getTime() > Date.now();
           })
           .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
           .map((i) => {
@@ -145,13 +149,15 @@ function makeFakeDb() {
               accepted_at: i.accepted_at,
               accepted_by_email: u?.email ?? null,
               revoked_at: i.revoked_at,
+              uses: i.uses,
+              max_uses: i.max_uses,
             };
           });
         return list as T[];
       }
 
       // --- preview lookup ----
-      if (q.startsWith("SELECT o.name AS org_name, i.role AS role")) {
+      if (q.startsWith("SELECT o.name")) {
         const [token] = p as [string];
         const i = invites.find((x) => x.token === token);
         if (!i) return [] as T[];
@@ -162,16 +168,17 @@ function makeFakeDb() {
             org_name: org.name,
             role: i.role,
             expires_at: i.expires_at,
-            accepted_at: i.accepted_at,
             revoked_at: i.revoked_at,
+            max_uses: i.max_uses,
+            uses: i.uses,
           },
         ] as T[];
       }
 
-      // --- accept: SELECT invite by token ----
+      // --- accept: SELECT invite by token (multi-use schema) ----
       if (
         q.startsWith(
-          "SELECT id, org_id, role, expires_at, accepted_at, revoked_at FROM org_invites",
+          "SELECT id, org_id, role, expires_at, revoked_at, max_uses, uses FROM org_invites",
         )
       ) {
         const [token] = p as [string];
@@ -183,8 +190,9 @@ function makeFakeDb() {
             org_id: i.org_id,
             role: i.role,
             expires_at: i.expires_at,
-            accepted_at: i.accepted_at,
             revoked_at: i.revoked_at,
+            max_uses: i.max_uses,
+            uses: i.uses,
           },
         ] as T[];
       }
@@ -196,28 +204,34 @@ function makeFakeDb() {
         return (u ? [{ org_id: u.org_id, email: u.email }] : []) as T[];
       }
 
-      // --- accept: conditional consume ----
-      if (q.startsWith("UPDATE org_invites SET accepted_by_user_id = $1, accepted_at = now()")) {
+      // --- accept: conditional consume (multi-use: atomic uses+1 with cap) ----
+      if (q.startsWith("UPDATE org_invites SET uses = uses + 1")) {
         const [userId, inviteId] = p as [string, string];
         const i = invites.find((x) => x.id === inviteId);
         if (!i) return [] as T[];
-        if (i.accepted_at !== null) return [] as T[];
         if (i.revoked_at !== null) return [] as T[];
         if (i.expires_at.getTime() <= Date.now()) return [] as T[];
-        i.accepted_by_user_id = userId;
-        i.accepted_at = new Date();
-        return [{ id: i.id }] as T[];
+        if (i.max_uses !== null && i.uses >= i.max_uses) return [] as T[];
+        i.uses += 1;
+        if (i.accepted_by_user_id === null) i.accepted_by_user_id = userId;
+        if (i.accepted_at === null) i.accepted_at = new Date();
+        return [{ id: i.id, uses: i.uses }] as T[];
       }
 
-      // --- accept: re-read after lost race ----
+      // --- accept: re-read after lost race (multi-use) ----
       if (
-        q.startsWith("SELECT accepted_at, revoked_at, expires_at FROM org_invites WHERE id = $1")
+        q.startsWith("SELECT revoked_at, expires_at, max_uses, uses FROM org_invites WHERE id = $1")
       ) {
         const [id] = p as [string];
         const i = invites.find((x) => x.id === id);
         if (!i) return [] as T[];
         return [
-          { accepted_at: i.accepted_at, revoked_at: i.revoked_at, expires_at: i.expires_at },
+          {
+            revoked_at: i.revoked_at,
+            expires_at: i.expires_at,
+            max_uses: i.max_uses,
+            uses: i.uses,
+          },
         ] as T[];
       }
 
@@ -374,7 +388,7 @@ describe("listInvites — filtering", () => {
     // revoke one
     const toRevoke = await createInvite(ctx, { role: "ic", expires_in_days: 14 });
     await revokeInvite(ctx, { id: toRevoke.id });
-    // seed an "already accepted" row directly
+    // seed an "already accepted" row directly (single-use, fully consumed)
     ctx.__db.invites.push({
       id: "invite-accepted",
       org_id: "org-a",
@@ -386,6 +400,8 @@ describe("listInvites — filtering", () => {
       accepted_at: new Date(),
       revoked_at: null,
       created_at: new Date(),
+      max_uses: 1,
+      uses: 1,
     });
     // seed an expired row
     ctx.__db.invites.push({
@@ -399,6 +415,8 @@ describe("listInvites — filtering", () => {
       accepted_at: null,
       revoked_at: null,
       created_at: new Date(),
+      max_uses: null,
+      uses: 0,
     });
 
     const active = await listInvites(ctx, { include_inactive: false });
@@ -425,6 +443,8 @@ describe("listInvites — filtering", () => {
       accepted_at: null,
       revoked_at: null,
       created_at: new Date(),
+      max_uses: null,
+      uses: 0,
     });
     const out = await listInvites(ctx, { include_inactive: true });
     expect(out.invites.every((i) => i.id !== "invite-b1")).toBe(true);
@@ -522,11 +542,12 @@ describe("getInvitePreview — unauthenticated", () => {
 
   test("accepted invite → already_accepted", async () => {
     const ctx = makeCtx("admin");
-    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14 });
+    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14, max_uses: 1 });
     const row = ctx.__db.invites.find((i) => i.id === minted.id);
     if (row) {
       row.accepted_by_user_id = "user-new";
       row.accepted_at = new Date();
+      row.uses = 1;
     }
     const out = await getInvitePreview(ctx.db.pg, { token: minted.token });
     if (out.ok) throw new Error("expected error");
@@ -574,11 +595,12 @@ describe("acceptInviteByToken — lifecycle gates + atomic flip", () => {
 
   test("already-accepted → already_accepted", async () => {
     const ctx = makeCtx("admin");
-    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14 });
+    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14, max_uses: 1 });
     const row = ctx.__db.invites.find((i) => i.id === minted.id);
     if (row) {
       row.accepted_by_user_id = "user-new";
       row.accepted_at = new Date();
+      row.uses = 1;
     }
     const out = await acceptInviteByToken(
       { pg: ctx.db.pg },
@@ -655,7 +677,7 @@ describe("acceptInviteByToken — lifecycle gates + atomic flip", () => {
 
   test("race: two acceptances — second loses with already_accepted", async () => {
     const ctx = makeCtx("admin");
-    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14 });
+    const minted = await createInvite(ctx, { role: "ic", expires_in_days: 14, max_uses: 1 });
 
     const first = await acceptInviteByToken(
       { pg: ctx.db.pg },

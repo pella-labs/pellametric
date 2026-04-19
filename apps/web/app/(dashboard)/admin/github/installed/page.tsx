@@ -1,9 +1,9 @@
+import { createSign } from "node:crypto";
 import { assertRole } from "@bematist/api";
 import { Card, CardHeader, CardTitle } from "@bematist/ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSign } from "node:crypto";
 import { getSessionCtx } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Admin · GitHub · Installed" };
@@ -90,9 +90,7 @@ export default async function GithubInstalledPage({
   });
   if (!ghRes.ok) {
     const body = await ghRes.text().catch(() => "");
-    throw new Error(
-      `GitHub installation fetch failed (${ghRes.status}): ${body.slice(0, 200)}`,
-    );
+    throw new Error(`GitHub installation fetch failed (${ghRes.status}): ${body.slice(0, 200)}`);
   }
   const meta = (await ghRes.json()) as {
     id: number;
