@@ -1,13 +1,27 @@
 import { expect, test } from "bun:test";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import {
+  appendFileSync,
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadFixture } from "@bematist/fixtures";
 import type { Adapter, AdapterContext } from "@bematist/sdk";
-import { ContinueDevAdapter, cursorKey } from "./index";
+import { ContinueDevAdapter, cursorKey, inodeKey } from "./index";
 import { CONTINUE_STREAM_NAMES } from "./paths";
 
-function mkCtx(overrides: Partial<AdapterContext> = {}): AdapterContext {
+interface MkCtxOpts {
+  /** If provided, `setMany` throws with this message. Simulates disk-full / fsync error. */
+  failSetMany?: string;
+  /** Omit `setMany` from the cursor to exercise the sequential fallback path. */
+  omitSetMany?: boolean;
+}
+
+function mkCtx(overrides: Partial<AdapterContext> = {}, opts: MkCtxOpts = {}): AdapterContext {
   const noop = () => {};
   const log = {
     trace: noop,
@@ -19,17 +33,27 @@ function mkCtx(overrides: Partial<AdapterContext> = {}): AdapterContext {
     child: () => log,
   };
   const cursorMap = new Map<string, string>();
+  const baseCursor = {
+    get: async (k: string) => cursorMap.get(k) ?? null,
+    set: async (k: string, v: string) => {
+      cursorMap.set(k, v);
+    },
+  };
+  const cursor = opts.omitSetMany
+    ? baseCursor
+    : {
+        ...baseCursor,
+        setMany: async (entries: ReadonlyArray<{ key: string; value: string }>) => {
+          if (opts.failSetMany) throw new Error(opts.failSetMany);
+          for (const e of entries) cursorMap.set(e.key, e.value);
+        },
+      };
   return {
     dataDir: "/tmp/bematist-test",
     policy: { enabled: true, tier: "B", pollIntervalMs: 5000 },
     log,
     tier: "B",
-    cursor: {
-      get: async (k: string) => cursorMap.get(k) ?? null,
-      set: async (k: string, v: string) => {
-        cursorMap.set(k, v);
-      },
-    },
+    cursor,
     ...overrides,
   };
 }
@@ -217,10 +241,234 @@ test("incremental poll surfaces only newly appended lines, not previously consum
       modelTitle: "claude-sonnet-4-5",
       timestamp: "2026-04-16T12:00:00.000Z",
     })}\n`;
-    require("node:fs").appendFileSync(join(devData, "chatInteraction.jsonl"), newRow);
+    appendFileSync(join(devData, "chatInteraction.jsonl"), newRow);
     const next = await a.poll(ctx, new AbortController().signal);
     expect(next.length).toBe(1);
     expect(next[0]?.session_id).toBe("sess_cont_03");
     expect(next[0]?.dev_metrics.event_kind).toBe("llm_request");
+  });
+});
+
+test("poll uses setMany so all four cursor writes commit atomically in one batch", async () => {
+  await withFixturesDir(async () => {
+    const a = new ContinueDevAdapter({
+      tenantId: "org_acme",
+      engineerId: "eng_t",
+      deviceId: "dev_t",
+    });
+    // Count how many times setMany fires per poll — it must be exactly 1.
+    let setManyCalls = 0;
+    let setCalls = 0;
+    const cursorMap = new Map<string, string>();
+    const noop = () => {};
+    const log = {
+      trace: noop,
+      debug: noop,
+      info: noop,
+      warn: noop,
+      error: noop,
+      fatal: noop,
+      child: () => log,
+    };
+    const ctx: AdapterContext = {
+      dataDir: "/tmp/bematist-test",
+      policy: { enabled: true, tier: "B", pollIntervalMs: 5000 },
+      log,
+      tier: "B",
+      cursor: {
+        get: async (k: string) => cursorMap.get(k) ?? null,
+        set: async (k: string, v: string) => {
+          setCalls++;
+          cursorMap.set(k, v);
+        },
+        setMany: async (entries: ReadonlyArray<{ key: string; value: string }>) => {
+          setManyCalls++;
+          for (const e of entries) cursorMap.set(e.key, e.value);
+        },
+      },
+    };
+    await a.init(ctx);
+    await a.poll(ctx, new AbortController().signal);
+    expect(setManyCalls).toBe(1);
+    // No sequential set() writes — the atomic path is exclusive.
+    expect(setCalls).toBe(0);
+  });
+});
+
+test("disk error inside setMany leaves ALL four cursors at their prior values (atomicity)", async () => {
+  await withFixturesDir(async () => {
+    const a = new ContinueDevAdapter({
+      tenantId: "org_acme",
+      engineerId: "eng_t",
+      deviceId: "dev_t",
+    });
+    // Seed prior cursor values so we can verify nothing moves after the failure.
+    const priors: Record<string, string> = {};
+    for (const stream of CONTINUE_STREAM_NAMES) {
+      priors[cursorKey(stream)] = "0";
+    }
+
+    const cursorMap = new Map<string, string>(Object.entries(priors));
+    const noop = () => {};
+    const log = {
+      trace: noop,
+      debug: noop,
+      info: noop,
+      warn: noop,
+      error: noop,
+      fatal: noop,
+      child: () => log,
+    };
+    const ctx: AdapterContext = {
+      dataDir: "/tmp/bematist-test",
+      policy: { enabled: true, tier: "B", pollIntervalMs: 5000 },
+      log,
+      tier: "B",
+      cursor: {
+        get: async (k: string) => cursorMap.get(k) ?? null,
+        set: async () => {
+          throw new Error("sequential set() must not be called on the atomic path");
+        },
+        setMany: async () => {
+          // Simulate disk-full / fsync failure — whole batch rejects.
+          throw new Error("ENOSPC: no space left on device");
+        },
+      },
+    };
+    await a.init(ctx);
+
+    let threw = false;
+    try {
+      await a.poll(ctx, new AbortController().signal);
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(true);
+
+    // Every stream cursor is untouched from its prior value.
+    for (const stream of CONTINUE_STREAM_NAMES) {
+      expect(cursorMap.get(cursorKey(stream))).toBe("0");
+      // Inode keys never written on the failed batch either.
+      expect(cursorMap.has(inodeKey(stream))).toBe(false);
+    }
+  });
+});
+
+test("poll persists an inode cursor alongside each offset", async () => {
+  await withFixturesDir(async () => {
+    const a = new ContinueDevAdapter({
+      tenantId: "org_acme",
+      engineerId: "eng_t",
+      deviceId: "dev_t",
+    });
+    const ctx = mkCtx();
+    await a.init(ctx);
+    await a.poll(ctx, new AbortController().signal);
+    for (const stream of CONTINUE_STREAM_NAMES) {
+      const inode = await ctx.cursor.get(inodeKey(stream));
+      expect(inode).not.toBeNull();
+      // Inode ids are integers — allow "0" on odd filesystems but not empty string.
+      expect((inode ?? "").length).toBeGreaterThan(0);
+    }
+  });
+});
+
+test("rotation — truncated file + stale offset triggers reset and re-parse from 0", async () => {
+  await withFixturesDir(async (devData) => {
+    const a = new ContinueDevAdapter({
+      tenantId: "org_acme",
+      engineerId: "eng_t",
+      deviceId: "dev_t",
+    });
+    const ctx = mkCtx();
+    await a.init(ctx);
+    // First poll consumes the whole fixture.
+    const first = await a.poll(ctx, new AbortController().signal);
+    expect(first.length).toBeGreaterThan(0);
+    const prevOffset = await ctx.cursor.get(cursorKey("chatInteraction"));
+    expect(Number.parseInt(prevOffset ?? "0", 10)).toBeGreaterThan(0);
+
+    // Truncate + rewrite with a shorter body. `size < prevOffset` triggers
+    // the rotation reset path.
+    const shortened = `${JSON.stringify({
+      eventName: "chat",
+      sessionId: "sess_post_rotate",
+      interactionId: "int_post",
+      role: "user",
+      modelTitle: "claude-sonnet-4-5",
+      timestamp: "2026-04-16T13:00:00.000Z",
+    })}\n`;
+    writeFileSync(join(devData, "chatInteraction.jsonl"), shortened);
+
+    // Second poll must detect rotation and re-parse the single new row.
+    const next = await a.poll(ctx, new AbortController().signal);
+    const chat = next.filter((e) => e.session_id === "sess_post_rotate");
+    expect(chat.length).toBe(1);
+    expect(chat[0]?.dev_metrics.event_kind).toBe("llm_request");
+  });
+});
+
+test("rotation — inode change after same-or-larger file size is detected and resets offset", async () => {
+  await withFixturesDir(async (devData) => {
+    const a = new ContinueDevAdapter({
+      tenantId: "org_acme",
+      engineerId: "eng_t",
+      deviceId: "dev_t",
+    });
+    const ctx = mkCtx();
+    await a.init(ctx);
+    await a.poll(ctx, new AbortController().signal);
+    const prevInode = await ctx.cursor.get(inodeKey("chatInteraction"));
+    expect(prevInode).not.toBeNull();
+
+    // Replace the file via unlink + write — new inode, but larger size so
+    // the size-based rotation check alone wouldn't catch it.
+    const replacement = `${JSON.stringify({
+      eventName: "chat",
+      sessionId: "sess_after_unlink_1",
+      interactionId: "int_u1",
+      role: "user",
+      modelTitle: "claude-sonnet-4-5",
+      timestamp: "2026-04-16T14:00:00.000Z",
+    })}\n${JSON.stringify({
+      eventName: "chat",
+      sessionId: "sess_after_unlink_2",
+      interactionId: "int_u2",
+      role: "user",
+      modelTitle: "claude-sonnet-4-5",
+      timestamp: "2026-04-16T14:00:05.000Z",
+    })}\n`;
+    // Make the replacement big enough that `size >= prevOffset` and only the
+    // inode-change signal could catch the rotation.
+    const padding = " ".repeat(4096);
+    rmSync(join(devData, "chatInteraction.jsonl"));
+    writeFileSync(join(devData, "chatInteraction.jsonl"), `${replacement}{"_pad":"${padding}"}\n`);
+
+    const next = await a.poll(ctx, new AbortController().signal);
+    const sids = new Set(next.map((e) => e.session_id));
+    expect(sids.has("sess_after_unlink_1")).toBe(true);
+    expect(sids.has("sess_after_unlink_2")).toBe(true);
+
+    const newInode = await ctx.cursor.get(inodeKey("chatInteraction"));
+    expect(newInode).not.toBe(prevInode);
+  });
+});
+
+test("fallback — CursorStore without setMany still works via sequential set()", async () => {
+  await withFixturesDir(async () => {
+    const a = new ContinueDevAdapter({
+      tenantId: "org_acme",
+      engineerId: "eng_t",
+      deviceId: "dev_t",
+    });
+    const ctx = mkCtx({}, { omitSetMany: true });
+    await a.init(ctx);
+    const events = await a.poll(ctx, new AbortController().signal);
+    expect(events.length).toBeGreaterThan(0);
+    // And cursors DID advance for each stream.
+    for (const stream of CONTINUE_STREAM_NAMES) {
+      const v = await ctx.cursor.get(cursorKey(stream));
+      expect(Number.parseInt(v ?? "0", 10)).toBeGreaterThan(0);
+    }
   });
 });

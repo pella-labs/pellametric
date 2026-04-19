@@ -26,6 +26,15 @@ export interface AdapterPolicy {
 export interface CursorStore {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
+  /**
+   * Atomically persist multiple (key, value) pairs in a single transaction.
+   * All pairs commit together or none at all — prevents divergent cursor
+   * state when an adapter tracks several correlated read offsets (e.g.
+   * Continue.dev's four JSONL streams). Implementations that can't offer a
+   * transactional guarantee MAY omit this method; callers must then fall
+   * back to sequential `set()` calls.
+   */
+  setMany?(entries: ReadonlyArray<{ key: string; value: string }>): Promise<void>;
 }
 
 export interface AdapterHealth {
