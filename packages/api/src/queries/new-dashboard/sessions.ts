@@ -276,7 +276,7 @@ async function sessionDetailReal(
        toString(min(ts)) AS started_at,
        toString(max(ts)) AS ended_at,
        any(engineer_id) AS engineer_id,
-       substring(lower(hex(cityHash64(any(engineer_id)))), 1, 8) AS engineer_id_hash,
+       any(substring(lower(hex(cityHash64(engineer_id))), 1, 8)) AS engineer_id_hash,
        any(branch) AS branch,
        any(commit_sha) AS commit_sha,
        coalesce(
