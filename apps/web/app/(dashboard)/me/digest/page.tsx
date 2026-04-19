@@ -1,7 +1,6 @@
-import { getMyViewHistory, isComplianceEnabled } from "@bematist/api";
+import { getMyViewHistory } from "@bematist/api";
 import { Badge, Card, CardHeader, CardTitle } from "@bematist/ui";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { getSessionCtx } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -19,7 +18,6 @@ const SURFACE_LABEL: Record<string, string> = {
 };
 
 export default async function MyDigestPage() {
-  if (!isComplianceEnabled()) notFound();
   const ctx = await getSessionCtx();
   const history = await getMyViewHistory(ctx, { window: "24h" });
 
