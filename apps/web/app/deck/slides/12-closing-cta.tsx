@@ -28,7 +28,7 @@ export function Slide12ClosingCta(_props: { totalPages: number }) {
         <div className="wordmark">
           <span className="wordmark-dot" /> bematist
         </div>
-        <div className="chrome-right">11 / GET STARTED</div>
+        <div className="chrome-right">05 / GET STARTED</div>
       </div>
 
       <div

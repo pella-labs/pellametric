@@ -1134,9 +1134,64 @@
 }
 
 /* ── Reduced motion ─────────────────────────────────────────── */
+/* ── Oscilloscope (Solution slide) ───────────────────────────── */
+.bematist-deck .deck-osc-glow {
+  filter: drop-shadow(0 0 4px rgba(155, 169, 143, 0.6));
+}
+.bematist-deck .deck-waveform-path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: deck-waveform-draw 4s linear infinite;
+}
+@keyframes deck-waveform-draw {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.bematist-deck .deck-pulse-dot {
+  animation: deck-pulse 1.6s ease-in-out infinite;
+}
+@keyframes deck-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* ── Redaction bars (Flying Blind slide) ─────────────────────── */
+.bematist-deck .deck-redact-bar {
+  background: var(--ink);
+  opacity: 0.28;
+  animation-name: deck-redact-float;
+  animation-duration: 4.2s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+@keyframes deck-redact-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.22;
+  }
+  50% {
+    transform: translate3d(0, -3px, 0);
+    opacity: 0.34;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bematist-deck .deck-slide,
-  .bematist-deck .deck-nav .dot {
+  .bematist-deck .deck-nav .dot,
+  .bematist-deck .deck-redact-bar,
+  .bematist-deck .deck-waveform-path,
+  .bematist-deck .deck-pulse-dot {
     transition: none;
     animation: none;
   }
