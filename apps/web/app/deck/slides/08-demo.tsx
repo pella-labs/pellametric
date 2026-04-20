@@ -2,8 +2,8 @@ import { SlideShell } from "../components/slide-shell";
 
 export function Slide08Demo({ totalPages }: { totalPages: number }) {
   return (
-    <SlideShell sectionLabel="06 / DEMO" pageNumber={8} totalPages={totalPages}>
-      <div className="eyebrow">06 / PLATFORM DEMO</div>
+    <SlideShell sectionLabel="04 / DEMO" pageNumber={4} totalPages={totalPages}>
+      <div className="eyebrow">04 / PLATFORM DEMO</div>
       <h2 className="title" style={{ fontSize: 72 }}>
         A single view — outcomes and <em>efficiency</em>.
       </h2>
