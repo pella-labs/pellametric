@@ -68,9 +68,15 @@ export interface Adapter {
   /** One-time setup. Validate paths, create cursors, etc. Throw to disable. */
   init(ctx: AdapterContext): Promise<void>;
 
-  /** Called every `pollIntervalMs`. Returns events to enqueue.
-   *  MUST be cancellation-safe: if the collector aborts mid-poll, no partial state. */
-  poll(ctx: AdapterContext, signal: AbortSignal): Promise<Event[]>;
+  /** Called every `pollIntervalMs`.
+   *  Streaming contract: call `emit(event)` for each event AS SOON as it's
+   *  produced (typically per-file for file-tailing adapters). Cursors MUST
+   *  be advanced only AFTER the corresponding emits have returned — that
+   *  keeps "events durable before cursor advances" invariant from
+   *  orchestrator/index.ts:22 (Walid's 4,971-file backfill incident).
+   *  MUST be cancellation-safe: honor `signal.aborted` and return promptly
+   *  without partial-but-already-advanced state. */
+  poll(ctx: AdapterContext, signal: AbortSignal, emit: EventEmitter): Promise<void>;
 
   /** Cheap health check — populates `bematist status` and dashboard. */
   health(ctx: AdapterContext): Promise<AdapterHealth>;
@@ -78,6 +84,14 @@ export interface Adapter {
   /** Optional — graceful shutdown hook. */
   shutdown?(ctx: AdapterContext): Promise<void>;
 }
+
+/**
+ * Streaming emit callback. Adapters call this once per produced event. The
+ * loop wires this to `journal.enqueue(e)` so events hit the durable SQLite
+ * queue per-file, not in one giant batch at poll end — see the "bubbling"
+ * post-mortem (600k events held in memory for 20 min before the first flush).
+ */
+export type EventEmitter = (event: Event) => void;
 
 // Minimal pino-compatible surface; packages/sdk stays free of a pino dep
 // so @bematist/sdk can be consumed by both the collector and tests without
@@ -139,13 +153,15 @@ export interface VSCodeExtensionHandler {
   discover(ctx: VSCodeExtensionContext): Promise<string[]>;
 
   /**
-   * Normalize one discovered file to canonical `Event[]`. The handler is
-   * responsible for respecting `ctx.cursor` to support resumable polling.
-   * Implementations MUST be cancellation-safe under `signal.aborted`.
+   * Normalize one discovered file and call `emit(event)` for each produced
+   * event AS SOON as it's ready (streaming contract — mirrors Adapter.poll).
+   * Handlers MUST respect `ctx.cursor` for resumable polling and MUST be
+   * cancellation-safe under `signal.aborted`.
    */
   parse(
     ctx: VSCodeExtensionContext,
     filePath: string,
     signal: AbortSignal,
-  ): Promise<import("@bematist/schema").Event[]>;
+    emit: EventEmitter,
+  ): Promise<void>;
 }

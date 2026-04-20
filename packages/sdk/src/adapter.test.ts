@@ -9,7 +9,7 @@ test("Adapter interface accepts a minimal conforming implementation", () => {
     supportedSourceVersions: "*",
     async init() {},
     async poll() {
-      return [];
+      // Streaming emit contract — poll no longer returns Event[].
     },
     async health() {
       return { status: "ok", fidelity: "full" };
