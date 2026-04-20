@@ -83,7 +83,6 @@ function baseRow(over: Partial<OutcomeRow> & Pick<OutcomeRow, "commit_sha">): Ou
     session_id: over.session_id ?? "sess-default",
     ai_assisted: over.ai_assisted ?? true,
     trailer_source: over.trailer_source ?? "push",
-    repo_id_hash: over.repo_id_hash ?? null,
   };
 }
 
@@ -99,10 +98,6 @@ describe("DrizzleOutcomesStore (live Postgres)", () => {
       pr_number: 42,
       kind: "pr_merged",
       trailer_source: "pull_request",
-      // repo_id_hash is interface-only at this migration level — Drizzle
-      // store drops it on write and always reads null. The in-memory store
-      // retains it; assertions below reflect the DB-backed shape.
-      repo_id_hash: "repo-hash-abc",
     });
     const res = await s.store.upsert(row);
     expect(res.inserted).toBe(true);
@@ -117,7 +112,6 @@ describe("DrizzleOutcomesStore (live Postgres)", () => {
     expect(fetched?.session_id).toBe("sess-insert-1");
     expect(fetched?.ai_assisted).toBe(true);
     expect(fetched?.trailer_source).toBe("pull_request");
-    expect(fetched?.repo_id_hash).toBeNull();
   });
 
   runIfPg(

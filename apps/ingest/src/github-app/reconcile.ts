@@ -234,7 +234,6 @@ async function emitReconcileTrailers(
         session_id: trailer.sessionId,
         ai_assisted: true,
         trailer_source: "reconcile",
-        repo_id_hash: null,
       });
       if (res.inserted) inserted++;
     }
@@ -257,7 +256,6 @@ async function emitReconcileTrailers(
       session_id: trailer.sessionId,
       ai_assisted: true,
       trailer_source: "reconcile",
-      repo_id_hash: null,
     });
     if (res.inserted) inserted++;
   }

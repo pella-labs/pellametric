@@ -2,9 +2,8 @@
 //
 // Writes the (org_id, engineer_id, kind, pr_number, commit_sha, session_id,
 // ai_assisted, trailer_source) tuple produced by emitTrailerOutcomes.ts
-// into the Postgres `outcomes` table. `repo_id_hash` from the OutcomeRow
-// interface is dropped here — see the note above toOutcomeRow for why.
-// Idempotency comes from the partial-unique functional index installed by
+// into the Postgres `outcomes` table. Idempotency comes from the
+// partial-unique functional index installed by
 // migration `custom/0013_outcomes_trailer_source.sql`:
 //
 //   CREATE UNIQUE INDEX outcomes_org_commit_session_uidx
@@ -42,15 +41,6 @@ type OutcomeDbRow = {
   ai_assisted: boolean;
   trailer_source: string | null;
 };
-
-// NOTE: `repo_id_hash` is part of the OutcomeRow interface (consumed by
-// `emitTrailerOutcomes.ts`) but is NOT yet a column on the Postgres `outcomes`
-// table. Migration 0013 adds `trailer_source` only. Writing the field here
-// would 42703; promoting it to a typed column is a future migration (per
-// PRD Rule #10 — 2 releases of observed stability first). For now the
-// Drizzle store drops `repo_id_hash` on write and surfaces `null` on read,
-// which matches the legacy Layer-1 shape. The in-memory store retains it
-// verbatim for unit tests that need to assert wire-level propagation.
 
 export class DrizzleOutcomesStore implements OutcomesStore {
   constructor(private readonly deps: DrizzleOutcomesStoreDeps) {}
@@ -175,9 +165,6 @@ function toOutcomeRow(row: OutcomeDbRow): OutcomeRow {
     session_id: row.session_id ?? "",
     ai_assisted: row.ai_assisted,
     trailer_source: normalizeTrailerSource(row.trailer_source),
-    // repo_id_hash is interface-only — DB column not yet promoted. See note
-    // above toOutcomeRow's definition.
-    repo_id_hash: null,
   };
 }
 

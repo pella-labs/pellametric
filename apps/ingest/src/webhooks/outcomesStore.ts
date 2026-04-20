@@ -25,9 +25,6 @@ export interface OutcomeRow {
   session_id: string;
   ai_assisted: boolean;
   trailer_source: TrailerSource;
-  // Denormalized hash of the repo for dashboard filtering. Nullable for the
-  // legacy router path (which currently surfaces the node_id directly).
-  repo_id_hash: string | null;
 }
 
 export interface OutcomesStore {

@@ -36,8 +36,6 @@ export interface EmitTrailerOutcomesInput {
   event: string; // x-github-event
   body: unknown; // already JSON-parsed webhook body
   outcomesStore: OutcomesStore;
-  /** Denormalized repo id hash to write onto each outcome row. Nullable. */
-  repoIdHash?: string | null;
   /** Request correlation id for log lines. */
   requestId?: string;
 }
@@ -114,7 +112,6 @@ async function handlePush(input: EmitTrailerOutcomesInput): Promise<EmitTrailerO
       prNumber: null,
       kind: "commit_landed",
       trailerSource: "push",
-      repoIdHash: input.repoIdHash ?? null,
       requestId: input.requestId,
       messageForLog: message,
       outcomesStore: input.outcomesStore,
@@ -166,7 +163,6 @@ async function handlePullRequest(
     prNumber: numOrNull(pr.number),
     kind: "pr_merged",
     trailerSource: "pull_request",
-    repoIdHash: input.repoIdHash ?? null,
     requestId: input.requestId,
     messageForLog: `${prTitle}\n\n${prBody}`,
     outcomesStore: input.outcomesStore,
@@ -185,7 +181,6 @@ async function writeOutcome(opts: {
   prNumber: number | null;
   kind: "pr_merged" | "commit_landed";
   trailerSource: TrailerSource;
-  repoIdHash: string | null;
   requestId: string | undefined;
   messageForLog: string;
   outcomesStore: OutcomesStore;
@@ -199,7 +194,6 @@ async function writeOutcome(opts: {
     session_id: opts.sessionId,
     ai_assisted: true,
     trailer_source: opts.trailerSource,
-    repo_id_hash: opts.repoIdHash,
   });
   logger.info(
     {
