@@ -3,10 +3,10 @@
 // behavior: template rendering, path resolution, dispatch to the right
 // implementation on each platform, and log-path layout.
 
+import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, expect, test } from "bun:test";
 import { daemonLogPaths, daemonStatus } from "./daemon";
 import {
   LAUNCHD_PLIST_TMPL,
@@ -50,9 +50,11 @@ test("renderTemplate substitutes @HOME@ and @BIN@ in launchd plist", () => {
     HOME: "/Users/test",
     BIN: "/usr/local/bin/bematist",
   });
-  expect(rendered).toContain('[ -f "/Users/test/.bematist/config.env" ]');
-  expect(rendered).toContain("set -a;"); // auto-export wrapper so vars propagate to exec
-  expect(rendered).toContain('exec "/usr/local/bin/bematist" serve');
+  // Direct exec: ProgramArguments = [binary, "serve"]. Any /bin/sh wrapper
+  // would regress the SIGSTOP bug (see templates.ts rationale block).
+  expect(rendered).toMatch(
+    /<key>ProgramArguments<\/key>\s*<array>\s*<string>\/usr\/local\/bin\/bematist<\/string>\s*<string>serve<\/string>\s*<\/array>/,
+  );
   expect(rendered).toContain("<string>/Users/test/.bematist/logs/out.log</string>");
   expect(rendered).not.toContain("@HOME@");
   expect(rendered).not.toContain("@BIN@");

@@ -12,10 +12,14 @@
   logout→login. SoftResourceLimits.Core=0 enforces CLAUDE.md §Security
   Rules (no crash dumps; matches the in-process harden() belt+suspenders).
 
-  Environment comes from ~/.bematist/config.env via a bootstrap shell.
-  launchd doesn't support EnvironmentFile, so we wrap the binary in `sh -c`
-  that sources the config file first. Keep this aligned with the systemd
-  EnvironmentFile=%h/.bematist/config.env directive.
+  Environment: the `bematist` binary loads ~/.bematist/config.env itself
+  via loadConfig() (apps/collector/src/config.ts). launchd just execs the
+  binary directly. Earlier versions wrapped this in `/bin/sh -c` to source
+  config.env first; that indirection was redundant AND broke on macOS
+  machines where an EDR / Gatekeeper hook held the `sh` fork in SIGSTOP
+  before exec (observed in the wild: ps STAT=T, 0-byte logs, no startup
+  line). Keep this direct — the systemd counterpart
+  (bematist.service.tmpl) uses ExecStart=@BIN@ serve for the same reason.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -25,15 +29,8 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/bin/sh</string>
-    <string>-c</string>
-    <!--
-      `set -a` auto-exports assignments so sourcing config.env makes the
-      values visible to the exec'd binary. Without it, `. config.env`
-      sets shell-locals only and BEMATIST_TOKEN never reaches `bematist
-      serve`.
-    -->
-    <string>set -a; [ -f "@HOME@/.bematist/config.env" ] &amp;&amp; . "@HOME@/.bematist/config.env"; set +a; exec "@BIN@" serve</string>
+    <string>@BIN@</string>
+    <string>serve</string>
   </array>
 
   <key>RunAtLoad</key>

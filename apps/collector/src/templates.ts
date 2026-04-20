@@ -22,15 +22,16 @@ export const LAUNCHD_PLIST_TMPL = `<?xml version="1.0" encoding="UTF-8"?>
   <key>Label</key>
   <string>dev.bematist.collector</string>
 
+  <!-- Direct exec — NO /bin/sh wrapper. Binary loads ~/.bematist/config.env
+       itself via loadConfig() in apps/collector/src/config.ts. Earlier
+       versions shelled out via /bin/sh -c "source config.env; exec bematist
+       serve"; on Macs running an EDR / Gatekeeper hook that held the sh
+       fork in SIGSTOP before exec, the daemon never started (ps STAT=T,
+       0-byte logs). Matches SYSTEMD_SERVICE_TMPL ExecStart=@BIN@ serve. -->
   <key>ProgramArguments</key>
   <array>
-    <string>/bin/sh</string>
-    <string>-c</string>
-    <!-- set -a auto-exports assignments so sourcing config.env makes
-         the values visible to the exec-d binary. Without auto-export,
-         POSIX "." only sets shell-locals, which is how BEMATIST_TOKEN
-         went missing and crashed the daemon 37 times. -->
-    <string>set -a; [ -f "@HOME@/.bematist/config.env" ] &amp;&amp; . "@HOME@/.bematist/config.env"; set +a; exec "@BIN@" serve</string>
+    <string>@BIN@</string>
+    <string>serve</string>
   </array>
 
   <key>RunAtLoad</key>
