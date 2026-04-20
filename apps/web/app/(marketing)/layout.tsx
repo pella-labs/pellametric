@@ -14,9 +14,6 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             bematist
           </Link>
           <div className="mk-nav-links">
-            <Link href="/install" className="mk-nav-link">
-              Install
-            </Link>
             <a
               href={TWITTER_URL}
               className="mk-btn mk-btn-ghost mk-btn-icon"
@@ -27,7 +24,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
               <XMark />
               <span className="mk-btn-icon-label">Follow</span>
             </a>
-            <Link href="/" className="mk-btn mk-btn-ghost">
+            <Link href="/auth/sign-in" className="mk-btn mk-btn-ghost">
               Sign in
             </Link>
             <a href={GITHUB_URL} className="mk-btn mk-btn-primary" rel="noreferrer">
@@ -45,14 +42,13 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
             </span>
           </div>
           <div>
-            <Link href="/install">Install</Link>
             <a href={TWITTER_URL} rel="noreferrer" target="_blank">
               Follow on X
             </a>
             <a href={GITHUB_URL} rel="noreferrer">
               GitHub
             </a>
-            <Link href="/">Dashboard</Link>
+            <Link href="/auth/sign-in">Sign in</Link>
           </div>
         </footer>
       </div>

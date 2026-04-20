@@ -3,21 +3,35 @@
 import { DeckChrome } from "./components/deck-chrome";
 import { DeckStage } from "./components/slide-frame";
 import { Slide01Cover } from "./slides/01-cover";
+import { Slide02Thesis } from "./slides/02-thesis";
 import { Slide03FlyingBlind } from "./slides/03-flying-blind";
+import { Slide04WhyNow } from "./slides/04-why-now";
+import { Slide05ProductOpener } from "./slides/05-product-opener";
+import { Slide06ThreeQuestions } from "./slides/06-three-questions";
 import { Slide07Platform } from "./slides/07-platform";
 import { Slide08Demo } from "./slides/08-demo";
-import { Slide14Cta } from "./slides/14-cta";
+import { Slide09Outcomes } from "./slides/09-outcomes";
+import { Slide10TwoReaders } from "./slides/10-two-readers";
+import { Slide12ClosingCta } from "./slides/12-closing-cta";
 import { useDeckNav } from "./use-deck-nav";
 
-// Five-slide pitch cut: intro -> problem -> solution -> demo -> closing.
-// The full 13-slide deck's other slide files are left in slides/ for
-// reference but no longer rendered.
+// The three former closing slides — Answers (12), Closing Thesis (13), and
+// the QR-only Call to Action (14) — are merged into a single split-CTA
+// closer that pitches organizations on the left and engineers on the right.
+// `Slide11EngineerCard` and the legacy slides remain in the slides/ dir for
+// reference but are no longer rendered.
 const SLIDE_LABELS = [
   "Cover",
+  "Thesis",
   "Flying Blind",
+  "Why Now",
+  "Product Opener",
+  "Three Questions",
   "Platform",
   "Demo",
-  "Closing",
+  "Outcomes",
+  "Two Readers",
+  "Call to Action",
 ] as const;
 
 const TOTAL = SLIDE_LABELS.length;
@@ -30,13 +44,25 @@ export default function DeckPage() {
       case 0:
         return <Slide01Cover totalPages={TOTAL} />;
       case 1:
-        return <Slide03FlyingBlind totalPages={TOTAL} />;
+        return <Slide02Thesis totalPages={TOTAL} />;
       case 2:
-        return <Slide07Platform totalPages={TOTAL} />;
+        return <Slide03FlyingBlind totalPages={TOTAL} />;
       case 3:
-        return <Slide08Demo totalPages={TOTAL} />;
+        return <Slide04WhyNow totalPages={TOTAL} />;
       case 4:
-        return <Slide14Cta totalPages={TOTAL} />;
+        return <Slide05ProductOpener totalPages={TOTAL} />;
+      case 5:
+        return <Slide06ThreeQuestions totalPages={TOTAL} />;
+      case 6:
+        return <Slide07Platform totalPages={TOTAL} />;
+      case 7:
+        return <Slide08Demo totalPages={TOTAL} />;
+      case 8:
+        return <Slide09Outcomes totalPages={TOTAL} />;
+      case 9:
+        return <Slide10TwoReaders totalPages={TOTAL} />;
+      case 10:
+        return <Slide12ClosingCta totalPages={TOTAL} />;
       default:
         return null;
     }

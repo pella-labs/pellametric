@@ -6,21 +6,21 @@ import {
   OgFrame,
   OgHeadline,
   OgStatRow,
-} from "../_og/chrome";
+} from "../(marketing)/_og/chrome";
 
 export const runtime = "nodejs";
-export const alt = "Bematist — generate your eight share cards from local agent history";
+export const alt = "Bematist · Build with us — three founding orgs, three months on us";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
-export default function CardOg() {
+export default function IntroOg() {
   return new ImageResponse(
-    <OgFrame eyebrow="02 / share card">
+    <OgFrame eyebrow="03 / build with us">
       <OgHeadline
-        eyebrow="for engineers · local-first"
+        eyebrow="for engineering leaders · founding cohort"
         title={
           <span style={{ display: "flex", flexWrap: "wrap" }}>
-            Generate your&nbsp;
+            Build Bematist&nbsp;
             <span
               style={{
                 color: OG_COLORS.accent,
@@ -28,17 +28,17 @@ export default function CardOg() {
                 display: "flex",
               }}
             >
-              eight share cards.
+              with us.
             </span>
           </span>
         }
-        description="Plug in your Claude Code and Codex history. Parsed on your device — only your aggregate stats are saved. The rest never leaves your machine."
+        description="Three orgs. Three months. On us. You bring a team and real workloads — we bring the onboarding and ship the roadmap your engineers actually need."
       />
       <OgStatRow
         stats={[
-          { label: "Where it runs", value: "On your device" },
-          { label: "What's saved", value: "Aggregate stats only" },
-          { label: "Cards in series", value: "8 shareable" },
+          { label: "Pilot", value: "Three months · on us" },
+          { label: "Seats", value: "3 founding orgs" },
+          { label: "Support", value: "24/7 from founders" },
         ]}
       />
     </OgFrame>,

@@ -900,6 +900,18 @@
   margin-top: 40px;
 }
 
+/* CardMount ships its own carousel arrows for the marketing /card page,
+   but in the deck we auto-advance — surfacing arrows confuses the audience
+   (they look identical to the deck nav). Same logic for the share bar,
+   the provider-filter pill at top, and the page dots at bottom: the
+   closing CTA slide wants *only* the card animation, nothing else. */
+.bematist-deck .deck-card-host .card-nav-side,
+.bematist-deck .deck-card-host .share-bar,
+.bematist-deck .deck-card-host .global-toggle,
+.bematist-deck .deck-card-host .card-page-dots {
+  display: none !important;
+}
+
 /* ── Section opener ──────────────────────────────────────────── */
 .bematist-deck .opener {
   padding: 96px;
