@@ -119,8 +119,41 @@ export const PrByAuthor = z.object({
   opened: z.number().int().nonnegative(),
   merged: z.number().int().nonnegative(),
   revert_count: z.number().int().nonnegative(),
+  /** Sum of `cost_usd` across sessions linked to any of this author's PRs in
+   * the window. Null when no linked sessions exist yet (linker hasn't filled
+   * in branch+time matches). */
+  spend_usd: z.number().nullable(),
+  /** Subset of `spend_usd` attributable to sessions linked to MERGED PRs. */
+  spend_on_merged_usd: z.number().nullable(),
+  /** Subset attributable to sessions linked only to closed-without-merge PRs.
+   * This is the "wasted on unmerged" number the dashboard surfaces. */
+  spend_on_unmerged_usd: z.number().nullable(),
+  /** Total tokens (input + output, excluding cache reads) across linked sessions. */
+  tokens: z.number().nullable(),
+  /** Average $/merged-PR for this author in the window. */
+  cost_per_merged_pr: z.number().nullable(),
 });
 export type PrByAuthor = z.infer<typeof PrByAuthor>;
+
+// ---- Subscription / savings (hardcoded, see TODO in delivery.ts) ----------
+
+export const SubscriptionSummary = z.object({
+  /** Distinct engineers with at least one event in the window (CH-derived). */
+  active_engineers: z.number().int().nonnegative(),
+  /** Hardcoded seat price; see delivery.ts for the TODO to wire DB-backed plans. */
+  seat_price_usd_per_month: z.number().nonnegative(),
+  /** Plan name shown in the UI hint. */
+  plan_label: z.string(),
+  /** active_engineers * seat_price_usd_per_month, prorated to the window length. */
+  subscription_cost_usd: z.number().nonnegative(),
+  /** sum(cost_usd) over all events in the window. */
+  actual_spend_usd: z.number().nonnegative(),
+  /** subscription_cost_usd - actual_spend_usd; positive = saving vs API pricing. */
+  savings_usd: z.number(),
+  /** Days in the window the subscription cost is prorated over. */
+  window_days: z.number().int().positive(),
+});
+export type SubscriptionSummary = z.infer<typeof SubscriptionSummary>;
 
 export const PrListItem = z.object({
   full_name: z.string(),
@@ -150,6 +183,9 @@ export const CodeDeliveryOutput = z.object({
   commits_without_pr: z.number().int().nonnegative(),
   recent_prs: z.array(PrListItem),
   cost_per_merged_pr: z.number().nullable(),
+  /** Hardcoded subscription comparison; nullable while we haven't wired
+   * per-org seat config to a DB table. */
+  subscription: SubscriptionSummary.nullable(),
   cohort_gated: z.boolean(),
   updated_at: z.string(),
 });

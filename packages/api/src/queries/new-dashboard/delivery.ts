@@ -7,11 +7,19 @@ import type {
   PrByRepo,
   PrListItem,
   SizeDistribution,
+  SubscriptionSummary,
   WeeklyThroughputPoint,
 } from "../../schemas/new-dashboard";
 import { hash8, round2, seededRand, seedFromString, WINDOW_DAYS } from "./_shared";
 
 const AUTHOR_COHORT_FLOOR = 5;
+
+// TODO(walid): swap these for a per-org plan config (orgs.seat_price_usd +
+// orgs.plan_label, or a `subscriptions` table once we model multi-provider
+// plans). Hardcoded for the dashboard PoC: $200/active-engineer/month is the
+// current Anthropic Claude Max retail price as of 2026-04.
+const HARDCODED_SEAT_PRICE_USD_PER_MONTH = 200;
+const HARDCODED_PLAN_LABEL = "Claude Max ($200/seat/mo, hardcoded)";
 
 export async function codeDelivery(
   ctx: Ctx,
@@ -73,11 +81,19 @@ async function codeDeliveryFixture(
   for (let i = 0; i < authorCount; i++) {
     const share = 1 / authorCount + (seededRand(seed, 400 + i) - 0.5) * 0.15;
     const o = Math.max(1, Math.round(opened * share));
+    const m = Math.round(o * 0.85);
+    const spend = round2(40 + seededRand(seed, 410 + i) * 200);
+    const mergedSpend = round2(spend * 0.78);
     pr_by_author.push({
       author_hash: hash8(`${ctx.tenant_id}:fx-author-${i}`),
       opened: o,
-      merged: Math.round(o * 0.85),
+      merged: m,
       revert_count: Math.round(o * 0.02),
+      spend_usd: spend,
+      spend_on_merged_usd: mergedSpend,
+      spend_on_unmerged_usd: round2(spend - mergedSpend),
+      tokens: Math.round(spend * 8000),
+      cost_per_merged_pr: m > 0 ? round2(mergedSpend / m) : null,
     });
   }
 
@@ -122,6 +138,19 @@ async function codeDeliveryFixture(
     commits_without_pr: Math.round(opened * 0.15),
     recent_prs,
     cost_per_merged_pr: round2(42 + seededRand(seed, 999) * 20),
+    subscription: {
+      active_engineers: authorCount,
+      seat_price_usd_per_month: HARDCODED_SEAT_PRICE_USD_PER_MONTH,
+      plan_label: HARDCODED_PLAN_LABEL,
+      window_days: days,
+      subscription_cost_usd: round2(
+        ((authorCount * HARDCODED_SEAT_PRICE_USD_PER_MONTH) / 30) * days,
+      ),
+      actual_spend_usd: round2(opened * 4.31 * (days / 30)),
+      savings_usd: round2(
+        ((authorCount * HARDCODED_SEAT_PRICE_USD_PER_MONTH) / 30) * days - opened * 4.31 * (days / 30),
+      ),
+    } satisfies SubscriptionSummary,
     cohort_gated: false,
     updated_at: new Date().toISOString(),
   };
@@ -224,7 +253,17 @@ async function codeDeliveryReal(ctx: Ctx, input: CodeDeliveryInput): Promise<Cod
     const key = r.author_login_hash.slice(0, 8);
     const entry =
       byAuthor.get(key) ??
-      ({ author_hash: key, opened: 0, merged: 0, revert_count: 0 } satisfies PrByAuthor);
+      ({
+        author_hash: key,
+        opened: 0,
+        merged: 0,
+        revert_count: 0,
+        spend_usd: null,
+        spend_on_merged_usd: null,
+        spend_on_unmerged_usd: null,
+        tokens: null,
+        cost_per_merged_pr: null,
+      } satisfies PrByAuthor);
     entry.opened += 1;
     if (r.state === "merged") entry.merged += 1;
     byAuthor.set(key, entry);
@@ -315,6 +354,136 @@ async function codeDeliveryReal(ctx: Ctx, input: CodeDeliveryInput): Promise<Cod
     if (totalCost > 0) cost_per_merged_pr = round2(totalCost / merged);
   }
 
+  // Per-author cost breakdown — joins author_login_hash → linked sessions →
+  // CH spend. A session attributed to MULTIPLE authors' PRs gets counted in
+  // each author's bucket; that's intentional for the MVP since sessions
+  // genuinely contribute to all PRs they touch. Only sessions linked to at
+  // least one of the author's PRs in-window are included.
+  if (!cohort_gated && pr_by_author.length > 0) {
+    const authorSessionRows = (await ctx.db.pg
+      .query<{ author8: string; state: string; session_id: string }>(
+        `SELECT substr(encode(pr.author_login_hash, 'hex'), 1, 8) AS author8,
+                pr.state                                          AS state,
+                srl.session_id                                    AS session_id
+           FROM github_pull_requests pr
+           JOIN session_repo_links srl
+             ON srl.tenant_id        = pr.tenant_id
+            AND srl.provider_repo_id = pr.provider_repo_id
+            AND srl.stale_at IS NULL
+          WHERE pr.tenant_id = $1
+            AND pr.opened_at >= now() - ($2 || ' days')::interval`,
+        [ctx.tenant_id, String(days)],
+      )
+      .catch(() => [])) as Array<{ author8: string; state: string; session_id: string }>;
+
+    if (authorSessionRows.length > 0) {
+      const allSessionIds = Array.from(new Set(authorSessionRows.map((r) => r.session_id)));
+      const sessionCostRows = await ctx.db.ch
+        .query<{
+          session_id: string;
+          cost: number | string;
+          tokens: number | string;
+        }>(
+          `SELECT session_id,
+                  round(sum(cost_usd), 6)                AS cost,
+                  sum(input_tokens) + sum(output_tokens) AS tokens
+             FROM events
+            WHERE org_id     = {tid:String}
+              AND session_id IN {sids:Array(String)}
+            GROUP BY session_id`,
+          { tid: ctx.tenant_id, sids: allSessionIds },
+        )
+        .catch(() => []);
+      const costBySession = new Map<string, { cost: number; tokens: number }>();
+      for (const r of sessionCostRows) {
+        costBySession.set(String(r.session_id), {
+          cost: Number(r.cost ?? 0),
+          tokens: Number(r.tokens ?? 0),
+        });
+      }
+      // For each (author, session) pair, accumulate cost. Track which sessions
+      // touched a merged PR per author so we can bucket merged vs unmerged.
+      type AuthorAcc = {
+        sessions: Set<string>;
+        mergedSessions: Set<string>;
+        cost: number;
+        merged_cost: number;
+        tokens: number;
+      };
+      const accByAuthor = new Map<string, AuthorAcc>();
+      // Build (author, session) → state set first to dedup per pair.
+      const pairStates = new Map<string, Set<string>>();
+      for (const r of authorSessionRows) {
+        const k = `${r.author8}|${r.session_id}`;
+        const set = pairStates.get(k) ?? new Set<string>();
+        set.add(r.state);
+        pairStates.set(k, set);
+      }
+      for (const [k, states] of pairStates) {
+        const [author8, session_id] = k.split("|");
+        if (!author8 || !session_id) continue;
+        const cb = costBySession.get(session_id);
+        if (!cb) continue;
+        const acc = accByAuthor.get(author8) ?? {
+          sessions: new Set<string>(),
+          mergedSessions: new Set<string>(),
+          cost: 0,
+          merged_cost: 0,
+          tokens: 0,
+        };
+        if (!acc.sessions.has(session_id)) {
+          acc.sessions.add(session_id);
+          acc.cost += cb.cost;
+          acc.tokens += cb.tokens;
+          if (states.has("merged")) {
+            acc.mergedSessions.add(session_id);
+            acc.merged_cost += cb.cost;
+          }
+        }
+        accByAuthor.set(author8, acc);
+      }
+      for (const author of pr_by_author) {
+        const acc = accByAuthor.get(author.author_hash);
+        if (!acc) continue;
+        author.spend_usd = round2(acc.cost);
+        author.spend_on_merged_usd = round2(acc.merged_cost);
+        author.spend_on_unmerged_usd = round2(Math.max(0, acc.cost - acc.merged_cost));
+        author.tokens = acc.tokens;
+        author.cost_per_merged_pr =
+          author.merged > 0 ? round2(acc.merged_cost / author.merged) : null;
+      }
+    }
+  }
+
+  // Subscription summary — counts distinct engineer_ids active in the window
+  // from CH events, multiplies by the hardcoded seat price. See the TODO at
+  // the top of this file for the wiring plan.
+  let subscription: SubscriptionSummary | null = null;
+  const subRows = await ctx.db.ch
+    .query<{ engineers: number | string; spend: number | string }>(
+      `SELECT uniqExact(engineer_id)         AS engineers,
+              round(sum(cost_usd), 6)        AS spend
+         FROM events
+        WHERE org_id = {tid:String}
+          AND ts >= now() - toIntervalDay({days:UInt16})`,
+      { tid: ctx.tenant_id, days },
+    )
+    .catch(() => []);
+  if (subRows[0]) {
+    const engineers = Number(subRows[0].engineers ?? 0);
+    const actual = Number(subRows[0].spend ?? 0);
+    const subCost = (engineers * HARDCODED_SEAT_PRICE_USD_PER_MONTH * days) / 30;
+    subscription = {
+      active_engineers: engineers,
+      seat_price_usd_per_month: HARDCODED_SEAT_PRICE_USD_PER_MONTH,
+      plan_label: HARDCODED_PLAN_LABEL,
+      window_days: days,
+      subscription_cost_usd: round2(subCost),
+      actual_spend_usd: round2(actual),
+      savings_usd: round2(subCost - actual),
+    };
+  }
+
   const commitsOnlyRows = await ctx.db.pg
     .query<{ n: number | string }>(
       `SELECT count(*) AS n
@@ -343,6 +512,7 @@ async function codeDeliveryReal(ctx: Ctx, input: CodeDeliveryInput): Promise<Cod
     commits_without_pr,
     recent_prs,
     cost_per_merged_pr,
+    subscription,
     cohort_gated,
     updated_at: new Date().toISOString(),
   };
