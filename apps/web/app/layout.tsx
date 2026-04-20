@@ -23,20 +23,20 @@ export const metadata: Metadata = {
     template: "%s · Bematist",
   },
   description:
-    "Measure AI-assisted engineering. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.",
+    "Measure agentic engineering output. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   applicationName: "Bematist",
   openGraph: {
     type: "website",
     siteName: "Bematist",
     locale: "en_US",
     url: "/",
-    title: "Bematist · Measure AI-assisted engineering",
+    title: "Bematist · Measure agentic engineering output",
     description:
       "See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bematist · Measure AI-assisted engineering",
+    title: "Bematist · Measure agentic engineering output",
     description:
       "See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },

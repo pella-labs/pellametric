@@ -1,16 +1,9 @@
 import { ImageResponse } from "next/og";
-import {
-  OG_COLORS,
-  OG_CONTENT_TYPE,
-  OG_SIZE,
-  OgFrame,
-  OgHeadline,
-  OgStatRow,
-} from "../_og/chrome";
+import { OG_COLORS, OG_CONTENT_TYPE, OG_SIZE, OgFrame, OgHeadline, OgStatRow } from "../_og/chrome";
 
 export const runtime = "nodejs";
 export const alt =
-  "Bematist — measure AI-assisted engineering: see the spend, see the work, scale what ships";
+  "Bematist — measure agentic engineering output: see the spend, see the work, scale what ships";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
@@ -21,7 +14,7 @@ export default function HomeOg() {
         eyebrow="open-source ai-engineering analytics"
         title={
           <span style={{ display: "flex", flexWrap: "wrap" }}>
-            Measure&nbsp;
+            Measure agentic engineering&nbsp;
             <span
               style={{
                 color: OG_COLORS.accent,
@@ -29,7 +22,7 @@ export default function HomeOg() {
                 display: "flex",
               }}
             >
-              AI-assisted engineering.
+              output.
             </span>
           </span>
         }

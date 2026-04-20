@@ -10,7 +10,7 @@ import {
 
 export const runtime = "nodejs";
 export const alt =
-  "Measure AI-assisted engineering — see the spend, see the work, scale what ships";
+  "Measure agentic engineering output — see the spend, see the work, scale what ships";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
@@ -21,7 +21,7 @@ export default function IntroOg() {
         eyebrow="open-source ai-engineering analytics"
         title={
           <span style={{ display: "flex", flexWrap: "wrap" }}>
-            Measure&nbsp;
+            Measure agentic engineering&nbsp;
             <span
               style={{
                 color: OG_COLORS.accent,
@@ -29,7 +29,7 @@ export default function IntroOg() {
                 display: "flex",
               }}
             >
-              AI-assisted engineering.
+              output.
             </span>
           </span>
         }

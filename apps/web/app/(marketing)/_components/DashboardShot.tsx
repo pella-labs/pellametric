@@ -19,7 +19,7 @@ export function DashboardShot() {
     <section className="mk-dashboard-shot">
       <div style={{ textAlign: "center", maxWidth: 640 }}>
         <span className="mk-sys" style={{ display: "block", marginBottom: 12 }}>
-          Where you actually live
+          The instrument
         </span>
         <h2
           className="mk-mono"
@@ -28,7 +28,7 @@ export function DashboardShot() {
             letterSpacing: "-0.02em",
           }}
         >
-          The dashboard is the product.
+          One surface for the whole stack.
         </h2>
         <p
           style={{
@@ -38,9 +38,9 @@ export function DashboardShot() {
             lineHeight: 1.55,
           }}
         >
-          One view across every agent, every repo, every engineer. Spend by project, wins by
-          workflow, sessions that drift into loops, and the patterns your strongest engineers use
-          that the rest of the team could be copying.
+          What your agents cost, what they shipped, and which prompts actually ship code. Built for
+          engineering leaders handed an AI bill, a pile of session logs, and asked to make sense of
+          both.
         </p>
       </div>
 

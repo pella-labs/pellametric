@@ -314,6 +314,10 @@
   border-color: var(--mk-ink-muted);
   color: var(--mk-ink-muted);
 }
+.bematist-marketing .mk-badge.warn {
+  border-color: var(--mk-warm);
+  color: var(--mk-warm);
+}
 
 /* ─── Metric block ─────────────────────────────────────────────── */
 .bematist-marketing .mk-metric {

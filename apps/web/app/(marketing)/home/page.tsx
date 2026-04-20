@@ -6,9 +6,9 @@ import { BrandMonolith } from "../_components/BrandMonolith";
 import { DashboardShot } from "../_components/DashboardShot";
 import { HeroGrid } from "../_components/HeroGrid";
 
-const HOME_TITLE = "Bematist · Measure AI-assisted engineering";
+const HOME_TITLE = "Bematist · Measure agentic engineering output";
 const HOME_DESCRIPTION =
-  "Measure AI-assisted engineering. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.";
+  "Measure agentic engineering output. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.";
 
 export const metadata: Metadata = {
   title: HOME_TITLE,
@@ -31,46 +31,40 @@ export const metadata: Metadata = {
 const ADAPTERS = [
   {
     name: "Claude Code",
-    iface: "CLI",
-    captures: "Sessions · input/output/cache tokens · models · tool calls · accepted edits",
+    status: "Full",
+    tone: "ok",
+    captures: "Sessions, input/output/cache tokens, models, tool calls, accepted edits",
   },
   {
-    name: "Codex CLI",
-    iface: "CLI",
-    captures: "Sessions · per-turn token diffs · tool executions · cost",
+    name: "Codex",
+    status: "Full",
+    tone: "ok",
+    captures: "Sessions, per-turn token diffs, tool executions, dollar cost",
+  },
+  {
+    name: "Cursor",
+    status: "In dev",
+    tone: "warn",
+    captures:
+      "Messages, lines suggested, accept rate. Cost shown as $0 — Cursor is subscription-billed and exposes no per-request pricing.",
   },
   {
     name: "Continue.dev",
-    iface: "IDE",
-    captures: "Chat turns · token generation · edit outcomes · tool usage (four streams)",
+    status: "Full",
+    tone: "ok",
+    captures: "Chat turns, token generation, edit outcomes, tool usage",
   },
   {
     name: "OpenCode",
-    iface: "CLI",
-    captures: "Sessions · tokens · model routing (SQLite, post-v1.2)",
+    status: "Full",
+    tone: "ok",
+    captures: "Sessions, tokens, model routing (SQLite, post-v1.2)",
   },
   {
-    name: "VS Code extensions",
-    iface: "IDE",
-    captures: "Pluggable handlers via SDK — Twinny shipped, community adapters supported",
-  },
-] as const;
-
-const FEATURES = [
-  {
-    eyebrow: "01",
-    title: "One binary, every coding agent",
-    body: "The collector auto-detects five agents on the machine — Claude Code, Codex, Continue.dev, OpenCode, VS Code — and reads their native session files. No API keys to proxy, no plugins to install, no dev workflow to change.",
-  },
-  {
-    eyebrow: "02",
-    title: "A personal card that actually means something",
-    body: "Sessions, input tokens, output tokens, cache read + create tokens, dollar-value cache savings, models used, tools called, repos touched, hourly + 160-day daily distributions. All pulled from your real local sessions.",
-  },
-  {
-    eyebrow: "03",
-    title: "Seven dashboard surfaces, end-to-end wired",
-    body: "Summary · Sessions · Outcomes · Clusters · Insights · Teams · Me. Every page's read path is written and tested; fixture data today, ClickHouse MVs as your pipeline lands.",
+    name: "VS Code (generic SDK)",
+    status: "Full",
+    tone: "ok",
+    captures: "Pluggable handlers — Twinny shipped, community adapters supported",
   },
 ] as const;
 
@@ -78,27 +72,27 @@ const SCORE_DIMENSIONS = [
   {
     tag: "35%",
     name: "Outcome quality",
-    body: "Sessions that end in a merged change vs sessions that burn tokens with nothing to show.",
+    body: "Sessions that end in merged code. Not started, not attempted — merged.",
   },
   {
     tag: "25%",
     name: "Efficiency",
-    body: "Accepted edits per dollar of model spend, cohort-normalized against peers doing similar work.",
+    body: "Accepted edits per dollar, normalized against peers doing similar work.",
   },
   {
     tag: "20%",
     name: "Autonomy",
-    body: "One minus the intervention rate — how often a session needs a hand-hold vs ships on its own.",
+    body: "How often a session ships without a hand-hold. One minus the intervention rate.",
   },
   {
     tag: "10%",
     name: "Adoption depth",
-    body: "How many agents and workflows the engineer actually uses, not just the one that opened last.",
+    body: "How many of your agents and workflows the engineer actually uses.",
   },
   {
     tag: "10%",
     name: "Team impact",
-    body: "Playbooks this engineer promoted that other engineers adopted — capped, verifiable, opt-in.",
+    body: "Playbooks this engineer promoted that the rest of the team adopted.",
   },
 ] as const;
 
@@ -114,8 +108,7 @@ export default function MarketingHome() {
               open-source. self-hostable.
             </div>
             <h1>
-              Measure AI&#8209;assisted{" "}
-              <em style={{ color: "var(--mk-accent)" }}>engineering.</em>
+              Measure agentic engineering <em style={{ color: "var(--mk-accent)" }}>output.</em>
             </h1>
             <p>
               See the spend. See the work. Scale what ships. Open-source analytics across Claude
@@ -149,32 +142,16 @@ export default function MarketingHome() {
       {/* Brand monolith */}
       <BrandMonolith />
 
-      {/* Features */}
-      <section aria-label="What the dashboard does">
-        <div className="mk-section-header">
-          <span className="mk-mono mk-xs">01 / The instrument</span>
-        </div>
-        <div className="mk-features">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="mk-feature">
-              <span className="mk-feature-index">{f.eyebrow}</span>
-              <h3>{f.title}</h3>
-              <p>{f.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Adapters */}
+      {/* Adapters — pillar 01: see the spend */}
       <section>
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">02 / See the spend · every agent, every token</span>
+          <span className="mk-mono mk-xs">01 / See the spend · every agent, every token</span>
         </div>
         <table className="mk-table">
           <thead>
             <tr>
-              <th>Target</th>
-              <th>Interface</th>
+              <th>Adapter</th>
+              <th>Status</th>
               <th>What it captures</th>
             </tr>
           </thead>
@@ -182,8 +159,10 @@ export default function MarketingHome() {
             {ADAPTERS.map((row) => (
               <tr key={row.name}>
                 <td style={{ color: "var(--mk-ink)" }}>{row.name}</td>
-                <td className="mk-muted" data-label="Interface">
-                  {row.iface}
+                <td data-label="Status">
+                  <span className={`mk-badge ${row.tone === "warn" ? "warn" : "full"}`}>
+                    {row.status}
+                  </span>
                 </td>
                 <td className="mk-muted" data-label="Captures">
                   {row.captures}
@@ -194,9 +173,9 @@ export default function MarketingHome() {
         </table>
       </section>
 
-      {/* Primary metric */}
+      {/* Primary metric — pillar 02: see the work */}
       <div className="mk-section-header">
-        <span className="mk-mono mk-xs">03 / See the work · spend tied to merged code</span>
+        <span className="mk-mono mk-xs">02 / See the work · spend tied to merged code</span>
       </div>
       <section className="mk-metric" aria-label="Outcome metric">
         <div className="mk-metric-visual">
@@ -205,33 +184,80 @@ export default function MarketingHome() {
           <div className="mk-metric-label">
             <strong>accepted edits per dollar</strong>
             <br />
-            Dedup unit is (session_id, hunk_sha256). Denominator window is the session. Reverts
-            within 24h subtract. Pricing pinned at capture time, so model-price shifts don't
-            silently rewrite history.
+            The GitHub App joins sessions to PRs through accepted-edit events, AI-Assisted commit
+            trailers, and a git-log fallback — so you know what shipped and what just burned tokens.
+            Pricing pinned at capture, reverts within 24h subtract.
           </div>
         </div>
         <div className="mk-metric-details">
-          <span className="mk-sys">WHAT THE DASHBOARD SHOWS</span>
+          <span className="mk-sys">WHAT YOU SEE</span>
           <ul className="mk-kv">
             <li>
-              <span>/summary</span>
-              <span>spend, accepted edits, merged PRs, $/edit</span>
+              <span>Spend per engineer</span>
+              <span>daily, weekly, by model and project</span>
             </li>
             <li>
-              <span>/sessions</span>
-              <span>every session, tokens, tools, cost</span>
+              <span>Cost per merged PR</span>
+              <span>with the commits that earned it</span>
             </li>
             <li>
-              <span>/outcomes</span>
-              <span>cost per merged PR, commit join</span>
+              <span>Sessions that shipped</span>
+              <span>vs sessions that burned</span>
             </li>
             <li>
-              <span>/clusters</span>
-              <span>similar prompts + twin finder</span>
+              <span>Twin prompts</span>
+              <span>workflows that solved the same task cheaper</span>
             </li>
             <li>
-              <span>/insights</span>
-              <span>anomalies + weekly digest</span>
+              <span>Weekly digest</span>
+              <span>what changed, what to do about it</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      {/* Twin Finder — pillar 03: scale what ships (the unlock) */}
+      <div className="mk-section-header">
+        <span className="mk-mono mk-xs">03 / Scale what ships · Twin Finder</span>
+      </div>
+      <section className="mk-metric" aria-label="Twin Finder">
+        <div className="mk-metric-visual">
+          <span className="mk-sys">THE UNLOCK</span>
+          <h2
+            style={{
+              fontSize: "clamp(28px, 3.4vw, 44px)",
+              lineHeight: 1.05,
+              letterSpacing: "-0.03em",
+              margin: "8px 0 16px",
+            }}
+          >
+            Find the workflow that ships.{" "}
+            <em style={{ color: "var(--mk-accent)" }}>Replicate it.</em>
+          </h2>
+          <div className="mk-metric-label">
+            Every prompt gets redacted and abstracted on-device, embedded, and clustered against the
+            rest of the team. Twin Finder pulls the cohort that solved the same problem you're
+            solving — and surfaces the engineers who solved it cheaper. The pattern is the asset.
+          </div>
+        </div>
+        <div className="mk-metric-details">
+          <span className="mk-sys">HOW IT WORKS</span>
+          <ul className="mk-kv">
+            <li>
+              <span>Cluster</span>
+              <span>nightly k-means across prompt embeddings</span>
+            </li>
+            <li>
+              <span>Compare</span>
+              <span>similarity search inside your cluster</span>
+            </li>
+            <li>
+              <span>Surface</span>
+              <span>the cohort that solved it for less</span>
+            </li>
+            <li>
+              <span>Promote</span>
+              <span>turn the winning prompt into a team playbook</span>
             </li>
           </ul>
         </div>
@@ -240,7 +266,7 @@ export default function MarketingHome() {
       {/* AI Leverage Score */}
       <section aria-label="AI Leverage Score">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">04 / Scale what ships · AI Leverage Score v1</span>
+          <span className="mk-mono mk-xs">04 / The manager's number · AI Leverage Score v1</span>
         </div>
         <div className="mk-score-grid">
           {SCORE_DIMENSIONS.map((d) => (
@@ -250,15 +276,6 @@ export default function MarketingHome() {
               <p>{d.body}</p>
             </div>
           ))}
-          <div className="mk-score-cell mk-score-gate">
-            <span className="mk-score-weight">GATES</span>
-            <h3>No number, no gate</h3>
-            <p>
-              A score renders only when all four hold: ≥10 sessions, ≥5 active days, ≥3 outcome
-              events, cohort ≥8 peers. Below any of them, the tile says "insufficient data" and
-              names the gate that failed — never interpolated, never estimated.
-            </p>
-          </div>
         </div>
       </section>
 
@@ -296,9 +313,9 @@ export default function MarketingHome() {
             understand the least.
           </p>
           <p className="mk-closing-body">
-            Measure it. See the spend. See the work. Scale what ships. One open-source platform
-            across Claude Code, Codex and the rest of your dev-AI stack — auto-instrumented,
-            self-hostable, tied to real engineering outcomes. The data was always yours.
+            Bematist measures it. Spend across every agent. Outcomes tied to merged code. The
+            prompts that ship, surfaced and shareable. Open-source, self-hostable, runs against your
+            local sessions on day one. The data was always yours — now it's an instrument.
           </p>
           <div className="mk-closing-actions">
             <Link href="/card" className="mk-btn mk-btn-primary">

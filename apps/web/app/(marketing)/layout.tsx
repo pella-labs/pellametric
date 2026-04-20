@@ -35,10 +35,12 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
         {children}
         <footer className="mk-footer">
           <div className="mk-footer-copy">
-            <span className="mk-footer-line">The instrument for AI-assisted engineering.</span>
+            <span className="mk-footer-line">
+              The instrument for agentic engineering output.
+            </span>
             <span className="mk-footer-sub">
-              Spend by project, wins by workflow, and the patterns worth copying across your team.
-              The data was always yours — we just made it legible.
+              See the spend. See the work. Scale what ships. Open-source, self-hostable, runs
+              against your local sessions on day one.
             </span>
           </div>
           <div>
