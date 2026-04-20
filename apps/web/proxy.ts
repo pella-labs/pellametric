@@ -43,6 +43,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/card",
   "/deck",
   "/install.sh",
+  "/intro",
   "/_next",
   "/favicon",
 ];
@@ -73,25 +74,24 @@ function dashboardEnabled(): boolean {
   return process.env.DASHBOARD_ENABLED === "1" || process.env.NEXT_PUBLIC_DASHBOARD_ENABLED === "1";
 }
 
-function marketingMode(): boolean {
-  return process.env.NEXT_PUBLIC_IS_CLOUD === "1" || process.env.VERCEL === "1";
-}
-
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const loggedIn = hasSessionCookie(request) || isDevModeTenantPinned();
 
-  // 1. `/` routing (preserves the pre-M4 dashboard-vs-marketing behaviour).
-  if (pathname === "/") {
-    if (dashboardEnabled()) {
-      // Dashboard surface; fall through to the auth gate below.
-    } else if (marketingMode()) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/home";
-      return NextResponse.rewrite(url);
-    } else {
-      // Plain `bun run dev` still shows the dashboard at `/`; tests hit this.
-    }
+  // 1. `/` routing — split on auth state so signed-in users still get the
+  // dashboard while the marketing site remains the public face.
+  //
+  //   - Logged-out + dashboard not explicitly enabled → rewrite to `/home`
+  //     (the marketing surface). The previous shape gated this on
+  //     `NEXT_PUBLIC_IS_CLOUD` / `VERCEL`, which silently broke the root on
+  //     Railway where neither is set — bematist.dev served the auth wall
+  //     instead of the landing page.
+  //   - Logged-in → fall through; the dashboard route renders at `/` and
+  //     the auth gate below leaves it alone.
+  if (pathname === "/" && !loggedIn && !dashboardEnabled()) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/home";
+    return NextResponse.rewrite(url);
   }
 
   // 2. Logged-in visitors bounce off `/auth/*` back to the dashboard —

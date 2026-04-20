@@ -12,15 +12,14 @@ import { Slide07Platform } from "./slides/07-platform";
 import { Slide08Demo } from "./slides/08-demo";
 import { Slide09Outcomes } from "./slides/09-outcomes";
 import { Slide10TwoReaders } from "./slides/10-two-readers";
-import { Slide12QuestionsAnswered } from "./slides/12-questions-answered";
-import { Slide13DataWasYours } from "./slides/13-data-was-yours";
-import { Slide14Cta } from "./slides/14-cta";
+import { Slide12ClosingCta } from "./slides/12-closing-cta";
 import { useDeckNav } from "./use-deck-nav";
 
-// The former "Engineer Card" slide (slide 11) merged into the CTA slide —
-// the card now shows alongside the QR so developers who scan it see the
-// artifact they're about to get. `Slide11EngineerCard` is left in the
-// slides/ directory for reference but no longer rendered.
+// The three former closing slides — Answers (12), Closing Thesis (13), and
+// the QR-only Call to Action (14) — are merged into a single split-CTA
+// closer that pitches organizations on the left and engineers on the right.
+// `Slide11EngineerCard` and the legacy slides remain in the slides/ dir for
+// reference but are no longer rendered.
 const SLIDE_LABELS = [
   "Cover",
   "Thesis",
@@ -32,8 +31,6 @@ const SLIDE_LABELS = [
   "Demo",
   "Outcomes",
   "Two Readers",
-  "Answers",
-  "Closing Thesis",
   "Call to Action",
 ] as const;
 
@@ -65,11 +62,7 @@ export default function DeckPage() {
       case 9:
         return <Slide10TwoReaders totalPages={TOTAL} />;
       case 10:
-        return <Slide12QuestionsAnswered totalPages={TOTAL} />;
-      case 11:
-        return <Slide13DataWasYours totalPages={TOTAL} />;
-      case 12:
-        return <Slide14Cta totalPages={TOTAL} />;
+        return <Slide12ClosingCta totalPages={TOTAL} />;
       default:
         return null;
     }

@@ -35,11 +35,6 @@ const ADAPTERS = [
     captures: "Sessions · input/output/cache tokens · models · tool calls · accepted edits",
   },
   {
-    name: "Cursor",
-    iface: "IDE",
-    captures: "Generations · accept/reject · mode (auto/manual) · estimated cost",
-  },
-  {
     name: "Codex CLI",
     iface: "CLI",
     captures: "Sessions · per-turn token diffs · tool executions · cost",
@@ -65,7 +60,7 @@ const FEATURES = [
   {
     eyebrow: "01",
     title: "One binary, every coding agent",
-    body: "The collector auto-detects six agents on the machine — Claude Code, Cursor, Codex, Continue.dev, OpenCode, VS Code — and reads their native session files. No API keys to proxy, no plugins to install, no dev workflow to change.",
+    body: "The collector auto-detects five agents on the machine — Claude Code, Codex, Continue.dev, OpenCode, VS Code — and reads their native session files. No API keys to proxy, no plugins to install, no dev workflow to change.",
   },
   {
     eyebrow: "02",
@@ -122,10 +117,10 @@ export default function MarketingHome() {
               Where is all your AI money <em>actually going</em>?
             </h1>
             <p>
-              AI coding agents are exploding across engineering teams — Claude Code, Cursor, Codex.
-              Spend is up, usage is everywhere, but the answer to "what are we getting back" is
-              still a black box. Bematist makes that system legible. Start with a personal card in
-              30 seconds; the dashboard is where your team lives.
+              AI coding agents are exploding across engineering teams — Claude Code, Codex, and
+              more. Spend is up, usage is everywhere, but the answer to "what are we getting back"
+              is still a black box. Bematist makes that system legible. Start with a personal card
+              in 30 seconds; the dashboard is where your team lives.
             </p>
             <div className="mk-hero-actions">
               <Link href="/auth/sign-in?intent=new-org" className="mk-btn mk-btn-primary">
@@ -289,9 +284,6 @@ export default function MarketingHome() {
             <span className="mk-term-cmd">bematist dry-run && bematist serve</span>
           </div>
         </div>
-        <Link href="/install" className="mk-btn mk-btn-ghost">
-          Full install runbook →
-        </Link>
       </section>
 
       {/* Closing quote */}

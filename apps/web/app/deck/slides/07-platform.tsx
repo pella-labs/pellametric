@@ -17,7 +17,7 @@ export function Slide07Platform({ totalPages }: { totalPages: number }) {
           <div className="sys" style={{ marginBottom: 8 }}>
             Sources
           </div>
-          {["Claude Code", "Cursor", "Codex CLI", "Continue.dev", "OpenCode", "VS Code"].map(
+          {["Claude Code", "Codex CLI", "Continue.dev", "OpenCode", "VS Code"].map(
             (name) => (
               <div key={name} className="diagram-node">
                 <span>{name}</span>

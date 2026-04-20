@@ -36,8 +36,8 @@ export default async function WelcomePage() {
         <Badge tone="neutral">Setup</Badge>
         <h1 className="text-3xl font-semibold tracking-tight">Welcome to Bematist</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Your org is live. Install the collector on any machine running Claude Code, Cursor, Codex,
-          or Continue.dev — it ships tokens and outcomes to{" "}
+          Your org is live. Install the collector on any machine running Claude Code, Codex, or
+          Continue.dev — it ships tokens and outcomes to{" "}
           <span className="font-mono text-foreground">{INGEST_PUBLIC_URL}</span> over TLS.
         </p>
       </header>

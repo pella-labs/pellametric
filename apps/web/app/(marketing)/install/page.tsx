@@ -103,13 +103,6 @@ const ADAPTERS_TODAY: Adapter[] = [
       "Sessions with per-turn token deltas, tool executions, and dollar cost. Cumulative counters are diffed so nothing double-counts.",
   },
   {
-    name: "Cursor",
-    iface: "IDE",
-    fidelity: "Token-only",
-    capture:
-      "Generations, accept/reject, mode (auto vs manual), estimated cost. Auto-mode cost is labeled `estimated` instead of silently fabricated.",
-  },
-  {
     name: "Continue.dev",
     iface: "IDE",
     fidelity: "Full",
@@ -802,14 +795,6 @@ export default function InstallPage() {
           </div>
           <div className="mk-feature">
             <span className="mk-feature-index">03</span>
-            <h3 style={{ fontSize: 18 }}>Cursor sessions show "estimated" cost</h3>
-            <p>
-              That's correct, not a bug. Cursor's Auto-mode does not expose per-generation cost to
-              any adapter — we label it rather than make a number up.
-            </p>
-          </div>
-          <div className="mk-feature">
-            <span className="mk-feature-index">04</span>
             <h3 style={{ fontSize: 18 }}>Old OpenCode sessions are missing</h3>
             <p>
               Sessions from before OpenCode v1.2 used a format we intentionally do not parse. They
@@ -817,7 +802,7 @@ export default function InstallPage() {
             </p>
           </div>
           <div className="mk-feature">
-            <span className="mk-feature-index">05</span>
+            <span className="mk-feature-index">04</span>
             <h3 style={{ fontSize: 18 }}>Managed-cloud rejects prompt-text events</h3>
             <p>
               On managed cloud, the ingest server rejects full-prompt events unless the org admin
@@ -826,7 +811,7 @@ export default function InstallPage() {
             </p>
           </div>
           <div className="mk-feature">
-            <span className="mk-feature-index">06</span>
+            <span className="mk-feature-index">05</span>
             <h3 style={{ fontSize: 18 }}>Something still feels off</h3>
             <p>
               Open an issue with the output of `bematist doctor` and the last fifty lines of
