@@ -23,22 +23,22 @@ export const metadata: Metadata = {
     template: "%s · Bematist",
   },
   description:
-    "Open-source AI-engineering analytics — auto-instruments every developer's coding-agent usage and correlates LLM spend with Git outcomes.",
+    "Measure AI-assisted engineering. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   applicationName: "Bematist",
   openGraph: {
     type: "website",
     siteName: "Bematist",
     locale: "en_US",
     url: "/",
-    title: "Bematist · See what AI is actually shipping",
+    title: "Bematist · Measure AI-assisted engineering",
     description:
-      "Open-source analytics for AI-assisted engineering. Tie every LLM dollar to the code that merged.",
+      "See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bematist · See what AI is actually shipping",
+    title: "Bematist · Measure AI-assisted engineering",
     description:
-      "Open-source analytics for AI-assisted engineering. Tie every LLM dollar to the code that merged.",
+      "See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },
 };
 

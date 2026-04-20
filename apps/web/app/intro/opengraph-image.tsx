@@ -9,18 +9,19 @@ import {
 } from "../(marketing)/_og/chrome";
 
 export const runtime = "nodejs";
-export const alt = "Bematist · Build with us — three founding orgs, three months on us";
+export const alt =
+  "Measure AI-assisted engineering — see the spend, see the work, scale what ships";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
 export default function IntroOg() {
   return new ImageResponse(
-    <OgFrame eyebrow="03 / build with us">
+    <OgFrame eyebrow="03 / book a call">
       <OgHeadline
-        eyebrow="for engineering leaders · founding cohort"
+        eyebrow="open-source ai-engineering analytics"
         title={
           <span style={{ display: "flex", flexWrap: "wrap" }}>
-            Build Bematist&nbsp;
+            Measure&nbsp;
             <span
               style={{
                 color: OG_COLORS.accent,
@@ -28,17 +29,17 @@ export default function IntroOg() {
                 display: "flex",
               }}
             >
-              with us.
+              AI-assisted engineering.
             </span>
           </span>
         }
-        description="Three orgs. Three months. On us. You bring a team and real workloads — we bring the onboarding and ship the roadmap your engineers actually need."
+        description="Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack."
       />
       <OgStatRow
         stats={[
-          { label: "Pilot", value: "Three months · on us" },
-          { label: "Seats", value: "3 founding orgs" },
-          { label: "Support", value: "24/7 from founders" },
+          { label: "Spend", value: "See the spend" },
+          { label: "Work", value: "See the work" },
+          { label: "Scale", value: "Scale what ships" },
         ]}
       />
     </OgFrame>,

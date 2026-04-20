@@ -6,9 +6,9 @@ import { BrandMonolith } from "../_components/BrandMonolith";
 import { DashboardShot } from "../_components/DashboardShot";
 import { HeroGrid } from "../_components/HeroGrid";
 
-const HOME_TITLE = "Bematist · The instrument for AI-assisted engineering";
+const HOME_TITLE = "Bematist · Measure AI-assisted engineering";
 const HOME_DESCRIPTION =
-  "Bematist is the analytics platform for AI-assisted software development. See where every dollar lands, which workflows ship code, and the patterns worth copying across your team.";
+  "Measure AI-assisted engineering. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.";
 
 export const metadata: Metadata = {
   title: HOME_TITLE,
@@ -114,13 +114,13 @@ export default function MarketingHome() {
               open-source. self-hostable.
             </div>
             <h1>
-              Where is all your AI money <em>actually going</em>?
+              Measure <em>AI-assisted engineering</em>.
             </h1>
             <p>
-              AI coding agents are exploding across engineering teams — Claude Code, Codex, and
-              more. Spend is up, usage is everywhere, but the answer to "what are we getting back"
-              is still a black box. Bematist makes that system legible. Start with a personal card
-              in 30 seconds; the dashboard is where your team lives.
+              See the spend. See the work. Scale what ships. Open-source analytics across Claude
+              Code, Codex and the rest of your dev-AI stack — auto-instrumented on every engineer's
+              machine. Start with a personal card in 30 seconds; the team dashboard is where it
+              compounds.
             </p>
             <div className="mk-hero-actions">
               <Link href="/auth/sign-in?intent=new-org" className="mk-btn mk-btn-primary">
@@ -153,7 +153,7 @@ export default function MarketingHome() {
       {/* Features */}
       <section aria-label="What the dashboard does">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">01 / What Bematist gives you</span>
+          <span className="mk-mono mk-xs">01 / The instrument</span>
         </div>
         <div className="mk-features">
           {FEATURES.map((f) => (
@@ -169,7 +169,7 @@ export default function MarketingHome() {
       {/* Adapters */}
       <section>
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">02 / Six agents, parsing real session files today</span>
+          <span className="mk-mono mk-xs">02 / See the spend · every agent, every token</span>
         </div>
         <table className="mk-table">
           <thead>
@@ -196,6 +196,9 @@ export default function MarketingHome() {
       </section>
 
       {/* Primary metric */}
+      <div className="mk-section-header">
+        <span className="mk-mono mk-xs">03 / See the work · spend tied to merged code</span>
+      </div>
       <section className="mk-metric" aria-label="Outcome metric">
         <div className="mk-metric-visual">
           <span className="mk-sys">OUTCOME METRIC</span>
@@ -238,7 +241,7 @@ export default function MarketingHome() {
       {/* AI Leverage Score */}
       <section aria-label="AI Leverage Score">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">03 / AI Leverage Score v1 · ai_leverage_v1</span>
+          <span className="mk-mono mk-xs">04 / Scale what ships · AI Leverage Score v1</span>
         </div>
         <div className="mk-score-grid">
           {SCORE_DIMENSIONS.map((d) => (
@@ -263,7 +266,7 @@ export default function MarketingHome() {
       {/* Install CTA — full runbook lives on /install */}
       <section className="mk-terminal-wrap" aria-labelledby="install-cta">
         <span className="mk-sys" style={{ display: "block", marginBottom: 12 }} id="install-cta">
-          04 / Install
+          05 / Install
         </span>
         <div className="mk-terminal" style={{ marginBottom: 20 }}>
           <div className="mk-term-comment">
@@ -294,9 +297,9 @@ export default function MarketingHome() {
             understand the least.
           </p>
           <p className="mk-closing-body">
-            Bematist is the instrument for measuring it. One open-source platform that makes AI
-            spend legible, accountable, and tied to real engineering outcomes. The data was always
-            yours. We just made it legible.
+            Measure it. See the spend. See the work. Scale what ships. One open-source platform
+            across Claude Code, Codex and the rest of your dev-AI stack — auto-instrumented,
+            self-hostable, tied to real engineering outcomes. The data was always yours.
           </p>
           <div className="mk-closing-actions">
             <Link href="/card" className="mk-btn mk-btn-primary">
@@ -316,7 +319,7 @@ export default function MarketingHome() {
 
       {/* License */}
       <section className="mk-license">
-        <span className="mk-sys">05 / License</span>
+        <span className="mk-sys">06 / License</span>
         <div className="mk-license-body">
           <strong>Apache 2.0</strong> for the collector, dashboard, adapters, schemas, and CLI.
           <br />

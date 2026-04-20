@@ -9,7 +9,8 @@ import {
 } from "../_og/chrome";
 
 export const runtime = "nodejs";
-export const alt = "Bematist — open-source analytics for AI-assisted engineering";
+export const alt =
+  "Bematist — measure AI-assisted engineering: see the spend, see the work, scale what ships";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
@@ -17,10 +18,10 @@ export default function HomeOg() {
   return new ImageResponse(
     <OgFrame eyebrow="01 / landing">
       <OgHeadline
-        eyebrow="for engineering teams · self-host first"
+        eyebrow="open-source ai-engineering analytics"
         title={
           <span style={{ display: "flex", flexWrap: "wrap" }}>
-            See what AI is&nbsp;
+            Measure&nbsp;
             <span
               style={{
                 color: OG_COLORS.accent,
@@ -28,17 +29,17 @@ export default function HomeOg() {
                 display: "flex",
               }}
             >
-              actually shipping.
+              AI-assisted engineering.
             </span>
           </span>
         }
-        description="Open-source analytics for AI-assisted engineering. Parsed on your team's machines — only the aggregate stats reach your dashboard."
+        description="See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack."
       />
       <OgStatRow
         stats={[
-          { label: "Adapters", value: "Claude · Codex" },
-          { label: "Where it runs", value: "On your infra" },
-          { label: "What's stored", value: "Aggregates only" },
+          { label: "Spend", value: "See the spend" },
+          { label: "Work", value: "See the work" },
+          { label: "Scale", value: "Scale what ships" },
         ]}
       />
     </OgFrame>,

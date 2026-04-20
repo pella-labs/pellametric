@@ -6,9 +6,10 @@ import { redirect } from "next/navigation";
 // noscript fallback, and the runtime redirect all stay in sync.
 export const FOUNDERS_CALENDAR = "https://calendar.app.google/VrY8s3Ho5Ldd4Wb66";
 
-const TITLE = "Schedule a Bematist intro · 30 minutes with the founding team";
+const TITLE =
+  "Build Bematist with us · 30-minute intro with the founding team";
 const DESCRIPTION =
-  "Bematist is open-source AI-engineering analytics. We're picking three founding orgs for a free three-month deployment — book a 30-minute intro with the founding team.";
+  "Measure AI-assisted engineering. See the spend. See the work. Scale what ships. Open-source analytics across Claude Code, Codex and the rest of your dev-AI stack.";
 
 export const metadata: Metadata = {
   title: TITLE,
