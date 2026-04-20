@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from "bun:test";
 import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext } from "@bematist/sdk";
+import type { Adapter, AdapterContext, EventEmitter } from "@bematist/sdk";
 import { _resetAdapterHealth, runOnce } from "./index";
 
 beforeEach(() => {
@@ -33,18 +33,44 @@ function mkCtx(): AdapterContext {
   };
 }
 
-function mkAdapter(id: string, pollImpl: () => Promise<Event[]>): Adapter {
+/**
+ * Build a streaming adapter from a "produce these events" function.
+ * Mirrors how real adapters will emit-then-return under the new contract.
+ */
+function mkAdapter(id: string, produce: () => Promise<Event[]>): Adapter {
   return {
     id,
     label: id,
     version: "0.0.0",
     supportedSourceVersions: "*",
     async init() {},
-    poll: async () => pollImpl(),
+    async poll(_ctx, _signal, emit) {
+      const events = await produce();
+      for (const e of events) emit(e);
+    },
     async health() {
       return { status: "ok", fidelity: "full" };
     },
   };
+}
+
+/**
+ * Orchestrator-scoped collectPoll: runs `runOnce` with a capturing emit
+ * callback and returns the collected events. Kept inline here rather than
+ * in test-helpers because test-helpers' collectPoll wraps a single
+ * Adapter, not the multi-adapter runOnce.
+ */
+async function collectRun(
+  adapters: Adapter[],
+  ctxFactory: (a: Adapter) => AdapterContext,
+  opts: Parameters<typeof runOnce>[2],
+): Promise<Event[]> {
+  const events: Event[] = [];
+  const emit: EventEmitter = (e) => {
+    events.push(e);
+  };
+  await runOnce(adapters, ctxFactory, opts, emit);
+  return events;
 }
 
 const ev = (id: string): Event =>
@@ -64,10 +90,10 @@ const ev = (id: string): Event =>
     cost_estimated: false,
   }) as Event;
 
-test("runOnce invokes every enabled adapter and returns combined events", async () => {
+test("runOnce invokes every enabled adapter and streams combined events", async () => {
   const a = mkAdapter("a", async () => [ev("a")]);
   const b = mkAdapter("b", async () => [ev("b"), ev("c")]);
-  const events = await runOnce([a, b], () => mkCtx(), {
+  const events = await collectRun([a, b], () => mkCtx(), {
     concurrency: 2,
     perPollTimeoutMs: 1000,
   });
@@ -76,10 +102,20 @@ test("runOnce invokes every enabled adapter and returns combined events", async 
 
 test("adapter throwing in poll does not crash the orchestrator", async () => {
   const good = mkAdapter("good", async () => [ev("g")]);
-  const bad = mkAdapter("bad", async () => {
-    throw new Error("kaboom");
-  });
-  const events = await runOnce([good, bad], () => mkCtx(), {
+  const bad: Adapter = {
+    id: "bad",
+    label: "bad",
+    version: "0.0.0",
+    supportedSourceVersions: "*",
+    async init() {},
+    async poll() {
+      throw new Error("kaboom");
+    },
+    async health() {
+      return { status: "ok", fidelity: "full" };
+    },
+  };
+  const events = await collectRun([good, bad], () => mkCtx(), {
     concurrency: 2,
     perPollTimeoutMs: 1000,
   });
@@ -88,14 +124,22 @@ test("adapter throwing in poll does not crash the orchestrator", async () => {
 });
 
 test("Promise.allSettled semantics: thrower doesn't drop other adapters' events", async () => {
-  // This is the companion test to the one above — exercising that even
-  // with multiple adapters, one throwing doesn't short-circuit the rest.
   const good1 = mkAdapter("good1", async () => [ev("g1")]);
-  const bad = mkAdapter("bad", async () => {
-    throw new Error("kaboom");
-  });
+  const bad: Adapter = {
+    id: "bad",
+    label: "bad",
+    version: "0.0.0",
+    supportedSourceVersions: "*",
+    async init() {},
+    async poll() {
+      throw new Error("kaboom");
+    },
+    async health() {
+      return { status: "ok", fidelity: "full" };
+    },
+  };
   const good2 = mkAdapter("good2", async () => [ev("g2")]);
-  const events = await runOnce([good1, bad, good2], () => mkCtx(), {
+  const events = await collectRun([good1, bad, good2], () => mkCtx(), {
     concurrency: 3,
     perPollTimeoutMs: 1000,
   });
@@ -107,7 +151,7 @@ test("Promise.allSettled semantics: thrower doesn't drop other adapters' events"
 
 test("adapter exceeding perPollTimeoutMs is signaled; honoring the signal returns partial", async () => {
   // Soft-abort contract: orchestrator fires ac.abort() at perPollTimeoutMs.
-  // Respectful adapters return what they've emitted so far; the hard-kill
+  // Respectful adapters emit what they have so far and return; the hard-kill
   // watchdog never fires because the adapter resolves before hardKillMs.
   const respectful: Adapter = {
     id: "respectful",
@@ -115,20 +159,19 @@ test("adapter exceeding perPollTimeoutMs is signaled; honoring the signal return
     version: "0.0.0",
     supportedSourceVersions: "*",
     async init() {},
-    async poll(_ctx, signal) {
-      const emitted: Event[] = [ev("early")];
+    async poll(_ctx, signal, emit) {
+      emit(ev("early"));
       await new Promise<void>((resolve) => {
         if (signal.aborted) return resolve();
         signal.addEventListener("abort", () => resolve(), { once: true });
       });
-      return emitted;
     },
     async health() {
       return { status: "ok", fidelity: "full" };
     },
   };
   const fast = mkAdapter("fast", async () => [ev("ok")]);
-  const events = await runOnce([respectful, fast], () => mkCtx(), {
+  const events = await collectRun([respectful, fast], () => mkCtx(), {
     concurrency: 2,
     perPollTimeoutMs: 50,
   });
@@ -139,16 +182,15 @@ test("adapter exceeding perPollTimeoutMs is signaled; honoring the signal return
 // ---- Hard-kill watchdog (bug #6) ----
 
 function mkHangingAdapter(id: string): Adapter {
-  // Never resolves — simulates an adapter that ignores AbortSignal (the
-  // actual state of Codex/Cursor/OpenCode/VSCode-generic at commit time).
+  // Never resolves — simulates an adapter that ignores AbortSignal.
   return {
     id,
     label: id,
     version: "0.0.0",
     supportedSourceVersions: "*",
     async init() {},
-    async poll(_ctx, _signal) {
-      return new Promise<Event[]>(() => {});
+    async poll(_ctx, _signal, _emit) {
+      return new Promise<void>(() => {});
     },
     async health() {
       return { status: "ok", fidelity: "full" };
@@ -156,11 +198,11 @@ function mkHangingAdapter(id: string): Adapter {
   };
 }
 
-test("hanging adapter is hard-killed; other adapters' events still returned", async () => {
+test("hanging adapter is hard-killed; other adapters' events still streamed", async () => {
   const hanger = mkHangingAdapter("hanger");
   const fast = mkAdapter("fast", async () => [ev("ok")]);
   const startedAt = Date.now();
-  const events = await runOnce([hanger, fast], () => mkCtx(), {
+  const events = await collectRun([hanger, fast], () => mkCtx(), {
     concurrency: 2,
     perPollTimeoutMs: 50,
     hardKillMs: 150,
@@ -179,15 +221,15 @@ test("three consecutive hard-kills trigger quarantine; adapter skipped during qu
   let hangerPolled = 0;
   const wrappedHanger: Adapter = {
     ...hanger,
-    poll: async (ctx, sig) => {
+    poll: async (ctx, sig, em) => {
       hangerPolled += 1;
-      return hanger.poll(ctx, sig);
+      return hanger.poll(ctx, sig, em);
     },
   };
 
   // Run 3 times — each hard-killed. Fourth run should skip the hanger.
   for (let i = 0; i < 3; i++) {
-    await runOnce([wrappedHanger, fast], () => mkCtx(), {
+    await collectRun([wrappedHanger, fast], () => mkCtx(), {
       concurrency: 2,
       perPollTimeoutMs: 20,
       hardKillMs: 60,
@@ -199,7 +241,7 @@ test("three consecutive hard-kills trigger quarantine; adapter skipped during qu
   // Fourth poll — quarantined, poll() should NOT be called.
   const hangerPolledBefore = hangerPolled;
   const startedAt = Date.now();
-  const events = await runOnce([wrappedHanger, fast], () => mkCtx(), {
+  const events = await collectRun([wrappedHanger, fast], () => mkCtx(), {
     concurrency: 2,
     perPollTimeoutMs: 20,
     hardKillMs: 60,
@@ -221,15 +263,15 @@ test("quarantine expires → adapter polled again", async () => {
   let hangerPolled = 0;
   const wrappedHanger: Adapter = {
     ...hanger,
-    poll: async (ctx, sig) => {
+    poll: async (ctx, sig, em) => {
       hangerPolled += 1;
-      return hanger.poll(ctx, sig);
+      return hanger.poll(ctx, sig, em);
     },
   };
 
   // Quarantine after 3 strikes, with a very short (50ms) quarantine window.
   for (let i = 0; i < 3; i++) {
-    await runOnce([wrappedHanger, fast], () => mkCtx(), {
+    await collectRun([wrappedHanger, fast], () => mkCtx(), {
       concurrency: 2,
       perPollTimeoutMs: 10,
       hardKillMs: 40,
@@ -239,7 +281,7 @@ test("quarantine expires → adapter polled again", async () => {
   expect(hangerPolled).toBe(3);
 
   // Poll immediately — quarantined, should not re-poll.
-  await runOnce([wrappedHanger, fast], () => mkCtx(), {
+  await collectRun([wrappedHanger, fast], () => mkCtx(), {
     concurrency: 2,
     perPollTimeoutMs: 10,
     hardKillMs: 40,
@@ -249,7 +291,7 @@ test("quarantine expires → adapter polled again", async () => {
 
   // Wait past quarantine expiry, then poll again.
   await new Promise((r) => setTimeout(r, 80));
-  await runOnce([wrappedHanger, fast], () => mkCtx(), {
+  await collectRun([wrappedHanger, fast], () => mkCtx(), {
     concurrency: 2,
     perPollTimeoutMs: 10,
     hardKillMs: 40,
@@ -263,15 +305,15 @@ test("successful poll resets hard-kill strikes", async () => {
   let flaky = true;
   const flakyAdapter: Adapter = {
     ...hanger,
-    poll: async (ctx, sig) => {
-      if (flaky) return hanger.poll(ctx, sig);
-      return [ev("ok")];
+    poll: async (ctx, sig, emit) => {
+      if (flaky) return hanger.poll(ctx, sig, emit);
+      emit(ev("ok"));
     },
   };
 
   // Two consecutive hard-kills — one more would quarantine.
   for (let i = 0; i < 2; i++) {
-    await runOnce([flakyAdapter], () => mkCtx(), {
+    await collectRun([flakyAdapter], () => mkCtx(), {
       concurrency: 1,
       perPollTimeoutMs: 10,
       hardKillMs: 40,
@@ -281,7 +323,7 @@ test("successful poll resets hard-kill strikes", async () => {
 
   // Adapter recovers.
   flaky = false;
-  await runOnce([flakyAdapter], () => mkCtx(), {
+  await collectRun([flakyAdapter], () => mkCtx(), {
     concurrency: 1,
     perPollTimeoutMs: 10,
     hardKillMs: 40,
@@ -292,13 +334,13 @@ test("successful poll resets hard-kill strikes", async () => {
   let polled = 0;
   const countingAdapter: Adapter = {
     ...flakyAdapter,
-    poll: async (ctx, sig) => {
+    poll: async (ctx, sig, emit) => {
       polled += 1;
-      return flakyAdapter.poll(ctx, sig);
+      return flakyAdapter.poll(ctx, sig, emit);
     },
   };
   for (let i = 0; i < 2; i++) {
-    await runOnce([countingAdapter], () => mkCtx(), {
+    await collectRun([countingAdapter], () => mkCtx(), {
       concurrency: 1,
       perPollTimeoutMs: 10,
       hardKillMs: 40,
@@ -311,14 +353,13 @@ test("successful poll resets hard-kill strikes", async () => {
 
 test("hardKillMs=0 computes default from perPollTimeoutMs", async () => {
   // When hardKillMs is not set (or 0), the orchestrator falls back to
-  // max(perPollTimeoutMs * 2, perPollTimeoutMs + 30s). With
-  // perPollTimeoutMs=50_000, default is max(100_000, 80_000) = 100_000.
-  // We can't wait 100s in a test — instead verify that with a small
-  // perPollTimeoutMs *and* hardKillMs=0, a fast adapter still completes
-  // quickly (i.e. the default doesn't break the normal path).
+  // max(perPollTimeoutMs * 2, perPollTimeoutMs + 30s). We can't wait
+  // 100s in a test — instead verify that with hardKillMs=0 a fast
+  // adapter still completes quickly (the default doesn't break the
+  // normal path).
   const fast = mkAdapter("fast", async () => [ev("ok")]);
   const startedAt = Date.now();
-  const events = await runOnce([fast], () => mkCtx(), {
+  const events = await collectRun([fast], () => mkCtx(), {
     concurrency: 1,
     perPollTimeoutMs: 50,
     hardKillMs: 0,

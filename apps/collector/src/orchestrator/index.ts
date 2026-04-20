@@ -1,5 +1,4 @@
-import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext } from "@bematist/sdk";
+import type { Adapter, AdapterContext, EventEmitter } from "@bematist/sdk";
 import { log } from "../logger";
 import { Semaphore } from "./semaphore";
 
@@ -10,7 +9,9 @@ export interface RunOptions {
    * Hard-kill timeout — STRICTLY LONGER than `perPollTimeoutMs`. When it
    * fires, the orchestrator stops awaiting the adapter's promise and moves
    * on. This protects the main loop from adapters that ignore the abort
-   * signal (Codex/Cursor/OpenCode/VSCode-generic all currently do). If not
+   * signal. Events the adapter emitted before hard-kill are ALREADY
+   * durable in the journal (streaming contract), so abandoning the
+   * promise doesn't lose any work that hadn't been lost already. If not
    * provided, defaults to `max(perPollTimeoutMs * 2, perPollTimeoutMs + 30s)`.
    */
   hardKillMs?: number;
@@ -64,21 +65,29 @@ function computeHardKillMs(opts: RunOptions): number {
 }
 
 /**
- * Run every adapter's poll() concurrently (bounded by `opts.concurrency`)
- * and collect whatever events they emit.
+ * Run every adapter's poll() concurrently (bounded by `opts.concurrency`).
+ *
+ * Adapters stream events via the `emit` callback as they produce them
+ * (typically per-file for file-tailing adapters), so the journal sees
+ * events per-file rather than one giant batch at poll end. A slow-walking
+ * adapter no longer blocks the flush loop — flush runs independently on
+ * its own interval in loop.ts and drains whatever's already been emitted.
  *
  * Two layers of defense against misbehaving adapters:
  *
  *   1. **Soft abort at `perPollTimeoutMs`.** Fires an AbortSignal; adapters
- *      MUST honor it — the contract is "finish the current file and return
- *      what you've emitted so far." Claude Code honors this today; other
- *      adapters currently ignore it (bug #6).
+ *      MUST honor it — the contract is "stop emitting and return promptly."
+ *      Anything the adapter emitted before abort is already durable in the
+ *      journal, so a timed-out poll no longer loses work the way the old
+ *      `Promise<Event[]>`-returning version did (Walid's 4,971-file
+ *      backfill — it timed out at 30s, returned [], and subsequent polls
+ *      skipped those files because cursor signatures marked them "done").
  *
  *   2. **Hard-kill at `hardKillMs`.** `Promise.race` against a watchdog
  *      timer. If an adapter never resolves (stuck NFS stat, stuck SQLite
- *      lock wait, stuck fetch), the race resolves with `[]` and we log at
- *      WARN that the adapter ignored abort. After 3 consecutive hard-kills
- *      the adapter is quarantined for `adapterQuarantineMs` — skipped
+ *      lock wait, stuck fetch), the race resolves and we log at WARN that
+ *      the adapter ignored abort. After 3 consecutive hard-kills the
+ *      adapter is quarantined for `adapterQuarantineMs` — skipped
  *      entirely so it can't starve the concurrency semaphore. Strikes
  *      reset on first successful poll after quarantine.
  *
@@ -91,19 +100,23 @@ function computeHardKillMs(opts: RunOptions): number {
  * That's intentional: we care about liveness of the main loop, not about
  * the adapter's internal state. Any cursor writes the orphan completes
  * after hard-kill are written via the shared SqliteCursorStore and remain
- * valid; we just don't wait for them.
+ * valid; we just don't wait for them. Any additional emit() calls the
+ * orphan makes post-hard-kill also still land in the journal — the
+ * callback is a plain closure over `journal.enqueue`, not gated on the
+ * orchestrator's liveness.
  */
 export async function runOnce(
   adapters: Adapter[],
   ctxFactory: (adapter: Adapter) => AdapterContext,
   opts: RunOptions,
-): Promise<Event[]> {
+  emit: EventEmitter,
+): Promise<void> {
   const sem = new Semaphore(opts.concurrency);
   const hardKillMs = computeHardKillMs(opts);
   const quarantineMs = opts.adapterQuarantineMs ?? DEFAULT_QUARANTINE_MS;
   const now = Date.now();
 
-  const settled = await Promise.allSettled(
+  await Promise.allSettled(
     adapters.map(async (a) => {
       const health = getHealth(a.id);
 
@@ -118,7 +131,7 @@ export async function runOnce(
           },
           "adapter quarantined — skipping poll",
         );
-        return [] as Event[];
+        return;
       }
 
       await sem.acquire();
@@ -136,23 +149,23 @@ export async function runOnce(
               }, opts.perPollTimeoutMs)
             : null;
 
-        // Hard-kill race — resolves with [] (not throws) so we can
-        // distinguish "adapter ignored abort" from "adapter threw".
+        // Hard-kill race — resolves (not throws) so we can distinguish
+        // "adapter ignored abort" from "adapter threw."
         let hardKillTimer: ReturnType<typeof setTimeout> | null = null;
         let hardKilled = false;
-        const hardKillPromise = new Promise<Event[]>((resolve) => {
+        const hardKillPromise = new Promise<void>((resolve) => {
           hardKillTimer = setTimeout(() => {
             hardKilled = true;
             log.warn(
               { adapter: a.id, ms: hardKillMs },
               "adapter hard-killed after ignoring abort signal",
             );
-            resolve([]);
+            resolve();
           }, hardKillMs);
         });
 
         try {
-          const events = await Promise.race([a.poll(ctx, ac.signal), hardKillPromise]);
+          await Promise.race([a.poll(ctx, ac.signal, emit), hardKillPromise]);
 
           if (hardKilled) {
             health.strikes += 1;
@@ -172,7 +185,7 @@ export async function runOnce(
               health.strikes = 0;
             }
           } else {
-            // Successful poll (even with zero events) — clear strikes.
+            // Successful poll (even with zero emits) — clear strikes.
             // This is the "reset on first successful poll after quarantine"
             // behavior from the brief.
             if (health.strikes > 0) {
@@ -183,16 +196,11 @@ export async function runOnce(
               health.strikes = 0;
             }
           }
-          return events;
         } catch (e) {
           // Throwing counts as a "not-hang" — the adapter is misbehaving
           // in a different way. Don't accrue hard-kill strikes for
-          // exceptions; let the logger surface them. allSettled will
-          // capture the rejection at the top level; but we catch here so
-          // the result is a normal resolved [] for this adapter and one
-          // throwing adapter doesn't mark the whole run as failed.
+          // exceptions; let the logger surface them.
           log.warn({ adapter: a.id, err: String(e) }, "adapter poll failed");
-          return [] as Event[];
         } finally {
           if (softTimer) clearTimeout(softTimer);
           if (hardKillTimer) clearTimeout(hardKillTimer);
@@ -202,19 +210,6 @@ export async function runOnce(
       }
     }),
   );
-
-  const events: Event[] = [];
-  for (const r of settled) {
-    if (r.status === "fulfilled") {
-      events.push(...r.value);
-    } else {
-      // Should be unreachable — the per-adapter async fn catches its own
-      // errors and returns []. Logged defensively in case a future edit
-      // lets an exception escape (e.g. a semaphore release bug).
-      log.warn({ err: String(r.reason) }, "orchestrator adapter task rejected");
-    }
-  }
-  return events;
 }
 
 export { Semaphore } from "./semaphore";
