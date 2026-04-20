@@ -3,9 +3,9 @@ import { CardMount } from "../_card/CardMount";
 import { DEMO_CARD } from "../_card/demo-data";
 import { GetStarted } from "../_components/GetStarted";
 
-const CARD_TITLE = "Try Bematist · Grab your card";
+const CARD_TITLE = "Bematist · Get your card";
 const CARD_DESCRIPTION =
-  "Generate your personal Bematist card in 30 seconds from local Claude Code, Cursor, and Codex sessions — a legible view of what AI actually shipped for you this quarter.";
+  "Plug in your Claude Code and Codex history. Parsed on your device — totals only, no prompts, no code. Get your shareable card.";
 
 export const metadata: Metadata = {
   title: CARD_TITLE,
@@ -32,11 +32,10 @@ export default function CardLandingPage() {
         <div className="mk-sys" style={{ marginBottom: 16 }}>
           {"SYS.CARD // personal card"}
         </div>
-        <h1>Your quarter, made legible.</h1>
+        <h1>Get your card.</h1>
         <p>
-          The card on the right is demo data. Sign in, star the repo, generate a one-shot token, and
-          Bematist reads your local Claude Code, Cursor, and Codex sessions to produce yours. Only
-          aggregated numbers leave your machine — no prompt text, no code.
+          Sign in, star, run one command. Your Claude and Codex history becomes a shareable card.
+          Totals only — no prompts, no code.
         </p>
         <GetStarted />
       </div>

@@ -654,9 +654,14 @@ export function CardPage({
     face.style.transform = "none";
 
     try {
+      const radius = parseFloat(getComputedStyle(face).borderRadius) || 24;
       const dataUrl = await toPng(face, {
         pixelRatio: 2,
-        backgroundColor: "#0d1117",
+        style: {
+          borderRadius: `${radius}px`,
+          overflow: "hidden",
+          background: "transparent",
+        },
       });
       flipper.style.transform = origFlipper;
       face.style.transform = origFace;

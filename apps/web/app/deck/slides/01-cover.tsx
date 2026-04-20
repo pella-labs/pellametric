@@ -46,13 +46,27 @@ export function Slide01Cover(_props: { totalPages: number }) {
         <p
           className="lede"
           style={{
-            maxWidth: 780,
-            fontSize: 34,
+            maxWidth: 820,
+            fontSize: 38,
+            lineHeight: 1.15,
             margin: 0,
+            fontWeight: 500,
           }}
         >
-          The instrument for <em className="accent">AI-assisted engineering</em>. See where every
-          dollar lands, which workflows ship code, and the patterns worth copying across your team.
+          Measure <em className="accent">AI-assisted engineering</em>.
+        </p>
+        <p
+          style={{
+            maxWidth: 820,
+            fontSize: 26,
+            lineHeight: 1.4,
+            color: "var(--ink-muted)",
+            margin: "18px 0 0 0",
+          }}
+        >
+          <span style={{ color: "var(--ink)" }}>See the spend.</span>{" "}
+          <span style={{ color: "var(--ink)" }}>See the work.</span>{" "}
+          <span style={{ color: "var(--ink)" }}>Scale what ships.</span>
         </p>
       </div>
 

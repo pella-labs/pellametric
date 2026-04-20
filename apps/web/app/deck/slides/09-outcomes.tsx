@@ -76,7 +76,7 @@ export function Slide09Outcomes({ totalPages }: { totalPages: number }) {
               {
                 n: "03",
                 h: "Multi-tool out of the box",
-                p: "Claude Code, Cursor, Codex, Continue, OpenCode, VS Code — auto-detected on first run.",
+                p: "Claude Code, Codex, Continue, OpenCode, VS Code — auto-detected on first run.",
               },
               {
                 n: "04",
