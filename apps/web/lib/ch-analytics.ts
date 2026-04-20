@@ -5,9 +5,8 @@
 import "server-only";
 
 import { createClient } from "@clickhouse/client";
-import type { MergedUsage, UnifiedSession } from "grammata";
+import type { AnalyticsData, MergedUsage, UnifiedSession } from "grammata";
 import { buildAnalytics } from "grammata";
-import type { AnalyticsData } from "grammata";
 
 const CH_URL = process.env.CLICKHOUSE_URL ?? "http://localhost:8123";
 const CH_DATABASE = process.env.CLICKHOUSE_DATABASE ?? "bematist";

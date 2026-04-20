@@ -148,7 +148,8 @@ async function codeDeliveryFixture(
       ),
       actual_spend_usd: round2(opened * 4.31 * (days / 30)),
       savings_usd: round2(
-        ((authorCount * HARDCODED_SEAT_PRICE_USD_PER_MONTH) / 30) * days - opened * 4.31 * (days / 30),
+        ((authorCount * HARDCODED_SEAT_PRICE_USD_PER_MONTH) / 30) * days -
+          opened * 4.31 * (days / 30),
       ),
     } satisfies SubscriptionSummary,
     cohort_gated: false,

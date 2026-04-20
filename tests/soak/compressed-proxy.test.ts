@@ -98,6 +98,7 @@ beforeAll(async () => {
     });
   } catch (err) {
     skip = true;
+    // biome-ignore lint/suspicious/noConsole: soak harness output is the artifact
     console.log(`[soak-compressed] SKIPPED — ${(err as Error).message}`);
   }
 });
@@ -173,6 +174,7 @@ suite("F15 compressed proxy — Bun↔ClickHouse writer (G3 v1 gate)", () => {
       const successRate = writes / (writes + failures || 1);
       const driftPct = writes === 0 ? 1 : Math.abs(chCount - writes) / writes;
 
+      // biome-ignore lint/suspicious/noConsole: soak harness output is the artifact
       console.log(
         JSON.stringify({
           name: "F15 compressed proxy",
