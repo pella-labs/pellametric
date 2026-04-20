@@ -70,7 +70,12 @@ export class KafkaWebhookBus implements WebhookBusProducer {
       // (kafkajs's `Producer` has no direct `acks` knob; idempotent=true
       // implies acks=-1.)
       transactionTimeout: config.transactionalTimeout ?? 30_000,
-      retry: config.retry ?? { retries: 3, maxRetryTime: 5_000 },
+      // KafkaJS warns and may invalidate EoS guarantees if `idempotent=true`
+      // is paired with a small retry budget. Use a large effectively-unbounded
+      // count so the idempotent producer can recover from transient broker
+      // restarts without losing exactly-once semantics. Tests still inject
+      // their own short retry config via `config.retry`.
+      retry: config.retry ?? { retries: Number.MAX_SAFE_INTEGER, maxRetryTime: 30_000 },
       maxInFlightRequests: 5,
     });
   }

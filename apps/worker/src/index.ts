@@ -319,12 +319,16 @@ export async function runHourlyAnomalyJob(deps: { ch: ClickHouseClient }): Promi
 }
 
 async function loadHistory(client: ClickHouseClient): Promise<DailyMetricRow[]> {
+  // Aliasing the cast back to `day` collides with the WHERE-clause column on
+  // CH 25+: the optimizer rewrites the predicate against the String
+  // projection and errors with NO_COMMON_TYPE (String vs Date). Use a
+  // distinct alias.
   const res = await client.query({
     query: `
       SELECT
         org_id,
         engineer_id,
-        toString(day) AS day,
+        toString(day) AS day_str,
         sumMerge(cost_usd_state) AS cost_usd,
         sumMerge(input_tokens_state) AS input_tokens,
         0 AS tool_error_count,
@@ -338,7 +342,7 @@ async function loadHistory(client: ClickHouseClient): Promise<DailyMetricRow[]> 
   const rows = (await res.json()) as Array<{
     org_id: string;
     engineer_id: string;
-    day: string;
+    day_str: string;
     cost_usd: number;
     input_tokens: number;
     tool_error_count: number;
@@ -348,7 +352,7 @@ async function loadHistory(client: ClickHouseClient): Promise<DailyMetricRow[]> 
     org_id: r.org_id,
     engineer_id: r.engineer_id,
     source: "claude-code",
-    day: r.day,
+    day: r.day_str,
     cost_usd: Number(r.cost_usd),
     input_tokens: Number(r.input_tokens),
     tool_error_count: Number(r.tool_error_count),
