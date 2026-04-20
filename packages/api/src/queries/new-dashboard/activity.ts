@@ -160,7 +160,7 @@ async function activityOverviewReal(
     sessions: number | string;
   }>(
     `SELECT
-       (toDayOfWeek(ts, 'UTC') % 7) AS dow,
+       (toDayOfWeek(ts, 0, 'UTC') % 7) AS dow,
        toHour(ts, 'UTC') AS hour,
        uniqExact(session_id) AS sessions
      FROM events
