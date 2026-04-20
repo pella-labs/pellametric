@@ -46,25 +46,43 @@ const ADAPTERS = [
     status: "In dev",
     tone: "warn",
     captures:
-      "Messages, lines suggested, accept rate. Cost shown as $0 — Cursor is subscription-billed and exposes no per-request pricing.",
+      "Messages, lines suggested, accept rate. Subscription-billed — no per-request cost exposed.",
   },
   {
     name: "Continue.dev",
-    status: "Full",
-    tone: "ok",
+    status: "In dev",
+    tone: "warn",
     captures: "Chat turns, token generation, edit outcomes, tool usage",
   },
   {
     name: "OpenCode",
-    status: "Full",
-    tone: "ok",
+    status: "In dev",
+    tone: "warn",
     captures: "Sessions, tokens, model routing (SQLite, post-v1.2)",
   },
   {
     name: "VS Code (generic SDK)",
-    status: "Full",
-    tone: "ok",
-    captures: "Pluggable handlers — Twinny shipped, community adapters supported",
+    status: "In dev",
+    tone: "warn",
+    captures: "Pluggable handlers via SDK — community adapters supported",
+  },
+] as const;
+
+const FEATURES = [
+  {
+    eyebrow: "01",
+    title: "Track every dollar across the stack",
+    body: "The collector auto-detects coding agents on the engineer's machine, parses native session files locally, and normalizes spend across models. Pricing pinned at capture, so model-price shifts don't silently rewrite history.",
+  },
+  {
+    eyebrow: "02",
+    title: "See what AI is actually shipping",
+    body: "The GitHub App joins sessions to merged PRs through accepted-edit events, AI-Assisted commit trailers, and a git-log fallback. Cost per merged PR with the commits that earned it. Sessions that shipped vs sessions that burned.",
+  },
+  {
+    eyebrow: "03",
+    title: "Replicate the workflows that work",
+    body: "Cluster the team's prompts, find the cohort that solved the same problem cheaper, and promote winning workflows as playbooks. The pattern becomes the asset. (Vision — backend live, dashboard gesture lands next.)",
   },
 ] as const;
 
@@ -72,27 +90,27 @@ const SCORE_DIMENSIONS = [
   {
     tag: "35%",
     name: "Outcome quality",
-    body: "Sessions that end in merged code. Not started, not attempted — merged.",
+    body: "Sessions that end in merged code.",
   },
   {
     tag: "25%",
     name: "Efficiency",
-    body: "Accepted edits per dollar, normalized against peers doing similar work.",
+    body: "Accepted edits per dollar, peer-normalized.",
   },
   {
     tag: "20%",
     name: "Autonomy",
-    body: "How often a session ships without a hand-hold. One minus the intervention rate.",
+    body: "How often a session ships without a hand-hold.",
   },
   {
     tag: "10%",
     name: "Adoption depth",
-    body: "How many of your agents and workflows the engineer actually uses.",
+    body: "How many of your agents the engineer actually uses.",
   },
   {
     tag: "10%",
     name: "Team impact",
-    body: "Playbooks this engineer promoted that the rest of the team adopted.",
+    body: "Playbooks this engineer promoted that others adopted.",
   },
 ] as const;
 
@@ -142,10 +160,26 @@ export default function MarketingHome() {
       {/* Brand monolith */}
       <BrandMonolith />
 
-      {/* Adapters — pillar 01: see the spend */}
+      {/* Features — three core capabilities at a glance */}
+      <section aria-label="What it does">
+        <div className="mk-section-header">
+          <span className="mk-mono mk-xs">01 / The product</span>
+        </div>
+        <div className="mk-features">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="mk-feature">
+              <span className="mk-feature-index">{f.eyebrow}</span>
+              <h3>{f.title}</h3>
+              <p>{f.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Adapters — beat 01: see the spend */}
       <section>
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">01 / See the spend · every agent, every token</span>
+          <span className="mk-mono mk-xs">02 / See the spend · every agent, every token</span>
         </div>
         <table className="mk-table">
           <thead>
@@ -173,9 +207,9 @@ export default function MarketingHome() {
         </table>
       </section>
 
-      {/* Primary metric — pillar 02: see the work */}
+      {/* Primary metric — beat 02: see the work */}
       <div className="mk-section-header">
-        <span className="mk-mono mk-xs">02 / See the work · spend tied to merged code</span>
+        <span className="mk-mono mk-xs">03 / See the work · spend tied to merged code</span>
       </div>
       <section className="mk-metric" aria-label="Outcome metric">
         <div className="mk-metric-visual">
@@ -184,9 +218,7 @@ export default function MarketingHome() {
           <div className="mk-metric-label">
             <strong>accepted edits per dollar</strong>
             <br />
-            The GitHub App joins sessions to PRs through accepted-edit events, AI-Assisted commit
-            trailers, and a git-log fallback — so you know what shipped and what just burned tokens.
-            Pricing pinned at capture, reverts within 24h subtract.
+            GitHub App joins sessions to merged PRs. Pricing pinned at capture. Reverts subtract.
           </div>
         </div>
         <div className="mk-metric-details">
@@ -194,79 +226,24 @@ export default function MarketingHome() {
           <ul className="mk-kv">
             <li>
               <span>Spend per engineer</span>
-              <span>daily, weekly, by model and project</span>
+              <span>by model, project, day</span>
             </li>
             <li>
               <span>Cost per merged PR</span>
               <span>with the commits that earned it</span>
             </li>
             <li>
-              <span>Sessions that shipped</span>
-              <span>vs sessions that burned</span>
-            </li>
-            <li>
-              <span>Twin prompts</span>
-              <span>workflows that solved the same task cheaper</span>
-            </li>
-            <li>
-              <span>Weekly digest</span>
-              <span>what changed, what to do about it</span>
+              <span>Shipped vs burned</span>
+              <span>sessions, workflows, repos</span>
             </li>
           </ul>
         </div>
       </section>
 
-      {/* Twin Finder — pillar 03: scale what ships (the unlock) */}
-      <div className="mk-section-header">
-        <span className="mk-mono mk-xs">03 / Scale what ships · Twin Finder</span>
-      </div>
-      <section className="mk-metric" aria-label="Twin Finder">
-        <div className="mk-metric-visual">
-          <span className="mk-sys">THE UNLOCK</span>
-          <h2
-            style={{
-              fontSize: "clamp(28px, 3.4vw, 44px)",
-              lineHeight: 1.05,
-              letterSpacing: "-0.03em",
-              margin: "8px 0 16px",
-            }}
-          >
-            Find the workflow that ships.{" "}
-            <em style={{ color: "var(--mk-accent)" }}>Replicate it.</em>
-          </h2>
-          <div className="mk-metric-label">
-            Every prompt gets redacted and abstracted on-device, embedded, and clustered against the
-            rest of the team. Twin Finder pulls the cohort that solved the same problem you're
-            solving — and surfaces the engineers who solved it cheaper. The pattern is the asset.
-          </div>
-        </div>
-        <div className="mk-metric-details">
-          <span className="mk-sys">HOW IT WORKS</span>
-          <ul className="mk-kv">
-            <li>
-              <span>Cluster</span>
-              <span>nightly k-means across prompt embeddings</span>
-            </li>
-            <li>
-              <span>Compare</span>
-              <span>similarity search inside your cluster</span>
-            </li>
-            <li>
-              <span>Surface</span>
-              <span>the cohort that solved it for less</span>
-            </li>
-            <li>
-              <span>Promote</span>
-              <span>turn the winning prompt into a team playbook</span>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      {/* AI Leverage Score */}
+      {/* AI Leverage Score — beat 03: scale what ships */}
       <section aria-label="AI Leverage Score">
         <div className="mk-section-header">
-          <span className="mk-mono mk-xs">04 / The manager's number · AI Leverage Score v1</span>
+          <span className="mk-mono mk-xs">04 / Scale what ships · AI Leverage Score v1</span>
         </div>
         <div className="mk-score-grid">
           {SCORE_DIMENSIONS.map((d) => (
