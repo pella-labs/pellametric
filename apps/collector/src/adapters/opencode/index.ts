@@ -1,6 +1,5 @@
 import { statSync } from "node:fs";
-import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import type { Adapter, AdapterContext, AdapterHealth, EventEmitter } from "@bematist/sdk";
 import { type DiscoverySources, discoverSources } from "./discovery";
 import { normalizeSession } from "./normalize";
 import { listLegacySessionIds, SkippedCounter } from "./skipped";
@@ -45,10 +44,11 @@ export class OpenCodeAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, _signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, signal: AbortSignal, emit: EventEmitter): Promise<void> {
     const s = this.sources ?? discoverSources();
     this.recordSkippedLegacy(s, ctx);
-    if (!s.sqliteExists) return [];
+    if (!s.sqliteExists) return;
+    if (signal.aborted) return;
 
     // Rotation / wipe detection (Bug #9): if the SQLite file's inode has
     // changed since the last tick, the DB was replaced (fresh install, blown
@@ -69,27 +69,28 @@ export class OpenCodeAdapter implements Adapter {
 
     const { payloads, nextWatermark } = readSessionsSince(s.sqlitePath, watermark);
 
-    const out: Event[] = [];
+    // Emit per-session — stream events through the journal instead of
+    // holding them in memory until all payloads are normalized.
     for (const payload of payloads) {
+      if (signal.aborted) return;
       const events = normalizeSession(
         payload,
         { ...this.identity, tier: ctx.tier },
         SOURCE_VERSION_DEFAULT,
       );
-      out.push(...events);
+      for (const e of events) emit(e);
     }
 
-    // Advance cursors only after normalize has produced events — if normalize
-    // throws, the next tick re-reads this window instead of silently losing
-    // it. Watermark advances only when we actually saw new rows.
+    // Advance cursors only after every session's events have been emitted.
+    // A kill between emits is safe: the journal has the partial work, and
+    // the next poll re-reads from `watermark` (which hasn't advanced yet)
+    // — deduplication collapses the replay.
     if (nextWatermark !== null) {
       await ctx.cursor.set(WATERMARK_KEY, nextWatermark);
     }
     if (currentInode !== null && currentInode !== prevInode) {
       await ctx.cursor.set(INODE_KEY, currentInode);
     }
-
-    return out;
   }
 
   async health(_ctx: AdapterContext): Promise<AdapterHealth> {
