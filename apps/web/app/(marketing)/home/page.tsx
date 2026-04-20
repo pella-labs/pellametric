@@ -4,6 +4,7 @@ import { CardMount } from "../_card/CardMount";
 import { DEMO_CARD } from "../_card/demo-data";
 import { BrandMonolith } from "../_components/BrandMonolith";
 import { DashboardShot } from "../_components/DashboardShot";
+import { DemoVideo } from "../_components/DemoVideo";
 import { HeroGrid } from "../_components/HeroGrid";
 
 const HOME_TITLE = "Bematist · Measure agentic engineering output";
@@ -153,6 +154,9 @@ export default function MarketingHome() {
           </div>
         </div>
       </section>
+
+      {/* Demo video */}
+      <DemoVideo />
 
       {/* Dashboard screenshot */}
       <DashboardShot />

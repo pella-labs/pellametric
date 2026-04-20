@@ -1,0 +1,114 @@
+/*
+ * Demo video section — framed muted-autoplay player with click-to-unmute.
+ * All tokens reference --mk-* from marketing.css.
+ */
+
+.bematist-marketing .mk-demo-section {
+  border-bottom: 1px solid var(--mk-border);
+}
+
+.bematist-marketing .mk-demo-wrap {
+  padding: 32px var(--mk-grid-size) 48px;
+  display: flex;
+  justify-content: center;
+}
+
+.bematist-marketing .mk-demo-frame {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  aspect-ratio: 16 / 9;
+  background: var(--mk-bg-terminal);
+  border: 1px solid var(--mk-border);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.bematist-marketing .mk-demo-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* Gradient fade behind controls so they're readable on any frame */
+.bematist-marketing .mk-demo-frame::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 72px;
+  background: linear-gradient(to top, rgba(5, 5, 6, 0.75) 0%, rgba(5, 5, 6, 0) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bematist-marketing .mk-demo-controls {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.bematist-marketing .mk-demo-frame:hover .mk-demo-controls,
+.bematist-marketing .mk-demo-frame:focus-within .mk-demo-controls {
+  opacity: 1;
+}
+
+.bematist-marketing .mk-demo-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(237, 232, 222, 0.08);
+  border: 1px solid var(--mk-border);
+  color: var(--mk-ink);
+  cursor: pointer;
+  font-family: var(--font-mk-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bematist-marketing .mk-demo-btn:hover {
+  background: rgba(237, 232, 222, 0.14);
+  border-color: var(--mk-border-hover);
+}
+
+.bematist-marketing .mk-demo-btn:focus-visible {
+  outline: 2px solid var(--mk-accent);
+  outline-offset: 2px;
+}
+
+.bematist-marketing .mk-demo-btn-label {
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+  .bematist-marketing .mk-demo-wrap {
+    padding: 20px var(--mk-grid-size) 32px;
+  }
+
+  .bematist-marketing .mk-demo-controls {
+    opacity: 1; /* always visible on touch devices */
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bematist-marketing .mk-demo-video {
+    /* Respect reduced-motion — video still loads and can be played manually,
+       but autoplay behavior is left to the browser's own reduced-motion policy.
+       Nothing to override here unless we want to force-pause, which would
+       remove an affordance. */
+  }
+}
