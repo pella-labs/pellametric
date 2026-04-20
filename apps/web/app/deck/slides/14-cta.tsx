@@ -5,13 +5,10 @@ import { CardMount } from "../../(marketing)/_card/CardMount";
 import { DEMO_CARD } from "../../(marketing)/_card/demo-data";
 
 /**
- * Final slide — merges the former "engineer card" slide into the CTA so
- * developers who scan the QR have immediate reason to care: their own
- * card is the first thing they see.
- *
- * Layout: QR + "Start today / Join the movement" on the LEFT, live
- * shareable card on the RIGHT, auto-advancing through all 8 card pages
- * so the audience sees every face without keyboard input.
+ * Final slide — company-facing value prop on the LEFT (pitch summary +
+ * shrunk QR), live shareable card on the RIGHT auto-advancing through
+ * all 8 card pages so the audience sees every face without keyboard
+ * input. One frame, two readers.
  */
 export function Slide14Cta(_props: { totalPages: number }) {
   return (
@@ -25,7 +22,7 @@ export function Slide14Cta(_props: { totalPages: number }) {
         <div className="wordmark">
           <span className="wordmark-dot" /> bematist
         </div>
-        <div className="chrome-right">11 / CALL TO ACTION</div>
+        <div className="chrome-right">13 / CLOSING</div>
       </div>
 
       <div
@@ -43,50 +40,77 @@ export function Slide14Cta(_props: { totalPages: number }) {
           style={{
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
+            alignItems: "flex-start",
             gap: 28,
           }}
         >
-          <div style={{ textAlign: "center" }}>
-            <div className="sys" style={{ marginBottom: 16 }}>
-              {"// five minutes to first event"}
+          <div className="eyebrow">FOR THE COMPANY</div>
+          <h2 className="title" style={{ fontSize: 64, lineHeight: 1.05, margin: 0 }}>
+            See the leverage behind every <em>dollar</em>.
+          </h2>
+          <p className="body-text" style={{ margin: 0, fontSize: 22 }}>
+            Bematist auto-instruments every coding agent on the team and ties AI spend to what
+            actually ships — accepted edits, merged PRs, green tests.
+          </p>
+          <ul className="reader-list" style={{ margin: 0 }}>
+            <li>
+              <span className="ink" style={{ fontWeight: 500 }}>
+                Spend allocation.
+              </span>{" "}
+              <span className="muted">Where the AI budget goes, by engineer and repo.</span>
+            </li>
+            <li>
+              <span className="ink" style={{ fontWeight: 500 }}>
+                Outcome attribution.
+              </span>{" "}
+              <span className="muted">$ per accepted edit, $ per merged PR.</span>
+            </li>
+            <li>
+              <span className="ink" style={{ fontWeight: 500 }}>
+                Efficiency drivers.
+              </span>{" "}
+              <span className="muted">Why one engineer ships 10× the leverage per dollar.</span>
+            </li>
+          </ul>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <span className="badge accent">OPEN SOURCE</span>
+            <span className="badge warm">SELF-HOSTABLE</span>
+            <span className="badge accent">APACHE 2.0</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 4 }}>
+            <div
+              style={{
+                width: 160,
+                height: 160,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                position: "relative",
+                borderRadius: 20,
+                overflow: "hidden",
+                background: "#fff",
+                padding: 10,
+                boxSizing: "border-box",
+                filter: "drop-shadow(0 16px 32px rgba(110,138,111,0.3))",
+                flexShrink: 0,
+              }}
+            >
+              <Image
+                src="/deck/qr-bematist.png"
+                alt="QR code — bematist.dev"
+                width={140}
+                height={140}
+                priority
+                style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+              />
             </div>
-            <h2 style={{ fontSize: 72, lineHeight: 1.05, margin: 0 }}>
-              Start today.
-              <br />
-              <em>Join the movement.</em>
-            </h2>
-          </div>
-          <div
-            style={{
-              width: 420,
-              height: 420,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              position: "relative",
-              borderRadius: 40,
-              overflow: "hidden",
-              background: "#fff",
-              padding: 22,
-              boxSizing: "border-box",
-              filter: "drop-shadow(0 24px 48px rgba(110,138,111,0.35))",
-            }}
-          >
-            <Image
-              src="/deck/qr-bematist.png"
-              alt="QR code — bematist.dev"
-              width={380}
-              height={380}
-              priority
-              style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
-            />
-          </div>
-          <div
-            className="sys"
-            style={{ textAlign: "center", fontSize: 16, letterSpacing: "0.22em" }}
-          >
-            SCAN TO INSTALL → BEMATIST.DEV
+            <div
+              className="sys"
+              style={{ fontSize: 14, letterSpacing: "0.22em", lineHeight: 1.5 }}
+            >
+              SCAN TO INSTALL
+              <br />→ BEMATIST.DEV
+            </div>
           </div>
         </div>
 
