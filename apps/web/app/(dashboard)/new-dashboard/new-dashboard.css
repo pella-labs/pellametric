@@ -7,6 +7,12 @@
   color: var(--mk-ink);
 }
 
+@media (max-width: 640px) {
+  .newdash {
+    padding: 1rem 0.75rem 2.5rem;
+  }
+}
+
 .newdash-head {
   display: flex;
   flex-direction: column;
@@ -108,6 +114,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  /* Grid items default to min-width:auto (== min-content width), which
+   * prevents children like the 24-col heatmap or a wide table from
+   * shrinking below their intrinsic size and pushes overflow outside the
+   * card. Allow the card to be narrower than its content. */
+  min-width: 0;
 }
 
 .newdash-card-label {
@@ -141,18 +152,116 @@
   position: relative;
 }
 
+.newdash-trend--interactive svg {
+  cursor: crosshair;
+}
+
+.newdash-trend-tooltip {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -110%);
+  pointer-events: none;
+  background: var(--mk-bg-elevated);
+  border: 1px solid var(--mk-border);
+  border-radius: 0.375rem;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.72rem;
+  color: var(--mk-ink);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 7.5rem;
+  z-index: 5;
+}
+.newdash-trend-tooltip__day {
+  font-weight: 600;
+  color: var(--mk-ink);
+  border-bottom: 1px solid var(--mk-border);
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.15rem;
+}
+.newdash-trend-tooltip > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+.newdash-trend-tooltip__label {
+  color: var(--mk-ink-muted);
+}
+
+.newdash-heatmap-wrap {
+  position: relative;
+  min-width: 0;
+}
+
 .newdash-heatmap {
   display: grid;
-  grid-template-columns: auto repeat(24, 1fr);
+  /* minmax(0, 1fr) lets each hour-column shrink below its intrinsic content
+   * width (the "0", "6", "12", "18" axis labels). Without it the labels
+   * force a minimum column width and the grid overflows the card on narrow
+   * viewports. */
+  grid-template-columns: auto repeat(24, minmax(0, 1fr));
   gap: 2px;
   font-size: 0.65rem;
   color: var(--mk-ink-muted);
+  min-width: 0;
 }
 
 .newdash-heatmap-cell {
   aspect-ratio: 1;
   border-radius: 2px;
   background: var(--mk-border);
+  cursor: pointer;
+  transition: outline-color 80ms;
+  outline: 1px solid transparent;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+}
+.newdash-heatmap-cell:hover,
+.newdash-heatmap-cell:focus-visible {
+  outline-color: var(--mk-accent);
+}
+.newdash-heatmap-cell:focus {
+  outline-offset: 0;
+}
+
+.newdash-heatmap-tooltip {
+  position: absolute;
+  transform: translate(-50%, -110%);
+  pointer-events: none;
+  background: var(--mk-bg-elevated);
+  border: 1px solid var(--mk-border);
+  border-radius: 0.375rem;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.72rem;
+  color: var(--mk-ink);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 8rem;
+  z-index: 5;
+}
+.newdash-heatmap-tooltip__head {
+  font-weight: 600;
+  border-bottom: 1px solid var(--mk-border);
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.15rem;
+}
+.newdash-heatmap-tooltip > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+.newdash-heatmap-tooltip__label {
+  color: var(--mk-ink-muted);
 }
 
 /* ---- Tables ---------------------------------------------------------- */
@@ -162,6 +271,20 @@
   border-collapse: collapse;
   font-size: 0.82rem;
   table-layout: fixed;
+}
+
+/* Wide table (per-developer delivery) has 8 columns of tabular numeric
+ * content with nowrap cells — cannot meaningfully shrink below a minimum
+ * width. Pair this class with a .newdash-scroll-x wrapper so narrow
+ * viewports scroll the table instead of blowing out the card's right
+ * edge. */
+.newdash-table-wide {
+  min-width: 640px;
+}
+
+.newdash-scroll-x {
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 .newdash-table thead th {
@@ -206,6 +329,126 @@
   border-radius: 2px;
   background: var(--mk-accent);
   opacity: 0.7;
+}
+
+.newdash-loadmore {
+  appearance: none;
+  font: inherit;
+  font-size: 0.76rem;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.7rem;
+  background: transparent;
+  color: var(--mk-ink-muted);
+  border: 1px solid var(--mk-border);
+  border-radius: 0.4rem;
+  cursor: pointer;
+  align-self: flex-start;
+  transition:
+    background-color 120ms,
+    color 120ms,
+    border-color 120ms;
+}
+.newdash-loadmore:hover {
+  background: var(--mk-accent-muted);
+  color: var(--mk-ink);
+  border-color: var(--mk-border-hover);
+}
+
+.newdash-audit {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px dashed var(--mk-border);
+  border-radius: 0.4rem;
+  background: var(--mk-accent-muted);
+  font-size: 0.72rem;
+  color: var(--mk-ink-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.newdash-audit__head {
+  font-weight: 600;
+  color: var(--mk-ink);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.newdash-audit__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.newdash-audit__list code {
+  font-size: 0.7rem;
+  padding: 0.05rem 0.25rem;
+  border-radius: 0.2rem;
+  background: var(--mk-bg);
+  color: var(--mk-ink);
+  font-variant-numeric: tabular-nums;
+}
+.newdash-audit__sep {
+  color: var(--mk-ink-faint);
+  margin: 0 0.15rem;
+}
+.newdash-audit__hint {
+  font-size: 0.68rem;
+  color: var(--mk-ink-faint);
+}
+
+/* ---- Suspense skeletons --------------------------------------------- */
+
+.newdash-section--skeleton {
+  opacity: 0.85;
+}
+
+.newdash-card--skeleton {
+  gap: 0.55rem;
+}
+
+.newdash-skel {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    var(--mk-border) 0%,
+    var(--mk-accent-muted) 50%,
+    var(--mk-border) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: 0.25rem;
+  animation: newdash-skel-shimmer 1.4s ease-in-out infinite;
+}
+
+.newdash-skel--label {
+  height: 0.7rem;
+  width: 40%;
+}
+
+.newdash-skel--value {
+  height: 1.6rem;
+  width: 62%;
+}
+
+.newdash-skel--row {
+  height: 0.9rem;
+  width: 100%;
+}
+
+@keyframes newdash-skel-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .newdash-skel {
+    animation: none;
+  }
 }
 
 /* ---- Drawer --------------------------------------------------------- */

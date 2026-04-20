@@ -83,7 +83,12 @@ export function SessionsSection({ initial, filter }: Props) {
               <tbody>
                 {page.rows.map((r) => (
                   <tr
-                    key={r.session_id}
+                    // Composite key: the CH query groups by (session_id,
+                    // engineer_id), so a session whose events carry mixed
+                    // engineer_ids surfaces here as two rows sharing the same
+                    // session_id. Using session_id alone collides; composing
+                    // with engineer_id_hash gives each row a stable identity.
+                    key={`${r.session_id}|${r.engineer_id_hash}`}
                     onClick={() => setOpenSession(r.session_id)}
                     tabIndex={0}
                     onKeyDown={(e) => {

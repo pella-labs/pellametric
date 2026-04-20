@@ -321,138 +321,149 @@ async function codeDeliveryReal(ctx: Ctx, input: CodeDeliveryInput): Promise<Cod
       base_ref: r.base_ref ?? "",
     }));
 
-  // cost_per_merged_pr — join session_repo_links (PG) to event-cost (CH):
-  // pull session_ids linked to merged-state PRs in the window from PG, then
-  // sum cost_usd across those sessions in CH. Null when linker hasn't
-  // populated any rows yet; UI copy explains the wait.
-  const linkedSessionRows = (await ctx.db.pg
-    .query<{ session_id: string }>(
-      `SELECT DISTINCT srl.session_id
-         FROM session_repo_links srl
-         JOIN github_pull_requests pr
-           ON pr.provider_repo_id = srl.provider_repo_id
-          AND pr.tenant_id = srl.tenant_id
-        WHERE srl.tenant_id = $1
-          AND srl.stale_at IS NULL
-          AND pr.state = 'merged'
-          AND pr.merged_at >= now() - ($2 || ' days')::interval`,
-      [ctx.tenant_id, String(days)],
-    )
-    .catch(() => [])) as Array<{ session_id: string }>;
-
+  // cost_per_merged_pr is computed below alongside the per-author match,
+  // so it uses the same (branch + time-overlap) attribution as the table
+  // rows. The previous session_repo_links-based query joined PRs × links
+  // on repo only, producing a cartesian overcount — superseded.
   let cost_per_merged_pr: number | null = null;
-  if (linkedSessionRows.length > 0 && merged > 0) {
-    const sessionIds = linkedSessionRows.map((r) => r.session_id);
-    const chCostRows = await ctx.db.ch
-      .query<{ cost: number | string }>(
-        `SELECT round(sum(cost_usd), 6) AS cost
-         FROM events
-         WHERE org_id = {tid:String} AND session_id IN {sids:Array(String)}`,
-        { tid: ctx.tenant_id, sids: sessionIds },
-      )
-      .catch(() => []);
-    const totalCost = Number(chCostRows[0]?.cost ?? 0);
-    if (totalCost > 0) cost_per_merged_pr = round2(totalCost / merged);
-  }
 
-  // Per-author cost breakdown — joins author_login_hash → linked sessions →
-  // CH spend. A session attributed to MULTIPLE authors' PRs gets counted in
-  // each author's bucket; that's intentional for the MVP since sessions
-  // genuinely contribute to all PRs they touch. Only sessions linked to at
-  // least one of the author's PRs in-window are included.
+  // Per-author cost breakdown — READ-ONLY inline match. We skip
+  // session_repo_links (which is populated by the branch-time linker cron
+  // and is often empty on fresh deploys) and do the branch + time-overlap
+  // match ourselves against CH session windows + PG PRs. No writes.
+  //
+  // Match rule: session.branch = pr.head_ref AND session's [min_ts, max_ts]
+  // overlaps pr's [opened_at, coalesce(merged_at, closed_at, now())]. A
+  // session can legitimately match multiple PRs (rebased, reopened, long-
+  // lived branch); each matching author gets that session's cost counted
+  // once (deduped per (author, session) pair). This mirrors the linker at
+  // apps/worker/scripts/link-sessions-by-branch.ts so numbers agree once
+  // the linker starts running.
   if (!cohort_gated && pr_by_author.length > 0) {
-    const authorSessionRows = (await ctx.db.pg
-      .query<{ author8: string; state: string; session_id: string }>(
-        `SELECT substr(encode(pr.author_login_hash, 'hex'), 1, 8) AS author8,
-                pr.state                                          AS state,
-                srl.session_id                                    AS session_id
-           FROM github_pull_requests pr
-           JOIN session_repo_links srl
-             ON srl.tenant_id        = pr.tenant_id
-            AND srl.provider_repo_id = pr.provider_repo_id
-            AND srl.stale_at IS NULL
-          WHERE pr.tenant_id = $1
-            AND pr.opened_at >= now() - ($2 || ' days')::interval`,
-        [ctx.tenant_id, String(days)],
+    const sessionRows = (await ctx.db.ch
+      .query<{
+        session_id: string;
+        branch: string;
+        started_at: string;
+        ended_at: string;
+        cost: number | string;
+        tokens: number | string;
+      }>(
+        `SELECT session_id,
+                branch,
+                toString(min(ts))                      AS started_at,
+                toString(max(ts))                      AS ended_at,
+                round(sum(cost_usd), 6)                AS cost,
+                sum(input_tokens) + sum(output_tokens) AS tokens
+           FROM events
+          WHERE org_id = {tid:String}
+            AND branch != ''
+            AND ts >= now() - toIntervalDay({days:UInt16})
+          GROUP BY session_id, branch`,
+        { tid: ctx.tenant_id, days },
       )
-      .catch(() => [])) as Array<{ author8: string; state: string; session_id: string }>;
+      .catch(() => [])) as Array<{
+      session_id: string;
+      branch: string;
+      started_at: string;
+      ended_at: string;
+      cost: number | string;
+      tokens: number | string;
+    }>;
 
-    if (authorSessionRows.length > 0) {
-      const allSessionIds = Array.from(new Set(authorSessionRows.map((r) => r.session_id)));
-      const sessionCostRows = await ctx.db.ch
-        .query<{
-          session_id: string;
-          cost: number | string;
-          tokens: number | string;
-        }>(
-          `SELECT session_id,
-                  round(sum(cost_usd), 6)                AS cost,
-                  sum(input_tokens) + sum(output_tokens) AS tokens
-             FROM events
-            WHERE org_id     = {tid:String}
-              AND session_id IN {sids:Array(String)}
-            GROUP BY session_id`,
-          { tid: ctx.tenant_id, sids: allSessionIds },
-        )
-        .catch(() => []);
-      const costBySession = new Map<string, { cost: number; tokens: number }>();
-      for (const r of sessionCostRows) {
-        costBySession.set(String(r.session_id), {
-          cost: Number(r.cost ?? 0),
-          tokens: Number(r.tokens ?? 0),
-        });
+    // Index PRs by head_ref; branches can be reused (e.g. reopened PRs),
+    // so the value is an array, not a single PR.
+    const prsByBranch = new Map<string, typeof base>();
+    for (const pr of base) {
+      if (!pr.head_ref) continue;
+      const arr = prsByBranch.get(pr.head_ref) ?? [];
+      arr.push(pr);
+      prsByBranch.set(pr.head_ref, arr);
+    }
+
+    type AuthorAcc = {
+      sessions: Set<string>;
+      cost: number;
+      merged_cost: number;
+      tokens: number;
+    };
+    const accByAuthor = new Map<string, AuthorAcc>();
+    // Tenant-wide merged-session cost dedup for the global cost_per_merged_pr
+    // (summing per-author merged_cost would double-count sessions that
+    // matched multiple authors' PRs on the same branch).
+    const globalMergedSessions = new Map<string, number>();
+    const nowMs = Date.now();
+
+    for (const s of sessionRows) {
+      const candidates = prsByBranch.get(String(s.branch));
+      if (!candidates) continue;
+      const startedMs = Date.parse(s.started_at);
+      const endedMs = Date.parse(s.ended_at);
+      if (Number.isNaN(startedMs) || Number.isNaN(endedMs)) continue;
+
+      // Collect authors whose PR windows overlap this session; remember
+      // which of those authors owned a merged PR for the merged-vs-unmerged
+      // bucket.
+      const matchedAuthors = new Map<string, { merged: boolean }>();
+      for (const pr of candidates) {
+        const prOpen = Date.parse(pr.opened_at);
+        const prClose = pr.merged_at
+          ? Date.parse(pr.merged_at)
+          : pr.closed_at
+            ? Date.parse(pr.closed_at)
+            : nowMs;
+        if (Number.isNaN(prOpen)) continue;
+        if (endedMs < prOpen || startedMs > prClose) continue;
+        const author8 = pr.author_login_hash.slice(0, 8);
+        const prev = matchedAuthors.get(author8);
+        const mergedNow = pr.state === "merged";
+        matchedAuthors.set(author8, { merged: (prev?.merged ?? false) || mergedNow });
       }
-      // For each (author, session) pair, accumulate cost. Track which sessions
-      // touched a merged PR per author so we can bucket merged vs unmerged.
-      type AuthorAcc = {
-        sessions: Set<string>;
-        mergedSessions: Set<string>;
-        cost: number;
-        merged_cost: number;
-        tokens: number;
-      };
-      const accByAuthor = new Map<string, AuthorAcc>();
-      // Build (author, session) → state set first to dedup per pair.
-      const pairStates = new Map<string, Set<string>>();
-      for (const r of authorSessionRows) {
-        const k = `${r.author8}|${r.session_id}`;
-        const set = pairStates.get(k) ?? new Set<string>();
-        set.add(r.state);
-        pairStates.set(k, set);
-      }
-      for (const [k, states] of pairStates) {
-        const [author8, session_id] = k.split("|");
-        if (!author8 || !session_id) continue;
-        const cb = costBySession.get(session_id);
-        if (!cb) continue;
+      if (matchedAuthors.size === 0) continue;
+
+      const sessionId = String(s.session_id);
+      const sessionCost = Number(s.cost ?? 0);
+      const sessionTokens = Number(s.tokens ?? 0);
+      let touchedAnyMerged = false;
+      for (const [author8, { merged }] of matchedAuthors) {
         const acc = accByAuthor.get(author8) ?? {
           sessions: new Set<string>(),
-          mergedSessions: new Set<string>(),
           cost: 0,
           merged_cost: 0,
           tokens: 0,
         };
-        if (!acc.sessions.has(session_id)) {
-          acc.sessions.add(session_id);
-          acc.cost += cb.cost;
-          acc.tokens += cb.tokens;
-          if (states.has("merged")) {
-            acc.mergedSessions.add(session_id);
-            acc.merged_cost += cb.cost;
-          }
+        if (!acc.sessions.has(sessionId)) {
+          acc.sessions.add(sessionId);
+          acc.cost += sessionCost;
+          acc.tokens += sessionTokens;
+          if (merged) acc.merged_cost += sessionCost;
         }
         accByAuthor.set(author8, acc);
+        if (merged) touchedAnyMerged = true;
       }
-      for (const author of pr_by_author) {
-        const acc = accByAuthor.get(author.author_hash);
-        if (!acc) continue;
-        author.spend_usd = round2(acc.cost);
-        author.spend_on_merged_usd = round2(acc.merged_cost);
-        author.spend_on_unmerged_usd = round2(Math.max(0, acc.cost - acc.merged_cost));
-        author.tokens = acc.tokens;
-        author.cost_per_merged_pr =
-          author.merged > 0 ? round2(acc.merged_cost / author.merged) : null;
+      if (touchedAnyMerged && !globalMergedSessions.has(sessionId)) {
+        globalMergedSessions.set(sessionId, sessionCost);
       }
+    }
+
+    for (const author of pr_by_author) {
+      const acc = accByAuthor.get(author.author_hash);
+      if (!acc) continue;
+      author.spend_usd = round2(acc.cost);
+      author.spend_on_merged_usd = round2(acc.merged_cost);
+      author.spend_on_unmerged_usd = round2(Math.max(0, acc.cost - acc.merged_cost));
+      author.tokens = acc.tokens;
+      author.cost_per_merged_pr =
+        author.merged > 0 ? round2(acc.merged_cost / author.merged) : null;
+    }
+
+    // Tenant-wide cost_per_merged_pr — sum cost across distinct merged
+    // sessions (dedup via globalMergedSessions, so a session matched to
+    // multiple authors on the same branch only counts once).
+    if (merged > 0 && globalMergedSessions.size > 0) {
+      let totalMergedCost = 0;
+      for (const c of globalMergedSessions.values()) totalMergedCost += c;
+      if (totalMergedCost > 0) cost_per_merged_pr = round2(totalMergedCost / merged);
     }
   }
 

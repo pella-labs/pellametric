@@ -149,72 +149,76 @@ export function DeliverySection({ data }: Props) {
         ) : data.pr_by_author.length === 0 ? (
           <div className="newdash-empty">No PR authors in this window.</div>
         ) : (
-          <table className="newdash-table newdash-table-wide">
-            <thead>
-              <tr>
-                <th>Teammate</th>
-                <th style={{ textAlign: "right" }}>Opened</th>
-                <th style={{ textAlign: "right" }}>Merged</th>
-                <th style={{ textAlign: "right" }}>Reverts</th>
-                <th style={{ textAlign: "right" }}>Spend</th>
-                <th style={{ textAlign: "right" }}>$ / merged PR</th>
-                <th style={{ textAlign: "right" }}>Wasted on unmerged</th>
-                <th style={{ textAlign: "right" }}>Tokens</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.pr_by_author.map((a) => {
-                const wastePct =
-                  a.spend_usd && a.spend_usd > 0 && a.spend_on_unmerged_usd != null
-                    ? a.spend_on_unmerged_usd / a.spend_usd
-                    : null;
-                return (
-                  <tr key={a.author_hash}>
-                    <td>#{a.author_hash}</td>
-                    <td style={{ textAlign: "right" }}>{INT.format(a.opened)}</td>
-                    <td style={{ textAlign: "right" }}>{INT.format(a.merged)}</td>
-                    <td style={{ textAlign: "right" }}>{INT.format(a.revert_count)}</td>
-                    <td style={{ textAlign: "right" }}>
-                      {a.spend_usd == null ? "—" : USD.format(a.spend_usd)}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      {a.cost_per_merged_pr == null ? "—" : USD.format(a.cost_per_merged_pr)}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      {a.spend_on_unmerged_usd == null ? (
-                        "—"
-                      ) : (
-                        <>
-                          {USD.format(a.spend_on_unmerged_usd)}
-                          {wastePct != null && wastePct > 0 ? (
-                            <span
-                              style={{
-                                marginLeft: 6,
-                                color:
-                                  wastePct >= 0.4
-                                    ? "var(--mk-warm)"
-                                    : wastePct >= 0.2
-                                      ? "var(--mk-ink-muted)"
-                                      : "var(--mk-ink-faint)",
-                                fontSize: "0.7rem",
-                              }}
-                            >
-                              {PCT.format(wastePct)}
-                            </span>
-                          ) : null}
-                        </>
-                      )}
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      {a.tokens == null
-                        ? "—"
-                        : new Intl.NumberFormat("en-US", { notation: "compact" }).format(a.tokens)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="newdash-scroll-x">
+            <table className="newdash-table newdash-table-wide">
+              <thead>
+                <tr>
+                  <th>Teammate</th>
+                  <th style={{ textAlign: "right" }}>Opened</th>
+                  <th style={{ textAlign: "right" }}>Merged</th>
+                  <th style={{ textAlign: "right" }}>Reverts</th>
+                  <th style={{ textAlign: "right" }}>Spend</th>
+                  <th style={{ textAlign: "right" }}>$ / merged PR</th>
+                  <th style={{ textAlign: "right" }}>Wasted on unmerged</th>
+                  <th style={{ textAlign: "right" }}>Tokens</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.pr_by_author.map((a) => {
+                  const wastePct =
+                    a.spend_usd && a.spend_usd > 0 && a.spend_on_unmerged_usd != null
+                      ? a.spend_on_unmerged_usd / a.spend_usd
+                      : null;
+                  return (
+                    <tr key={a.author_hash}>
+                      <td>#{a.author_hash}</td>
+                      <td style={{ textAlign: "right" }}>{INT.format(a.opened)}</td>
+                      <td style={{ textAlign: "right" }}>{INT.format(a.merged)}</td>
+                      <td style={{ textAlign: "right" }}>{INT.format(a.revert_count)}</td>
+                      <td style={{ textAlign: "right" }}>
+                        {a.spend_usd == null ? "—" : USD.format(a.spend_usd)}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        {a.cost_per_merged_pr == null ? "—" : USD.format(a.cost_per_merged_pr)}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        {a.spend_on_unmerged_usd == null ? (
+                          "—"
+                        ) : (
+                          <>
+                            {USD.format(a.spend_on_unmerged_usd)}
+                            {wastePct != null && wastePct > 0 ? (
+                              <span
+                                style={{
+                                  marginLeft: 6,
+                                  color:
+                                    wastePct >= 0.4
+                                      ? "var(--mk-warm)"
+                                      : wastePct >= 0.2
+                                        ? "var(--mk-ink-muted)"
+                                        : "var(--mk-ink-faint)",
+                                  fontSize: "0.7rem",
+                                }}
+                              >
+                                {PCT.format(wastePct)}
+                              </span>
+                            ) : null}
+                          </>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        {a.tokens == null
+                          ? "—"
+                          : new Intl.NumberFormat("en-US", { notation: "compact" }).format(
+                              a.tokens,
+                            )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </section>

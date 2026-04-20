@@ -2,7 +2,7 @@
 
 import type { schemas } from "@bematist/api";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { buildHref, type Filter } from "../_filter";
 
 interface Props {
@@ -26,7 +26,14 @@ export function FilterBar({ filter, cohorts, myEngineerId, myName }: Props) {
   const router = useRouter();
   const justMe =
     (filter.engineer_ids ?? []).length === 1 && filter.engineer_ids?.[0] === myEngineerId;
-  const updated = useMemo(() => new Date().toLocaleTimeString(), []);
+  // "Refreshed HH:MM:SS" is a client-local wall-clock stamp. Computing it
+  // during render causes SSR (server time) and client hydration (browser
+  // time) to produce different strings a second or two apart → hydration
+  // mismatch. Start empty and fill in after mount so both renders agree.
+  const [updated, setUpdated] = useState<string | null>(null);
+  useEffect(() => {
+    setUpdated(new Date().toLocaleTimeString());
+  }, []);
   const selectedRepos = filter.repo_ids ?? [];
   const [reposOpen, setReposOpen] = useState(false);
 
@@ -149,8 +156,8 @@ export function FilterBar({ filter, cohorts, myEngineerId, myName }: Props) {
       </fieldset>
 
       <span className="newdash-filterbar-meta">
-        Refreshed {updated}
-        {myName ? ` · signed in as ${myName}` : ""}
+        {updated ? `Refreshed ${updated}` : ""}
+        {myName ? `${updated ? " · " : ""}signed in as ${myName}` : ""}
       </span>
     </section>
   );
