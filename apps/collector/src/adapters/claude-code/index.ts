@@ -1,8 +1,7 @@
 import { statSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import type { Adapter, AdapterContext, AdapterHealth, EventEmitter } from "@bematist/sdk";
 import { type DiscoverySources, discoverSources } from "./discovery";
 import { normalizeSession } from "./normalize";
 import { type ParseSessionFileOpts, parseSessionFile } from "./parsers/parseSessionFile";
@@ -54,21 +53,21 @@ export class ClaudeCodeAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, signal: AbortSignal, emit: EventEmitter): Promise<void> {
     const s = this.sources ?? discoverSources();
-    if (!s.jsonlDirExists) return [];
+    if (!s.jsonlDirExists) return;
 
     const files = await findSessionFiles(s.jsonlDir);
-    const out: Event[] = [];
+    let emittedCount = 0;
     for (const path of files) {
       // Early-exit on abort so the orchestrator's timeout doesn't cause us
-      // to keep parsing + updating cursors past the deadline. Returning
-      // what we've emitted so far lets the next poll pick up from exactly
-      // where this one left off (signature cache does the rest).
+      // to keep parsing + updating cursors past the deadline. Events we've
+      // already emitted are durable in the journal; the next poll picks up
+      // from exactly where this one left off (signature cache does the rest).
       if (signal.aborted) {
         const remaining = files.length - files.indexOf(path);
         ctx.log.info(
-          `claude-code: poll aborted mid-scan — emitted ${out.length}, ${remaining} files unprocessed`,
+          `claude-code: poll aborted mid-scan — emitted ${emittedCount}, ${remaining} files unprocessed`,
         );
         break;
       }
@@ -124,17 +123,21 @@ export class ClaudeCodeAdapter implements Adapter {
       let newHighWatermark = prevMax;
       for (const e of events) {
         if (e.event_seq > prevMax) {
-          out.push(e);
+          emit(e);
+          emittedCount++;
           if (e.event_seq > newHighWatermark) newHighWatermark = e.event_seq;
         }
       }
 
+      // Cursors advance only AFTER emits — enforces the "events durable
+      // before cursor advances" invariant. A kill mid-loop restarts from
+      // sigPrev next tick; idempotency (deterministicId + Redis SETNX)
+      // collapses any replayed events.
       if (newHighWatermark > prevMax) {
         await ctx.cursor.set(maxSeqKey, String(newHighWatermark));
       }
       await ctx.cursor.set(signatureKey, sigNow);
     }
-    return out;
   }
 
   async health(_ctx: AdapterContext): Promise<AdapterHealth> {

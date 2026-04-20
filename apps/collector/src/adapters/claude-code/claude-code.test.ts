@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { loadFixture } from "@bematist/fixtures";
 import type { Adapter, AdapterContext } from "@bematist/sdk";
+import { collectPoll } from "../../test-helpers";
 import { ClaudeCodeAdapter } from "./index";
 
 function mkCtx(): AdapterContext {
@@ -44,7 +45,7 @@ test("poll() returns [] when no JSONL dir exists", async () => {
     const a = new ClaudeCodeAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
     const ctx = mkCtx();
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     expect(events).toEqual([]);
   } finally {
     if (originalDir !== undefined) {
@@ -124,11 +125,11 @@ test("poll() skips files whose (size, mtime) signature is unchanged since last e
     };
     await a.init(ctx);
 
-    const first = await a.poll(ctx, new AbortController().signal);
+    const first = await collectPoll(a, ctx);
     expect(first.length).toBeGreaterThan(0);
 
     // Second poll, file unchanged — must emit zero events.
-    const second = await a.poll(ctx, new AbortController().signal);
+    const second = await collectPoll(a, ctx);
     expect(second).toEqual([]);
 
     // Third poll after bumping mtime (file same size/content, just touched) —
@@ -136,7 +137,7 @@ test("poll() skips files whose (size, mtime) signature is unchanged since last e
     const filePath = require("node:path").join(sub, "s1.jsonl");
     const future = new Date(Date.now() + 60_000);
     require("node:fs").utimesSync(filePath, future, future);
-    const third = await a.poll(ctx, new AbortController().signal);
+    const third = await collectPoll(a, ctx);
     expect(third).toEqual([]);
   } finally {
     if (prev === undefined) delete process.env.CLAUDE_CONFIG_DIR;
@@ -193,7 +194,7 @@ test("poll() walks into subagents/ subdirectories so their token cost is attribu
       },
     };
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
 
     // Both files should have produced events (the adapter walked into
     // subagents/). Each file emits >0 events from the real-session fixture.
@@ -272,7 +273,7 @@ test("poll() emits ONLY new events when a session file grows (active-session cas
     };
     await a.init(ctx);
 
-    const first = await a.poll(ctx, new AbortController().signal);
+    const first = await collectPoll(a, ctx);
     const firstSeqs = first.map((e) => e.event_seq).sort((a, b) => a - b);
     expect(firstSeqs.length).toBeGreaterThan(0);
     const maxSeqAfterFirst = Math.max(...firstSeqs);
@@ -305,7 +306,7 @@ test("poll() emits ONLY new events when a session file grows (active-session cas
     const future = new Date(Date.now() + 120_000);
     fs.utimesSync(sessionFile, future, future);
 
-    const second = await a.poll(ctx, new AbortController().signal);
+    const second = await collectPoll(a, ctx);
 
     // Every event emitted in the second poll must have a seq strictly
     // greater than the high-water mark from the first poll. This is the
@@ -337,7 +338,7 @@ test("poll() reads real-session fixture and emits canonical Events", async () =>
     const a = new ClaudeCodeAdapter({ tenantId: "org_t", engineerId: "eng_t", deviceId: "dev_t" });
     const ctx = mkCtx();
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
 
     expect(events.length).toBeGreaterThan(0);
     const kinds = new Set(events.map((e) => e.dev_metrics.event_kind));
