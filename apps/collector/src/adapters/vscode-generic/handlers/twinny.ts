@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Event } from "@bematist/schema";
-import type { VSCodeExtensionContext, VSCodeExtensionHandler } from "@bematist/sdk";
+import type { EventEmitter, VSCodeExtensionContext, VSCodeExtensionHandler } from "@bematist/sdk";
 import type { ServerIdentity } from "../normalize";
 import { baseEvent, deterministicEventId } from "../normalize";
 
@@ -64,14 +64,15 @@ export function makeTwinnyHandler(identity: ServerIdentity): VSCodeExtensionHand
       ctx: VSCodeExtensionContext,
       filePath: string,
       signal: AbortSignal,
-    ): Promise<Event[]> {
-      if (signal.aborted) return [];
+      emit: EventEmitter,
+    ): Promise<void> {
+      if (signal.aborted) return;
       let raw: string;
       try {
         raw = await readFile(filePath, "utf8");
       } catch (e) {
         ctx.log.warn("twinny: cannot read telemetry file", { filePath, err: String(e) });
-        return [];
+        return;
       }
       const cursorKey = `${EXTENSION_ID}:offset:${filePath}`;
       const prevStr = await ctx.cursor.get(cursorKey);
@@ -86,9 +87,8 @@ export function makeTwinnyHandler(identity: ServerIdentity): VSCodeExtensionHand
       const lines = tail.split("\n").filter((l) => l.trim().length > 0);
 
       let seq = 0;
-      const out: Event[] = [];
       for (const line of lines) {
-        if (signal.aborted) return out;
+        if (signal.aborted) return;
         let parsed: TwinnyLine;
         try {
           parsed = JSON.parse(line) as TwinnyLine;
@@ -108,7 +108,7 @@ export function makeTwinnyHandler(identity: ServerIdentity): VSCodeExtensionHand
           sourceVersion: "twinny@v1",
         });
         if (parsed.type === "session_start") {
-          out.push({
+          emit({
             ...envelope,
             client_event_id: deterministicEventId(
               EXTENSION_ID,
@@ -123,7 +123,7 @@ export function makeTwinnyHandler(identity: ServerIdentity): VSCodeExtensionHand
           continue;
         }
         if (parsed.type === "session_end") {
-          out.push({
+          emit({
             ...envelope,
             client_event_id: deterministicEventId(
               EXTENSION_ID,
@@ -145,7 +145,7 @@ export function makeTwinnyHandler(identity: ServerIdentity): VSCodeExtensionHand
           const genAi: Event["gen_ai"] = {};
           if (response) genAi.response = response;
           if (Object.keys(usage).length > 0) genAi.usage = usage;
-          out.push({
+          emit({
             ...envelope,
             client_event_id: deterministicEventId(
               EXTENSION_ID,
@@ -163,8 +163,8 @@ export function makeTwinnyHandler(identity: ServerIdentity): VSCodeExtensionHand
         ctx.log.debug("twinny: unknown line type; skipping", { type: parsed.type });
       }
 
+      // Cursor advance AFTER every emit — honors the streaming invariant.
       await ctx.cursor.set(cursorKey, String(raw.length));
-      return out;
     },
   };
 }

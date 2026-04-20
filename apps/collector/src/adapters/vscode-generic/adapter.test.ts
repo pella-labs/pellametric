@@ -10,6 +10,7 @@ import type {
   VSCodeExtensionContext,
   VSCodeExtensionHandler,
 } from "@bematist/sdk";
+import { collectPoll } from "../../test-helpers";
 import { VSCodeGenericAdapter } from "./index";
 import { baseEvent, deterministicEventId } from "./normalize";
 
@@ -63,7 +64,12 @@ function makeExampleHandler(): VSCodeExtensionHandler {
     async discover(_ctx: VSCodeExtensionContext) {
       return ["/virtual/example-output.jsonl"];
     },
-    async parse(ctx: VSCodeExtensionContext, _path: string, _signal: AbortSignal) {
+    async parse(
+      ctx: VSCodeExtensionContext,
+      _path: string,
+      _signal: AbortSignal,
+      emit: (e: import("@bematist/schema").Event) => void,
+    ) {
       const sessionId = "ex_01";
       const ts = "2026-04-17T15:00:00.000Z";
       const env = baseEvent({
@@ -74,19 +80,17 @@ function makeExampleHandler(): VSCodeExtensionHandler {
         fidelity: "estimated",
         costEstimated: true,
       });
-      return [
-        {
-          ...env,
-          client_event_id: deterministicEventId(
-            "example-corp.dummy-ai",
-            sessionId,
-            0,
-            "session_start",
-            null,
-          ),
-          dev_metrics: { event_kind: "session_start", duration_ms: 0 },
-        },
-      ];
+      emit({
+        ...env,
+        client_event_id: deterministicEventId(
+          "example-corp.dummy-ai",
+          sessionId,
+          0,
+          "session_start",
+          null,
+        ),
+        dev_metrics: { event_kind: "session_start", duration_ms: 0 },
+      });
     },
   };
 }
@@ -153,7 +157,7 @@ test("poll() returns [] when no VS Code profile is on disk", async () => {
     const a = new VSCodeGenericAdapter(identity);
     const ctx = mkCtx();
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     expect(events).toEqual([]);
   } finally {
     if (prev === undefined) delete process.env.BEMATIST_VSCODE_USER_ROOT;
@@ -178,13 +182,13 @@ test("poll() does not propagate handler.discover() errors — logs and continues
             throw new Error("broken on purpose");
           },
           async parse() {
-            return [];
+            // No events to emit; the streaming contract returns void.
           },
         },
       ]);
       const ctx = mkCtx();
       await a.init(ctx);
-      const events = await a.poll(ctx, new AbortController().signal);
+      const events = await collectPoll(a, ctx);
       // Twinny default handler is also registered and finds nothing in this
       // empty profile; broken handler should not crash the poll.
       expect(events).toEqual([]);
@@ -230,7 +234,7 @@ test("health() collapses to the worst registered handler fidelity", async () => 
           return [];
         },
         async parse() {
-          return [];
+          // No events to emit; the streaming contract returns void.
         },
       };
       const a = new VSCodeGenericAdapter(identity, [aggHandler]);
@@ -258,7 +262,7 @@ test("poll() routes to a registered community handler and emits its events", asy
       a.register(makeExampleHandler());
       const ctx = mkCtx();
       await a.init(ctx);
-      const events = await a.poll(ctx, new AbortController().signal);
+      const events = await collectPoll(a, ctx);
       // Example handler emits 1 synthetic session_start; twinny finds nothing
       // in this empty profile.
       expect(events.length).toBe(1);
@@ -286,7 +290,7 @@ test("poll() honors aborted signal", async () => {
       await a.init(ctx);
       const ctrl = new AbortController();
       ctrl.abort();
-      const events = await a.poll(ctx, ctrl.signal);
+      const events = await collectPoll(a, ctx, ctrl.signal);
       expect(events).toEqual([]);
     } finally {
       if (prev === undefined) delete process.env.BEMATIST_VSCODE_USER_ROOT;
@@ -323,12 +327,12 @@ test("rediscovery picks up a newly-added profile dir after TTL expires", async (
 
       // Within the TTL — cache honored, no rediscovery yet.
       clock += 50;
-      await a.poll(ctx, new AbortController().signal);
+      await collectPoll(a, ctx);
       expect(a.listProfiles().map((p) => p.distro)).toEqual(["code"]);
 
       // Past the TTL — rediscovery runs and picks up Code - Insiders.
       clock += 200;
-      await a.poll(ctx, new AbortController().signal);
+      await collectPoll(a, ctx);
       const distros = a
         .listProfiles()
         .map((p) => p.distro)
@@ -363,7 +367,7 @@ test("empty-cache poll still rediscovers immediately (first-VS-Code-install fast
       // User installs Code right after init, well inside the TTL.
       mkdirSync(join(root, "Code", "User"), { recursive: true });
       clock += 100;
-      await a.poll(ctx, new AbortController().signal);
+      await collectPoll(a, ctx);
       // Empty cache triggers a fresh scan regardless of TTL — the user
       // shouldn't have to wait a whole TTL after a brand-new install.
       expect(a.listProfiles().map((p) => p.distro)).toContain("code");
@@ -432,7 +436,7 @@ test("rediscovery logs WARN when a previously-seen profile vanishes but preserve
       rmSync(join(root, "Code"), { recursive: true, force: true });
       clock += 500;
 
-      await a.poll(ctx, new AbortController().signal);
+      await collectPoll(a, ctx);
       expect(a.listProfiles().length).toBe(0);
 
       // Warn was logged about the vanished profile.
@@ -468,13 +472,13 @@ test("rediscovery does not re-run within the TTL window (cache is honored)", asy
       // Add a new distro but keep clock well inside the TTL window.
       mkdirSync(join(root, "Code - Insiders", "User"), { recursive: true });
       clock += 1_000; // much less than 10s TTL
-      await a.poll(ctx, new AbortController().signal);
+      await collectPoll(a, ctx);
       // Still only the profile from init — no rescan yet.
       expect(a.listProfiles().length).toBe(1);
 
       // Once we cross the TTL, rescan runs.
       clock += 20_000;
-      await a.poll(ctx, new AbortController().signal);
+      await collectPoll(a, ctx);
       expect(a.listProfiles().length).toBe(2);
     } finally {
       if (prev === undefined) delete process.env.BEMATIST_VSCODE_USER_ROOT;
@@ -506,7 +510,7 @@ test("BEMATIST_VSCODE_REDISCOVERY_MS env var overrides the default TTL", async (
         await a.init(ctx);
         mkdirSync(join(root, "VSCodium", "User"), { recursive: true });
         clock += 10_000; // < 12345ms TTL
-        await a.poll(ctx, new AbortController().signal);
+        await collectPoll(a, ctx);
         const distros = a.listProfiles().map((p) => p.distro);
         expect(distros).not.toContain("vscodium");
       } finally {

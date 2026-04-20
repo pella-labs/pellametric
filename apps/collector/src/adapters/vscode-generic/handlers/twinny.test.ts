@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EventSchema } from "@bematist/schema";
 import type { CursorStore, Logger, VSCodeExtensionContext } from "@bematist/sdk";
+import { collectParse } from "../../../test-helpers";
 import { makeTwinnyHandler } from "./twinny";
 
 const FIX = join(import.meta.dir, "..", "fixtures", "twinny-telemetry.jsonl");
@@ -83,11 +84,7 @@ test("parse() emits canonical events for the bundled fixture", async () => {
   const env = setupProfile();
   try {
     const handler = makeTwinnyHandler(identity);
-    const events = await handler.parse(
-      ctx(env.userDir),
-      env.telemetryPath,
-      new AbortController().signal,
-    );
+    const events = await collectParse(handler, ctx(env.userDir), env.telemetryPath);
     // Fixture: 2 sessions × (start + ≥1 chat_response + end) = 7 lines, all parsed.
     expect(events.length).toBe(7);
     for (const e of events) {
@@ -106,11 +103,7 @@ test("parse() never emits cost_usd (local-LLM caveat)", async () => {
   const env = setupProfile();
   try {
     const handler = makeTwinnyHandler(identity);
-    const events = await handler.parse(
-      ctx(env.userDir),
-      env.telemetryPath,
-      new AbortController().signal,
-    );
+    const events = await collectParse(handler, ctx(env.userDir), env.telemetryPath);
     for (const e of events) {
       expect(e.dev_metrics.cost_usd).toBeUndefined();
     }
@@ -124,9 +117,9 @@ test("parse() persists offset and second poll yields no duplicates", async () =>
   try {
     const handler = makeTwinnyHandler(identity);
     const c = ctx(env.userDir);
-    const first = await handler.parse(c, env.telemetryPath, new AbortController().signal);
+    const first = await collectParse(handler, c, env.telemetryPath);
     expect(first.length).toBeGreaterThan(0);
-    const second = await handler.parse(c, env.telemetryPath, new AbortController().signal);
+    const second = await collectParse(handler, c, env.telemetryPath);
     expect(second.length).toBe(0);
   } finally {
     env.cleanup();
@@ -138,13 +131,13 @@ test("parse() picks up newly appended lines on next poll", async () => {
   try {
     const handler = makeTwinnyHandler(identity);
     const c = ctx(env.userDir);
-    await handler.parse(c, env.telemetryPath, new AbortController().signal);
+    await collectParse(handler, c, env.telemetryPath);
     // Append one new session.
     const append =
       `${JSON.stringify({ type: "session_start", sessionId: "twn_99", timestamp: "2026-04-17T12:00:00.000Z" })}\n` +
       `${JSON.stringify({ type: "session_end", sessionId: "twn_99", timestamp: "2026-04-17T12:00:30.000Z" })}\n`;
     writeFileSync(env.telemetryPath, append, { flag: "a" });
-    const next = await handler.parse(c, env.telemetryPath, new AbortController().signal);
+    const next = await collectParse(handler, c, env.telemetryPath);
     expect(next.length).toBe(2);
     expect(next[0]?.session_id).toBe("twn_99");
     expect(next[0]?.dev_metrics.event_kind).toBe("session_start");
@@ -166,11 +159,7 @@ test("parse() skips malformed JSON lines without aborting the rest", async () =>
       ].join("\n"),
     );
     const handler = makeTwinnyHandler(identity);
-    const events = await handler.parse(
-      ctx(env.userDir),
-      env.telemetryPath,
-      new AbortController().signal,
-    );
+    const events = await collectParse(handler, ctx(env.userDir), env.telemetryPath);
     expect(events.length).toBe(2);
   } finally {
     env.cleanup();
@@ -183,7 +172,7 @@ test("parse() respects an aborted signal and returns early", async () => {
     const handler = makeTwinnyHandler(identity);
     const ctrl = new AbortController();
     ctrl.abort();
-    const events = await handler.parse(ctx(env.userDir), env.telemetryPath, ctrl.signal);
+    const events = await collectParse(handler, ctx(env.userDir), env.telemetryPath, ctrl.signal);
     expect(events).toEqual([]);
   } finally {
     env.cleanup();
