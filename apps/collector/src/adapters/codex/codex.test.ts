@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadFixture } from "@bematist/fixtures";
 import type { Adapter, AdapterContext, CursorStore } from "@bematist/sdk";
+import { collectPoll } from "../../test-helpers";
 import { CodexAdapter } from "./index";
 
 function mkCtx(cursor?: CursorStore): AdapterContext {
@@ -60,7 +61,7 @@ test("poll() returns [] when ~/.codex/sessions does not exist", async () => {
     const a = new CodexAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
     const ctx = mkCtx();
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     expect(events).toEqual([]);
   } finally {
     if (prev === undefined) delete process.env.CODEX_HOME;
@@ -135,7 +136,7 @@ test("poll() reads a real rollout end-to-end and emits canonical Events", async 
     const a = new CodexAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
     const ctx = mkCtx(inMemoryCursor());
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     expect(events.length).toBeGreaterThan(0);
     const kinds = new Set(events.map((e) => e.dev_metrics.event_kind));
     expect(kinds.has("session_start")).toBe(true);
@@ -166,8 +167,8 @@ test("second poll on an unchanged file returns no new events (offset cursor)", a
     const cursor = inMemoryCursor();
     const ctx = mkCtx(cursor);
     await a.init(ctx);
-    const first = await a.poll(ctx, new AbortController().signal);
-    const second = await a.poll(ctx, new AbortController().signal);
+    const first = await collectPoll(a, ctx);
+    const second = await collectPoll(a, ctx);
     expect(first.length).toBeGreaterThan(0);
     expect(second.length).toBe(0);
   } finally {
@@ -242,7 +243,7 @@ test("cursor-wipe recovery: missing cumulative is re-derived from rollout tail (
     const a = new CodexAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
     const ctx = mkCtx(cursor);
     await a.init(ctx);
-    const firstAfterWipe = await a.poll(ctx, new AbortController().signal);
+    const firstAfterWipe = await collectPoll(a, ctx);
     expect(firstAfterWipe.length).toBe(0);
 
     // Append a single new turn — delta must diff against the tail-recovered
@@ -265,7 +266,7 @@ test("cursor-wipe recovery: missing cumulative is re-derived from rollout tail (
     })}\n`;
     appendFileSync(path, tail);
 
-    const second = await a.poll(ctx, new AbortController().signal);
+    const second = await collectPoll(a, ctx);
     const resp = second.find((e) => e.dev_metrics.event_kind === "llm_response");
     expect(resp?.gen_ai?.usage?.input_tokens).toBe(1500);
     expect(resp?.gen_ai?.usage?.output_tokens).toBe(300);
@@ -334,7 +335,7 @@ test("rotation detection: offset > size triggers reset to first-run (bug #2)", a
     const a = new CodexAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
     const ctx = mkCtx(cursor);
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     const resp = events.find((e) => e.dev_metrics.event_kind === "llm_response");
     // Fresh parse from offset 0 → priorCumulative ignored → delta is the
     // full 100/50, never the nonsensical (100 - 999999) clamp at 0.
@@ -405,7 +406,7 @@ test("rotation detection: inode change triggers reset (bug #2)", async () => {
     const a = new CodexAdapter({ tenantId: "o", engineerId: "e", deviceId: "d" });
     const ctx = mkCtx(cursor);
     await a.init(ctx);
-    const events = await a.poll(ctx, new AbortController().signal);
+    const events = await collectPoll(a, ctx);
     // Inode mismatch → reset → fresh parse → full 200/80 delta.
     const resp = events.find((e) => e.dev_metrics.event_kind === "llm_response");
     expect(resp?.gen_ai?.usage?.input_tokens).toBe(200);
@@ -457,7 +458,7 @@ test("appended cumulative token_count after first poll diffs against persisted r
     const cursor = inMemoryCursor();
     const ctx = mkCtx(cursor);
     await a.init(ctx);
-    const first = await a.poll(ctx, new AbortController().signal);
+    const first = await collectPoll(a, ctx);
     const firstResp = first.find((e) => e.dev_metrics.event_kind === "llm_response");
     expect(firstResp?.gen_ai?.usage?.input_tokens).toBe(1000);
 
@@ -479,7 +480,7 @@ test("appended cumulative token_count after first poll diffs against persisted r
     })}\n`;
     writeFileSync(path, initial + tail);
 
-    const second = await a.poll(ctx, new AbortController().signal);
+    const second = await collectPoll(a, ctx);
     const secondResp = second.find((e) => e.dev_metrics.event_kind === "llm_response");
     expect(secondResp?.gen_ai?.usage?.input_tokens).toBe(1500);
     expect(secondResp?.gen_ai?.usage?.output_tokens).toBe(300);

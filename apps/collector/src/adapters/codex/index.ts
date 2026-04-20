@@ -1,8 +1,7 @@
 import { statSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Event } from "@bematist/schema";
-import type { Adapter, AdapterContext, AdapterHealth } from "@bematist/sdk";
+import type { Adapter, AdapterContext, AdapterHealth, EventEmitter } from "@bematist/sdk";
 import { type CodexDiscoverySources, discoverSources } from "./discovery";
 import { normalizeSession } from "./normalize";
 import {
@@ -40,13 +39,20 @@ export class CodexAdapter implements Adapter {
     });
   }
 
-  async poll(ctx: AdapterContext, _signal: AbortSignal): Promise<Event[]> {
+  async poll(ctx: AdapterContext, signal: AbortSignal, emit: EventEmitter): Promise<void> {
     const s = this.sources ?? discoverSources();
-    if (!s.sessionsDirExists) return [];
+    if (!s.sessionsDirExists) return;
 
     const files = await findRolloutFiles(s.sessionsDir);
-    const out: Event[] = [];
     for (const path of files) {
+      // Honor the abort signal — the orchestrator's hard-kill watchdog
+      // expects every adapter to bail promptly. Events already emitted
+      // are durable in the journal; cursor writes we've already done
+      // mark progress; the next tick picks up where we stopped.
+      if (signal.aborted) {
+        ctx.log.info("codex: poll aborted mid-scan — returning early");
+        return;
+      }
       const offsetKey = `offset:${path}`;
       const cumulativeKey = `cumulative:${path}`;
       const branchKey = `branch:${path}`;
@@ -119,15 +125,15 @@ export class CodexAdapter implements Adapter {
           branch = await resolveBranch(parsed.sessionMeta?.gitBranch, parsed.sessionMeta?.cwd);
           if (branch) await ctx.cursor.set(branchKey, branch);
         }
-        out.push(
-          ...normalizeSession(
-            parsed,
-            { ...this.identity, tier: ctx.tier },
-            SOURCE_VERSION_DEFAULT,
-            branch ? { branch } : {},
-          ),
+        const firstRunEvents = normalizeSession(
+          parsed,
+          { ...this.identity, tier: ctx.tier },
+          SOURCE_VERSION_DEFAULT,
+          branch ? { branch } : {},
         );
+        for (const e of firstRunEvents) emit(e);
         const { nextOffset } = await readLinesFromOffset(path, 0);
+        // Cursor writes after emits so durability ≥ cursor-advance.
         await ctx.cursor.set(offsetKey, String(nextOffset));
         if (parsed.lastCumulative) {
           await ctx.cursor.set(cumulativeKey, JSON.stringify(parsed.lastCumulative));
@@ -147,21 +153,19 @@ export class CodexAdapter implements Adapter {
       }
       const parsed = parseLines(lines, { priorCumulative });
       parsed.sessionId = parsed.sessionId ?? sessionIdFromPath(path);
-      out.push(
-        ...normalizeSession(
-          parsed,
-          { ...this.identity, tier: ctx.tier },
-          SOURCE_VERSION_DEFAULT,
-          branch ? { branch } : {},
-        ),
+      const deltaEvents = normalizeSession(
+        parsed,
+        { ...this.identity, tier: ctx.tier },
+        SOURCE_VERSION_DEFAULT,
+        branch ? { branch } : {},
       );
+      for (const e of deltaEvents) emit(e);
       await ctx.cursor.set(offsetKey, String(nextOffset));
       if (parsed.lastCumulative) {
         await ctx.cursor.set(cumulativeKey, JSON.stringify(parsed.lastCumulative));
       }
       if (currentInode !== null) await ctx.cursor.set(inodeKey, currentInode);
     }
-    return out;
   }
 
   async health(_ctx: AdapterContext): Promise<AdapterHealth> {
