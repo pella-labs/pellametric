@@ -5,10 +5,15 @@ export type Filter = schemas.DashboardFilter;
 /**
  * Parse Next.js searchParams into a DashboardFilter.
  * Unknown values collapse to sensible defaults so pasted URLs never 400.
+ *
+ * `selfEngineerId` is the resolved CH `engineer_id` (= `developers.id`) for
+ * the caller — NOT the Better Auth `actor_id`. The two are different ids for
+ * the same person, and ingest writes events keyed on `developers.id`. Passing
+ * the wrong one is the bug that made "Just me" return zero rows.
  */
 export function parseFilterFromSearchParams(
   params: Record<string, string | string[] | undefined>,
-  actorId: string,
+  selfEngineerId: string,
 ): Filter {
   const get = (k: string) => {
     const v = params[k];
@@ -27,9 +32,7 @@ export function parseFilterFromSearchParams(
 
   let engineer_ids = multi("eng");
   if (get("justMe") === "1") {
-    // "Just me" always maps to the caller's raw actor_id — queries apply
-    // themselves without tripping the k-anonymity floor.
-    engineer_ids = [actorId];
+    engineer_ids = [selfEngineerId];
   }
 
   return {
