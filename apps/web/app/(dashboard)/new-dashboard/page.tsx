@@ -1,14 +1,21 @@
 import { activityOverview, codeDelivery, cohortFilters, sessionsFeed } from "@bematist/api";
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import { getDbClients } from "@/lib/db";
 import { resolveEngineerId } from "@/lib/resolve-engineer-id";
 import { getSessionCtx } from "@/lib/session";
 import { ActivitySection } from "./_components/ActivitySection";
-import { DeliverySection } from "./_components/DeliverySection";
+import { DeliverySection, SubscriptionHero } from "./_components/DeliverySection";
 import { FilterBar } from "./_components/FilterBar";
 import { SessionsSection } from "./_components/SessionsSection";
 import { type Filter, parseFilterFromSearchParams } from "./_filter";
+
+// Shared so the subscription hero (rendered at the top) and the full
+// delivery section below it don't double-query ClickHouse in one request.
+const getDelivery = cache(async (filter: Filter) => {
+  const ctx = await getSessionCtx();
+  return codeDelivery(ctx, filter);
+});
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -63,6 +70,9 @@ export default async function NewDashboardPage({ searchParams }: PageProps) {
         <p className="newdash-sub">Activity, code delivery, and sessions — filtered together.</p>
       </header>
       <FilterBar filter={filter} cohorts={cohorts} myEngineerId={selfEngineerId} myName={meName} />
+      <Suspense fallback={null}>
+        <SubscriptionHeroAsync filter={filter} />
+      </Suspense>
       <Suspense fallback={<SectionSkeleton title="Activity" rows={2} />}>
         <ActivitySectionAsync filter={filter} />
       </Suspense>
@@ -82,9 +92,18 @@ async function ActivitySectionAsync({ filter }: { filter: Filter }) {
   return <ActivitySection data={activity} window={filter.window} />;
 }
 
+async function SubscriptionHeroAsync({ filter }: { filter: Filter }) {
+  const delivery = await getDelivery(filter);
+  if (!delivery.subscription || delivery.subscription.active_engineers === 0) return null;
+  return (
+    <section className="newdash-section" data-newdash-section="subscription">
+      <SubscriptionHero subscription={delivery.subscription} />
+    </section>
+  );
+}
+
 async function DeliverySectionAsync({ filter }: { filter: Filter }) {
-  const ctx = await getSessionCtx();
-  const delivery = await codeDelivery(ctx, filter);
+  const delivery = await getDelivery(filter);
   return <DeliverySection data={delivery} />;
 }
 

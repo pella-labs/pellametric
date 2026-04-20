@@ -17,16 +17,12 @@ export function DeliverySection({ data }: Props) {
   // size_distribution intentionally hidden until github_pull_requests
   // has additions/deletions backfilled — every PR currently shows up
   // as XS because the webhook payload doesn't carry diff stats.
-  const { pr_kpis, merge_latency, weekly_throughput, pr_by_repo, subscription } = data;
+  const { pr_kpis, merge_latency, weekly_throughput, pr_by_repo } = data;
 
   return (
     <section className="newdash-section" data-newdash-section="delivery">
       <h2>Code delivery</h2>
       <p className="newdash-section-sub">How PRs are moving through GitHub in this window.</p>
-
-      {subscription && subscription.active_engineers > 0 && (
-        <SubscriptionHero subscription={subscription} />
-      )}
 
       <div className="newdash-kpi-row">
         <div className="newdash-card">
@@ -225,7 +221,7 @@ export function DeliverySection({ data }: Props) {
   );
 }
 
-function SubscriptionHero({ subscription }: { subscription: schemas.SubscriptionSummary }) {
+export function SubscriptionHero({ subscription }: { subscription: schemas.SubscriptionSummary }) {
   const sub = subscription;
   const utilization =
     sub.subscription_cost_usd > 0 ? sub.actual_spend_usd / sub.subscription_cost_usd : 0;
