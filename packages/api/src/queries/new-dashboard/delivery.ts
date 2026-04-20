@@ -281,20 +281,39 @@ async function codeDeliveryReal(ctx: Ctx, input: CodeDeliveryInput): Promise<Cod
       base_ref: r.base_ref ?? "",
     }));
 
-  // cost_per_merged_pr — session-aware. Needs commit_sha linkage; if linker
-  // hasn't populated session_repo_links, surface null and let the UI copy
-  // explain the wait.
-  const costRows = await ctx.db.pg
-    .query<{ cost: number | null }>(
-      `SELECT coalesce(sum(srl.total_cost_usd), 0) AS cost
-       FROM session_repo_links srl
-      WHERE srl.tenant_id = $1
-        AND srl.observed_at >= now() - ($2 || ' days')::interval`,
+  // cost_per_merged_pr — join session_repo_links (PG) to event-cost (CH):
+  // pull session_ids linked to merged-state PRs in the window from PG, then
+  // sum cost_usd across those sessions in CH. Null when linker hasn't
+  // populated any rows yet; UI copy explains the wait.
+  const linkedSessionRows = (await ctx.db.pg
+    .query<{ session_id: string }>(
+      `SELECT DISTINCT srl.session_id
+         FROM session_repo_links srl
+         JOIN github_pull_requests pr
+           ON pr.provider_repo_id = srl.provider_repo_id
+          AND pr.tenant_id = srl.tenant_id
+        WHERE srl.tenant_id = $1
+          AND srl.stale_at IS NULL
+          AND pr.state = 'merged'
+          AND pr.merged_at >= now() - ($2 || ' days')::interval`,
       [ctx.tenant_id, String(days)],
     )
-    .catch(() => []);
-  const totalCost = Number(costRows[0]?.cost ?? 0);
-  const cost_per_merged_pr = merged > 0 && totalCost > 0 ? round2(totalCost / merged) : null;
+    .catch(() => [])) as Array<{ session_id: string }>;
+
+  let cost_per_merged_pr: number | null = null;
+  if (linkedSessionRows.length > 0 && merged > 0) {
+    const sessionIds = linkedSessionRows.map((r) => r.session_id);
+    const chCostRows = await ctx.db.ch
+      .query<{ cost: number | string }>(
+        `SELECT round(sum(cost_usd), 6) AS cost
+         FROM events
+         WHERE org_id = {tid:String} AND session_id IN {sids:Array(String)}`,
+        { tid: ctx.tenant_id, sids: sessionIds },
+      )
+      .catch(() => []);
+    const totalCost = Number(chCostRows[0]?.cost ?? 0);
+    if (totalCost > 0) cost_per_merged_pr = round2(totalCost / merged);
+  }
 
   const commitsOnlyRows = await ctx.db.pg
     .query<{ n: number | string }>(
