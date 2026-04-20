@@ -98,8 +98,7 @@ test("entry is durable on disk after write returns (SIGKILL-proxy via separate B
   const fs = require("node:fs");
   const logPath = join(dir, "egress.jsonl");
   const scriptPath = join(dir, "_write-and-kill.ts");
-  const egressLogSrc =
-    "/Users/sebastian/dev/gauntlet/analytics-research/.claude/worktrees/agent-a2b1f342/apps/collector/src/egress/egressLog.ts";
+  const egressLogSrc = join(import.meta.dir, "egressLog.ts");
   fs.writeFileSync(
     scriptPath,
     `import { EgressLog } from ${JSON.stringify(egressLogSrc)};
