@@ -5,8 +5,11 @@
 //      inside each adapter's discovery layer; init still runs, but poll() is
 //      a no-op when the underlying source (e.g. ~/.claude/projects/) doesn't
 //      exist. See apps/collector/src/adapters/*/discovery.ts.
-//   2. Every pollIntervalMs: call runOnce() across every adapter, enqueue
-//      any emitted events into the SQLite Journal.
+//   2. Every pollIntervalMs: call runOnce() across every adapter. Adapters
+//      stream events via the `emit` callback, which enqueues into the
+//      SQLite Journal per-event. No in-memory Event[] batching at the loop
+//      layer — that was the 20-minute-silent-window pathology from the
+//      pre-2026-04-19 loop (Walid's 4,975-file backfill).
 //   3. Every flushIntervalMs: select a batch from Journal, write the batch
 //      descriptor to the append-only egress log (Bill of Rights #1), POST
 //      the events to the ingest via postWithRetry, update Journal rows.
@@ -19,6 +22,17 @@
 //      finish, persist cursor state, close DB.
 //
 // Tested in loop.test.ts.
+//
+// ───────────────────────────────────────────────────────────────────────────
+// Streaming refactor (2026-04-19): previously this loop ran poll / flush /
+// prune inside one serialized while-loop decremented by TICK_MS. A long
+// first-poll backfill (~4,975 JSONL files) blocked flush for ~20 minutes —
+// cursors advanced per-file but events were held in one in-memory array
+// until poll returned. Poll / flush / prune now run as independent
+// Promise.all tasks sharing the abort signal. Adapters emit events via a
+// callback wired to `journal.enqueue`, so events land in SQLite per-file
+// and flush drains whatever's already queued.
+// ───────────────────────────────────────────────────────────────────────────
 
 import type { Database } from "bun:sqlite";
 import type { Event } from "@bematist/schema";
@@ -55,6 +69,31 @@ export interface LoopHandle {
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Abort-aware sleep. Slices the wait into 100ms ticks so the loop exits
+ * within one tick of `isAborted()` flipping true — even when the nominal
+ * interval is in the minutes (journalPruneIntervalMs default is 24h).
+ */
+async function interruptibleSleep(
+  totalMs: number,
+  sleepImpl: (ms: number) => Promise<void>,
+  isAborted: () => boolean,
+): Promise<void> {
+  const TICK_MS = 100;
+  let remaining = totalMs;
+  while (remaining > 0) {
+    if (isAborted()) return;
+    const chunk = Math.min(TICK_MS, remaining);
+    await sleepImpl(chunk);
+    remaining -= chunk;
+  }
+}
+
+// Kick the first prune tick ~5s after startup so we don't race the
+// migration + first-poll-backfill burst, but short-lived daemons still get
+// one GC pass.
+const STARTUP_PRUNE_DELAY_MS = 5_000;
 
 function mkAdapterLogger() {
   const noop = () => {};
@@ -110,6 +149,115 @@ export function startLoop(deps: LoopDeps): LoopHandle {
     resolveDone = r;
   });
 
+  // Shared halt signal — set when a fatal flush result tells us to give up.
+  let fatalHalt = false;
+
+  /**
+   * Streaming emit — wired to the journal. Every adapter event lands in
+   * SQLite per-emit, so the flush loop (running independently) can drain
+   * whatever's already durable without waiting for poll to finish.
+   *
+   * The closure is intentionally NOT gated on `ac.signal.aborted` — if an
+   * orphaned (hard-killed) adapter emits post-abort, we still want that
+   * event in the journal. The idempotency gate (deterministicId +
+   * server-side Redis SETNX) collapses any replays on the next poll.
+   */
+  const emit = (event: Event) => {
+    try {
+      journal.enqueue(event);
+    } catch (e) {
+      log.warn({ err: String(e) }, "journal.enqueue failed (event dropped)");
+    }
+  };
+
+  const pollLoop = async () => {
+    while (!ac.signal.aborted && !fatalHalt) {
+      try {
+        await runOnce(
+          registry,
+          (a) => mkAdapterContext(config, db, a),
+          {
+            concurrency: config.adapterConcurrency,
+            perPollTimeoutMs: config.perPollTimeoutMs,
+            hardKillMs: config.hardKillMs,
+            adapterQuarantineMs: config.adapterQuarantineMs,
+          },
+          emit,
+        );
+      } catch (e) {
+        log.warn({ err: String(e) }, "orchestrator poll cycle failed");
+      }
+      if (ac.signal.aborted || fatalHalt) break;
+      await interruptibleSleep(
+        config.pollIntervalMs,
+        sleepImpl,
+        () => ac.signal.aborted || fatalHalt,
+      );
+    }
+  };
+
+  const flushLoop = async () => {
+    while (!ac.signal.aborted && !fatalHalt) {
+      let delayMs = config.flushIntervalMs;
+      try {
+        const result = await flushBatch(journal, egressLog, {
+          endpoint: config.endpoint,
+          token: config.token,
+          fetchImpl,
+          dryRun: config.dryRun,
+          batchSize: config.batchSize,
+          ingestOnlyTo: config.ingestOnlyTo,
+          signal: ac.signal,
+        });
+        if (result.fatal) {
+          log.fatal({ reason: result.note }, "egress fatal — halting loop");
+          fatalHalt = true;
+          ac.abort();
+          break;
+        }
+        if (result.retryAfterSeconds) {
+          delayMs = Math.max(config.flushIntervalMs, result.retryAfterSeconds * 1000);
+        }
+      } catch (e) {
+        log.warn({ err: String(e) }, "flush cycle failed");
+      }
+      if (ac.signal.aborted || fatalHalt) break;
+      await interruptibleSleep(delayMs, sleepImpl, () => ac.signal.aborted || fatalHalt);
+    }
+  };
+
+  const pruneLoop = async () => {
+    // Delay the first prune so we don't race startup. Slice the startup
+    // wait into small ticks so graceful shutdown doesn't block the whole
+    // 5s on its way out.
+    await interruptibleSleep(STARTUP_PRUNE_DELAY_MS, sleepImpl, () => ac.signal.aborted || fatalHalt);
+    while (!ac.signal.aborted && !fatalHalt) {
+      try {
+        const t0 = Date.now();
+        const { submittedDeleted, deadLetterDeleted } = journal.prune({
+          submittedRetentionDays: config.journalSubmittedRetentionDays,
+          deadLetterRetentionDays: config.journalDeadLetterRetentionDays,
+        });
+        log.info(
+          {
+            pruned_submitted: submittedDeleted,
+            pruned_dead_letter: deadLetterDeleted,
+            duration_ms: Date.now() - t0,
+          },
+          "journal prune tick",
+        );
+      } catch (e) {
+        log.warn({ err: String(e) }, "journal prune failed");
+      }
+      if (ac.signal.aborted || fatalHalt) break;
+      await interruptibleSleep(
+        config.journalPruneIntervalMs,
+        sleepImpl,
+        () => ac.signal.aborted || fatalHalt,
+      );
+    }
+  };
+
   const run = async () => {
     // Init adapters. Adapter-level failures are non-fatal: log + skip.
     for (const a of registry) {
@@ -120,104 +268,25 @@ export function startLoop(deps: LoopDeps): LoopHandle {
       }
     }
 
-    let pollTimer = 0;
-    let flushTimer = 0;
-    // Kick the first prune ~5s after startup so we don't race the
-    // migration + first-poll-backfill burst, but short-lived daemons
-    // still get one GC pass. Subsequent ticks run every
-    // `journalPruneIntervalMs` (default 24h).
-    const STARTUP_PRUNE_DELAY_MS = 5_000;
-    let pruneTimer = STARTUP_PRUNE_DELAY_MS;
-    const TICK_MS = 100;
-
-    while (!ac.signal.aborted) {
-      // POLL cycle.
-      if (pollTimer <= 0) {
-        try {
-          const events = await runOnce(registry, (a) => mkAdapterContext(config, db, a), {
-            concurrency: config.adapterConcurrency,
-            perPollTimeoutMs: config.perPollTimeoutMs,
-            hardKillMs: config.hardKillMs,
-            adapterQuarantineMs: config.adapterQuarantineMs,
-          });
-          for (const e of events) journal.enqueue(e as Event);
-          if (events.length > 0) {
-            log.debug({ count: events.length }, "adapters emitted events");
-          }
-        } catch (e) {
-          log.warn({ err: String(e) }, "orchestrator poll cycle failed");
-        }
-        pollTimer = config.pollIntervalMs;
-      }
-
-      // FLUSH cycle.
-      if (flushTimer <= 0) {
-        try {
-          const result = await flushBatch(journal, egressLog, {
-            endpoint: config.endpoint,
-            token: config.token,
-            fetchImpl,
-            dryRun: config.dryRun,
-            batchSize: config.batchSize,
-            ingestOnlyTo: config.ingestOnlyTo,
-            signal: ac.signal,
-          });
-          if (result.fatal) {
-            log.fatal({ reason: result.note }, "egress fatal — halting loop");
-            break;
-          }
-          // honor Retry-After by delaying the next flush
-          if (result.retryAfterSeconds) {
-            flushTimer = Math.max(config.flushIntervalMs, result.retryAfterSeconds * 1000);
-          } else {
-            flushTimer = config.flushIntervalMs;
-          }
-        } catch (e) {
-          log.warn({ err: String(e) }, "flush cycle failed");
-          flushTimer = config.flushIntervalMs;
-        }
-      }
-
-      // PRUNE cycle.
-      if (pruneTimer <= 0) {
-        try {
-          const t0 = Date.now();
-          const { submittedDeleted, deadLetterDeleted } = journal.prune({
-            submittedRetentionDays: config.journalSubmittedRetentionDays,
-            deadLetterRetentionDays: config.journalDeadLetterRetentionDays,
-          });
-          log.info(
-            {
-              pruned_submitted: submittedDeleted,
-              pruned_dead_letter: deadLetterDeleted,
-              duration_ms: Date.now() - t0,
-            },
-            "journal prune tick",
-          );
-        } catch (e) {
-          log.warn({ err: String(e) }, "journal prune failed");
-        }
-        pruneTimer = config.journalPruneIntervalMs;
-      }
-
-      await sleepImpl(TICK_MS);
-      pollTimer -= TICK_MS;
-      flushTimer -= TICK_MS;
-      pruneTimer -= TICK_MS;
-    }
+    // Run poll / flush / prune as independent async loops — neither blocks
+    // the others. Poll emits per-file, flush drains in parallel, prune
+    // keeps the journal SQLite file bounded on long-running daemons.
+    await Promise.all([pollLoop(), flushLoop(), pruneLoop()]);
 
     // Shutdown: one last flush pass so we don't leave in-flight-but-unpushed rows.
-    try {
-      await flushBatch(journal, egressLog, {
-        endpoint: config.endpoint,
-        token: config.token,
-        fetchImpl,
-        dryRun: config.dryRun,
-        batchSize: config.batchSize,
-        ingestOnlyTo: config.ingestOnlyTo,
-      });
-    } catch (e) {
-      log.warn({ err: String(e) }, "shutdown flush failed");
+    if (!fatalHalt) {
+      try {
+        await flushBatch(journal, egressLog, {
+          endpoint: config.endpoint,
+          token: config.token,
+          fetchImpl,
+          dryRun: config.dryRun,
+          batchSize: config.batchSize,
+          ingestOnlyTo: config.ingestOnlyTo,
+        });
+      } catch (e) {
+        log.warn({ err: String(e) }, "shutdown flush failed");
+      }
     }
 
     for (const a of registry) {
