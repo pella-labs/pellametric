@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import BackButton from "@/components/back-button";
 import { type TeamRow } from "@/components/team-tables";
 import OrgViewSwitcher from "@/components/org-view-switcher";
 import { aggregateBoth } from "@/lib/aggregate";
@@ -130,20 +131,20 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
 
   return (
     <main className="max-w-[1600px] mx-auto mt-8 px-6 pb-16">
-      <header className="flex justify-between items-end mb-10 pb-5 border-b border-border">
-        <div>
-          <div className="mk-eyebrow mb-2">org · {row.role}</div>
-          <h1 className="mk-heading text-3xl md:text-4xl font-semibold tracking-[-0.02em]">{row.org.name}</h1>
-          <div className="mk-label mt-1.5">{row.org.slug}</div>
+      <header className="flex justify-between items-start mb-10 pb-5 border-b border-border">
+        <div className="flex items-start gap-4">
+          <BackButton href="/dashboard" />
+          <div>
+            <div className="mk-eyebrow mb-2">org · {row.role}</div>
+            <h1 className="mk-heading text-3xl md:text-4xl font-semibold tracking-[-0.02em]">{row.org.name}</h1>
+            <div className="mk-label mt-1.5">{row.org.slug}</div>
+          </div>
         </div>
-        <div className="flex gap-3 items-center">
-          {isManager && (
-            <Link href={`/org/${row.org.slug}/invite`} className="mk-label bg-accent text-accent-foreground px-3 py-2 hover:opacity-90 transition">
-              Invite →
-            </Link>
-          )}
-          <Link href="/dashboard" className="mk-label border border-border px-3 py-2 hover:border-[color:var(--border-hover)] transition">← back</Link>
-        </div>
+        {isManager && (
+          <Link href={`/org/${row.org.slug}/invite`} className="mk-label bg-accent text-accent-foreground px-3 py-2 hover:opacity-90 transition">
+            Invite →
+          </Link>
+        )}
       </header>
 
       <OrgViewSwitcher

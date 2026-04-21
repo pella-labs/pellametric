@@ -10,7 +10,9 @@
     "start": "pnpm --filter @pella/web start",
     "db:push": "pnpm --filter @pella/web db:push",
     "db:studio": "pnpm --filter @pella/web db:studio",
-    "collector": "pnpm --filter @pella/collector start"
+    "collector": "pnpm --filter @pella/collector start",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

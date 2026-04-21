@@ -45,9 +45,32 @@ export async function POST(req: Request) {
   const org = await requireManager(session.user.id, body.orgSlug);
   if (!org) return NextResponse.json({ error: "not a manager of this org" }, { status: 403 });
 
+  // Verify invitee is actually in the GitHub org
+  const [acc] = await db.select().from(schema.account)
+    .where(and(eq(schema.account.userId, session.user.id), eq(schema.account.providerId, "github")))
+    .limit(1);
+  if (!acc?.accessToken) return NextResponse.json({ error: "no github token" }, { status: 400 });
+
+  const login = body.githubLogin.trim().toLowerCase();
+  // Try public member check first; returns 204 if they're a public member of the org.
+  const pub = await fetch(`https://api.github.com/orgs/${org.slug}/members/${login}`, {
+    headers: { Authorization: `Bearer ${acc.accessToken}`, Accept: "application/vnd.github+json" },
+    redirect: "manual",
+  });
+  // If not publicly visible, verify the login is a valid GitHub user (we'll re-verify on accept).
+  if (pub.status !== 204) {
+    const u = await fetch(`https://api.github.com/users/${login}`, {
+      headers: { Authorization: `Bearer ${acc.accessToken}`, Accept: "application/vnd.github+json" },
+    });
+    if (!u.ok) {
+      return NextResponse.json({ error: `${login} is not a valid GitHub user` }, { status: 400 });
+    }
+    // Allow the invite; accept will still require real org membership verified via /user/orgs
+  }
+
   const [inv] = await db.insert(schema.invitation).values({
     orgId: org.id,
-    githubLogin: body.githubLogin.toLowerCase(),
+    githubLogin: login,
     invitedByUserId: session.user.id,
   }).onConflictDoNothing().returning();
 

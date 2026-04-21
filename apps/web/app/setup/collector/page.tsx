@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import BackButton from "@/components/back-button";
+import CopyButton from "@/components/copy-button";
 
 export default function SetupCollector() {
   const [token, setToken] = useState<string | null>(null);
@@ -15,10 +17,13 @@ export default function SetupCollector() {
 
   return (
     <main className="max-w-2xl mx-auto mt-16 px-6 pb-16">
-      <header className="mb-10 pb-5 border-b border-border">
-        <div className="mk-eyebrow mb-2">setup</div>
-        <h1 className="mk-heading text-3xl font-semibold tracking-[-0.02em]">Collector</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Runs locally, reads your Claude Code + Codex session files, uploads to pella-metrics.</p>
+      <header className="flex items-start gap-4 mb-10 pb-5 border-b border-border">
+        <BackButton href="/dashboard" />
+        <div>
+          <div className="mk-eyebrow mb-2">setup</div>
+          <h1 className="mk-heading text-3xl font-semibold tracking-[-0.02em]">Collector</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Runs locally, reads your Claude Code + Codex session files, uploads to pella-metrics.</p>
+        </div>
       </header>
 
       <section className="mk-card p-6 mb-4">
@@ -31,23 +36,36 @@ export default function SetupCollector() {
           {token ? "token issued" : loading ? "issuing…" : "issue new token"}
         </button>
         {token && (
-          <pre className="mt-5 bg-[color:var(--terminal)] border border-border px-4 py-3 font-mono text-xs overflow-x-auto select-all text-accent">{token}</pre>
+          <>
+            <div className="mt-5 flex items-start gap-2">
+              <pre className="flex-1 bg-[color:var(--terminal)] border border-border px-4 py-3 font-mono text-xs overflow-x-auto select-all text-accent min-w-0">{token}</pre>
+              <CopyButton text={token} label="copy token" />
+            </div>
+            <p className="mk-label mt-3 normal-case tracking-normal">Copy now — it won't be shown again.</p>
+          </>
         )}
-        {token && <p className="mk-label mt-3 normal-case tracking-normal">Copy now — it won't be shown again.</p>}
       </section>
 
-      <section className="mk-card p-6">
-        <div className="mk-eyebrow mb-3">02 · run it</div>
-        <p className="text-sm text-muted-foreground mb-4">One-liner. Node 20+ required. No clone, no install.</p>
-        <pre className="bg-[color:var(--terminal)] border border-border px-4 py-3 font-mono text-[11px] leading-relaxed overflow-x-auto select-all">
-          <span className="text-[color:var(--ink-faint)]">$ </span>
-          <span className="text-ink">curl -fsSL https://pella-web-production.up.railway.app/collector.mjs | node - --token </span>
-          <span className="text-accent">{token ?? "YOUR_TOKEN"}</span>
-        </pre>
-        <p className="mk-label mt-4 normal-case tracking-normal">
-          Reads <code className="text-foreground font-mono">~/.claude/projects/**</code> and <code className="text-foreground font-mono">~/.codex/sessions/**</code>, resolves each session's cwd to a GitHub repo, uploads to this org.
-        </p>
-      </section>
+      {token && (
+        <section className="mk-card p-6">
+          <div className="mk-eyebrow mb-3">02 · run it</div>
+          <p className="text-sm text-muted-foreground mb-4">One-liner. Node 20+ required. No clone, no install.</p>
+          <div className="flex items-start gap-2">
+            <pre className="flex-1 bg-[color:var(--terminal)] border border-border px-4 py-3 font-mono text-[11px] leading-relaxed overflow-x-auto select-all min-w-0">
+              <span className="text-[color:var(--ink-faint)]">$ </span>
+              <span className="text-ink">curl -fsSL https://pella-web-production.up.railway.app/collector.mjs | node - --token </span>
+              <span className="text-accent">{token}</span>
+            </pre>
+            <CopyButton
+              text={`curl -fsSL https://pella-web-production.up.railway.app/collector.mjs | node - --token ${token}`}
+              label="copy command"
+            />
+          </div>
+          <p className="mk-label mt-4 normal-case tracking-normal">
+            Reads <code className="text-foreground font-mono">~/.claude/projects/**</code> and <code className="text-foreground font-mono">~/.codex/sessions/**</code>, resolves each session's cwd to a GitHub repo, uploads to this org.
+          </p>
+        </section>
+      )}
     </main>
   );
 }

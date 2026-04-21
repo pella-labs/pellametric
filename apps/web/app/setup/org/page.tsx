@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import BackButton from "@/components/back-button";
 
 export default function SetupOrgPage() {
   const [orgs, setOrgs] = useState<any[]>([]);
@@ -26,9 +27,14 @@ export default function SetupOrgPage() {
   }
 
   return (
-    <main className="max-w-xl mx-auto mt-16 px-6">
-      <h1 className="text-xl font-bold mb-4">Connect a GitHub org</h1>
-      <p className="text-sm text-muted-foreground mb-6">You'll become the manager of this org's workspace. You can invite teammates next.</p>
+    <main className="max-w-xl mx-auto mt-16 px-6 pb-16">
+      <header className="flex items-start gap-4 mb-6">
+        <BackButton href="/dashboard" />
+        <div>
+          <h1 className="text-xl font-bold">Connect a GitHub org</h1>
+          <p className="text-sm text-muted-foreground mt-1">You'll become the manager of this org's workspace. You can invite teammates next.</p>
+        </div>
+      </header>
       {loading ? <p className="text-sm text-muted-foreground">Loading orgs…</p> :
         orgs.length === 0 ? <p className="text-sm text-muted-foreground">No orgs found on your GitHub account.</p> :
         <div className="space-y-2">

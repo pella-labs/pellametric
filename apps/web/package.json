@@ -9,7 +9,9 @@
     "lint": "next lint",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@pella/shared": "workspace:*",
@@ -30,6 +32,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
+    "vitest": "^2.1.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",

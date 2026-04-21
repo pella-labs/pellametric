@@ -5,10 +5,14 @@ import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import Link from "next/link";
 import SignOutButton from "@/components/sign-out-button";
+import { acceptPendingInvites } from "@/lib/invite-accept";
 
 export default async function Dashboard() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/");
+
+  // Auto-accept any pending invitations for this user (verifies GitHub org membership)
+  await acceptPendingInvites(session.user.id);
 
   const memberships = await db
     .select({ org: schema.org, role: schema.membership.role })

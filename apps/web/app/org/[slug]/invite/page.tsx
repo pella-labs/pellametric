@@ -1,5 +1,7 @@
 "use client";
 import { use, useEffect, useState } from "react";
+import Link from "next/link";
+import BackButton from "@/components/back-button";
 
 export default function InvitePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -29,9 +31,14 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
   }
 
   return (
-    <main className="max-w-xl mx-auto mt-16 px-6">
-      <h1 className="text-xl font-bold mb-2">Invite to {slug}</h1>
-      <p className="text-sm text-muted-foreground mb-6">Invited devs need to be in the GitHub org and sign in here with GitHub to accept.</p>
+    <main className="max-w-xl mx-auto mt-16 px-6 pb-16">
+      <header className="flex items-start gap-4 mb-6">
+        <BackButton href={`/org/${slug}`} />
+        <div>
+          <h1 className="text-xl font-bold">Invite to {slug}</h1>
+          <p className="text-sm text-muted-foreground mt-1">Invited devs need to be in the GitHub org and sign in here with GitHub to accept.</p>
+        </div>
+      </header>
 
       <form onSubmit={send} className="flex gap-2 mb-8">
         <input value={login} onChange={e => setLogin(e.target.value)} placeholder="github login (e.g. alice)" className="flex-1 px-3 py-2 rounded-md bg-card border border-border text-sm focus:outline-none focus:border-primary transition" />

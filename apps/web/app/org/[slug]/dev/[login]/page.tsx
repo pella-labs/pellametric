@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import BackButton from "@/components/back-button";
 import { prDetailsForMember } from "@/lib/gh-pr-details";
 import { costFor, money } from "@/lib/pricing";
 
@@ -66,13 +67,13 @@ export default async function DevDetailPage({
 
   return (
     <main className="max-w-[1600px] mx-auto mt-8 px-6 pb-16">
-      <header className="flex justify-between items-start mb-6">
+      <header className="flex items-start gap-4 mb-6">
+        <BackButton href={`/org/${slug}`} label="back to team" />
         <div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Dev · {viewer.org.name}</div>
           <h1 className="text-2xl font-bold mt-1">{targetUser.name}</h1>
           <p className="text-xs text-muted-foreground mt-1 font-mono">{targetUser.githubLogin ?? targetUser.id}</p>
         </div>
-        <Link href={`/org/${slug}`} className="text-xs text-muted-foreground hover:text-foreground">← Team</Link>
       </header>
 
       {/* Header KPIs always visible */}

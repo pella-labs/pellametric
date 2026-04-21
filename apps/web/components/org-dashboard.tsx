@@ -264,29 +264,33 @@ export default function OrgDashboard({ data }: { data: { claude: Data; codex: Da
           </Card>
 
           {d.outcome?.labels?.length > 0 && (
-            <Card title="🎯 Outcome mix (session buckets)">
+            <Card title="Outcome mix · session buckets">
               <div className="h-56">
                 <Doughnut
                   data={donutData(
                     d.outcome.labels,
                     d.outcome.values,
                     d.outcome.labels.map((k: string) =>
-                      k === "shipped" ? "#34d399" :
-                      k === "in_review" ? "#60a5fa" :
-                      k === "in_progress" ? "#a78bfa" :
-                      k === "planned" ? "#f0abfc" :
-                      k === "explored" ? "#22d3ee" :
-                      k === "debugged" ? "#fb923c" :
-                      k === "stuck" ? "#fbbf24" :
-                      k === "dormant" ? "#f87171" :
-                      k === "zombie" ? "#ef4444" :
-                      "#6b7280"
+                      k === "shipped" ? "rgba(110, 138, 111, 1)" :
+                      k === "in_review" ? "rgba(110, 138, 111, 0.75)" :
+                      k === "in_progress" ? "rgba(110, 138, 111, 0.5)" :
+                      k === "planned" ? "rgba(237, 232, 222, 0.35)" :
+                      k === "explored" ? "rgba(176, 123, 62, 0.85)" :
+                      k === "debugged" ? "rgba(176, 123, 62, 0.55)" :
+                      k === "stuck" ? "rgba(176, 123, 62, 1)" :
+                      k === "dormant" ? "rgba(194, 106, 90, 0.75)" :
+                      k === "zombie" ? "rgba(194, 106, 90, 1)" :
+                      "rgba(237, 232, 222, 0.2)"
                     ),
                   )}
                   options={donutOpts}
                 />
               </div>
-              <div className="text-[11px] text-muted-foreground mt-2">Red = real waste. Green = shipped.</div>
+              <div className="mk-label mt-3 normal-case tracking-normal">
+                <span className="text-accent">Sage</span> = shipping.{" "}
+                <span style={{ color: "var(--warning)" }}>Amber</span> = in flight.{" "}
+                <span className="text-destructive">Red</span> = waste.
+              </div>
             </Card>
           )}
 

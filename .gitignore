@@ -4,6 +4,8 @@ dist
 build
 .turbo
 coverage
+tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 .env
 .env.local
