@@ -1,0 +1,8 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "corepack enable && pnpm install --frozen-lockfile && pnpm build"
+
+[deploy]
+startCommand = "pnpm --filter @pella/web start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

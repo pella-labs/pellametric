@@ -1,0 +1,15 @@
+node_modules
+.next
+dist
+build
+.turbo
+coverage
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+.vscode
+.idea
+tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo

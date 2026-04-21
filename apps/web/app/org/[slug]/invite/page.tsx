@@ -1,0 +1,54 @@
+"use client";
+import { use, useEffect, useState } from "react";
+
+export default function InvitePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
+  const [invites, setInvites] = useState<any[]>([]);
+  const [login, setLogin] = useState("");
+  const [msg, setMsg] = useState("");
+
+  async function load() {
+    const r = await fetch(`/api/invite?orgSlug=${slug}`);
+    const j = await r.json();
+    setInvites(j.invites ?? []);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    if (!login.trim()) return;
+    setMsg("Sending…");
+    const r = await fetch("/api/invite", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orgSlug: slug, githubLogin: login.trim() }),
+    });
+    const j = await r.json();
+    if (r.ok) { setMsg("Invited"); setLogin(""); load(); }
+    else setMsg(j.error ?? "failed");
+  }
+
+  return (
+    <main className="max-w-xl mx-auto mt-16 px-6">
+      <h1 className="text-xl font-bold mb-2">Invite to {slug}</h1>
+      <p className="text-sm text-muted-foreground mb-6">Invited devs need to be in the GitHub org and sign in here with GitHub to accept.</p>
+
+      <form onSubmit={send} className="flex gap-2 mb-8">
+        <input value={login} onChange={e => setLogin(e.target.value)} placeholder="github login (e.g. alice)" className="flex-1 px-3 py-2 rounded-md bg-card border border-border text-sm focus:outline-none focus:border-primary transition" />
+        <button className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90 transition">Invite</button>
+      </form>
+      {msg && <p className="text-xs text-muted-foreground mb-4">{msg}</p>}
+
+      <h2 className="text-sm uppercase tracking-wider text-muted-foreground font-semibold mb-2">Pending + accepted</h2>
+      <ul className="space-y-1 text-sm">
+        {invites.length === 0 && <li className="text-muted-foreground text-xs">No invites yet.</li>}
+        {invites.map(i => (
+          <li key={i.id} className="flex justify-between bg-card border border-border rounded-md px-3 py-2">
+            <span>{i.githubLogin}</span>
+            <span className={"text-xs " + (i.status === "accepted" ? "text-positive" : "text-warning")}>{i.status}</span>
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}

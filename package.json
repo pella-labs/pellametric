@@ -1,0 +1,21 @@
+{
+  "name": "pella-metrics",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Per-dev productivity metrics from Claude Code + Codex sessions, org-scoped via GitHub",
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "dev": "pnpm --filter @pella/web dev",
+    "build": "pnpm --filter @pella/collector build && pnpm --filter @pella/web build",
+    "start": "pnpm --filter @pella/web start",
+    "db:push": "pnpm --filter @pella/web db:push",
+    "db:studio": "pnpm --filter @pella/web db:studio",
+    "collector": "pnpm --filter @pella/collector start"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

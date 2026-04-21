@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * pella-metrics — bematist-inspired dark palette.
+ * Warm paper-white ink on near-black, sage accent, warm amber for secondary.
+ * Hex values exposed as plain #rgba so Tailwind opacity modifiers keep working.
+ */
+
+:root {
+  --background: #0a0b0d;
+  --foreground: #ede8de;
+  --card: #111316;
+  --card-foreground: #ede8de;
+  --popover: #111316;
+  --popover-foreground: #ede8de;
+  --primary: #6e8a6f;
+  --primary-foreground: #0a0b0d;
+  --secondary: #1a1d20;
+  --secondary-foreground: #ede8de;
+  --muted: #1a1d20;
+  --muted-foreground: rgba(237, 232, 222, 0.6);
+  --accent: #6e8a6f;
+  --accent-foreground: #0a0b0d;
+  --destructive: #c26a5a;
+  --destructive-foreground: #ede8de;
+  --border: rgba(237, 232, 222, 0.12);
+  --input: rgba(237, 232, 222, 0.15);
+  --ring: rgba(110, 138, 111, 0.6);
+  --positive: #6e8a6f;
+  --positive-foreground: #0a0b0d;
+  --warning: #b07b3e;
+  --warning-foreground: #0a0b0d;
+  --terminal: #050506;
+  --ink-faint: rgba(237, 232, 222, 0.3);
+  --border-hover: rgba(237, 232, 222, 0.3);
+  --radius: 0.375rem;
+}
+
+/* The app is dark-only. Keep .dark for class-based gate, values match. */
+.dark {
+  --background: #0a0b0d;
+  --foreground: #ede8de;
+  --card: #111316;
+  --card-foreground: #ede8de;
+  --popover: #111316;
+  --popover-foreground: #ede8de;
+  --primary: #6e8a6f;
+  --primary-foreground: #0a0b0d;
+  --secondary: #1a1d20;
+  --secondary-foreground: #ede8de;
+  --muted: #1a1d20;
+  --muted-foreground: rgba(237, 232, 222, 0.6);
+  --accent: #6e8a6f;
+  --accent-foreground: #0a0b0d;
+  --destructive: #c26a5a;
+  --destructive-foreground: #ede8de;
+  --border: rgba(237, 232, 222, 0.12);
+  --input: rgba(237, 232, 222, 0.15);
+  --ring: rgba(110, 138, 111, 0.6);
+  --positive: #6e8a6f;
+  --positive-foreground: #0a0b0d;
+  --warning: #b07b3e;
+  --warning-foreground: #0a0b0d;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss01", "cv11";
+  }
+  :focus-visible {
+    outline: 1px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .mk-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .mk-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .mk-numeric {
+    font-family: var(--font-numeric);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .mk-hero-numeric {
+    font-family: var(--font-numeric);
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(56px, 7vw, 96px);
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--accent);
+  }
+  .mk-heading {
+    font-family: var(--font-heading);
+    letter-spacing: -0.01em;
+  }
+  .mk-frame {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  .mk-divider {
+    border-top: 1px solid var(--border);
+  }
+  .mk-card {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 120ms ease;
+  }
+  .mk-card:hover {
+    border-color: var(--border-hover);
+  }
+  .mk-grid-bg {
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 60% 50% at 30% 30%, black 0%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 60% 50% at 30% 30%, black 0%, transparent 75%);
+  }
+}
