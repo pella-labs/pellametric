@@ -7,6 +7,9 @@ coverage
 tsconfig.tsbuildinfo
 *.tsbuildinfo
 
+.claude/
+.codex/
+
 .env
 .env.local
 .env.*.local
