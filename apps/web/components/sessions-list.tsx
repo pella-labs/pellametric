@@ -163,17 +163,36 @@ function PromptDrawer({ session, onClose }: { session: Session; onClose: () => v
   );
 }
 
+// Claude Code wraps shell invocations in <bash-input>/<bash-stdout>/<bash-stderr>
+// tags inside message content. Strip them to readable form: commands prefixed
+// with `$ `, empty output omitted, stderr inlined.
+function cleanPromptText(raw: string): string {
+  return raw
+    .replace(/<bash-input>([\s\S]*?)<\/bash-input>/g, (_, cmd) => `$ ${cmd.trim()}`)
+    .replace(/<bash-stdout>([\s\S]*?)<\/bash-stdout>/g, (_, out) => {
+      const t = out.trim();
+      return t ? t : "";
+    })
+    .replace(/<bash-stderr>([\s\S]*?)<\/bash-stderr>/g, (_, err) => {
+      const t = err.trim();
+      return t ? t : "";
+    })
+    // collapse the blank lines we may have produced
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function TurnCard({ turn }: { turn: Turn }) {
   const isPrompt = turn.kind === "prompt";
   const label = isPrompt ? "you" : "assistant";
-  // Chat-style: user prompts right-aligned, neutral card; assistant left-aligned
-  // with a solid sage/accent background (matches the primary button color).
   const align = isPrompt ? "justify-end" : "justify-start";
   const bubble = isPrompt
     ? "border border-border bg-card text-foreground"
     : "border border-accent bg-accent text-accent-foreground";
   const headerBorder = isPrompt ? "border-border/60" : "border-accent-foreground/20";
   const headerMuted = isPrompt ? "text-muted-foreground" : "text-accent-foreground/70";
+  const text = cleanPromptText(turn.text);
+  if (!text) return null;
   return (
     <div className={`flex ${align}`}>
       <div className={`max-w-[88%] rounded-md ${bubble}`}>
@@ -182,7 +201,7 @@ function TurnCard({ turn }: { turn: Turn }) {
             {label} · {new Date(turn.ts).toISOString().replace("T", " ").slice(0, 19)}
           </span>
         </div>
-        <pre className="px-4 py-3 text-[13px] whitespace-pre-wrap break-words font-sans leading-snug">{turn.text}</pre>
+        <pre className="px-4 py-3 text-[13px] whitespace-pre-wrap break-words font-sans leading-snug">{text}</pre>
       </div>
     </div>
   );
