@@ -154,8 +154,8 @@ function PromptDrawer({ session, onClose }: { session: Session; onClose: () => v
               No conversation stored for this session yet. Re-run the collector to upload it.
             </div>
           )}
-          {state === "ready" && turns.map((t, i) => (
-            <TurnCard key={t.id} turn={t} index={i + 1} />
+          {state === "ready" && turns.map(t => (
+            <TurnCard key={t.id} turn={t} />
           ))}
         </div>
       </div>
@@ -163,22 +163,27 @@ function PromptDrawer({ session, onClose }: { session: Session; onClose: () => v
   );
 }
 
-function TurnCard({ turn, index }: { turn: Turn; index: number }) {
+function TurnCard({ turn }: { turn: Turn }) {
   const isPrompt = turn.kind === "prompt";
   const label = isPrompt ? "you" : "assistant";
-  const tone = isPrompt
-    ? "border-border bg-card"
-    : "border-accent/30 bg-[color:var(--popover)]";
-  const labelTone = isPrompt ? "text-muted-foreground" : "text-accent";
+  // Chat-style: user prompts right-aligned, neutral card; assistant left-aligned
+  // with a solid sage/accent background (matches the primary button color).
+  const align = isPrompt ? "justify-end" : "justify-start";
+  const bubble = isPrompt
+    ? "border border-border bg-card text-foreground"
+    : "border border-accent bg-accent text-accent-foreground";
+  const headerBorder = isPrompt ? "border-border/60" : "border-accent-foreground/20";
+  const headerMuted = isPrompt ? "text-muted-foreground" : "text-accent-foreground/70";
   return (
-    <div className={`border rounded-md ${tone}`}>
-      <div className="px-4 py-2 border-b border-border/60 flex justify-between text-[11px] font-mono">
-        <span className={labelTone}>
-          #{index} · {label} · {new Date(turn.ts).toISOString().replace("T", " ").slice(0, 19)}
-        </span>
-        <span className="text-muted-foreground">{turn.wordCount}w</span>
+    <div className={`flex ${align}`}>
+      <div className={`max-w-[88%] rounded-md ${bubble}`}>
+        <div className={`px-4 py-2 border-b text-[11px] font-mono ${headerBorder}`}>
+          <span className={headerMuted}>
+            {label} · {new Date(turn.ts).toISOString().replace("T", " ").slice(0, 19)}
+          </span>
+        </div>
+        <pre className="px-4 py-3 text-[13px] whitespace-pre-wrap break-words font-sans leading-snug">{turn.text}</pre>
       </div>
-      <pre className="px-4 py-3 text-[13px] text-foreground whitespace-pre-wrap break-words font-sans leading-snug">{turn.text}</pre>
     </div>
   );
 }
