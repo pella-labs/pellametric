@@ -38,8 +38,8 @@ function usage(): string {
     "  pella login --token pm_xxx [--url https://…] [--no-start]",
     "",
     "Flags:",
-    "  --token <pm_…>   API token from https://pella-web-production.up.railway.app/setup/collector",
-    "  --url   <url>    Ingest backend (default: https://pella-web-production.up.railway.app)",
+    "  --token <pm_…>   API token from https://pellametric.com/setup/collector",
+    "  --url   <url>    Ingest backend (default: https://pellametric.com)",
     "  --no-start       Skip auto-start; just write config.env.",
   ].join("\n");
 }

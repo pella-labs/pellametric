@@ -24,10 +24,10 @@ packages/
 
 ```bash
 # macOS / Linux
-curl -fsSL https://pella-web-production.up.railway.app/install.sh | sh -s -- --token pm_xxx
+curl -fsSL https://pellametric.com/install.sh | sh -s -- --token pm_xxx
 
 # Windows (PowerShell)
-$env:PELLA_TOKEN="pm_xxx"; irm https://pella-web-production.up.railway.app/install.ps1 | iex
+$env:PELLA_TOKEN="pm_xxx"; irm https://pellametric.com/install.ps1 | iex
 ```
 
 One command. Downloads the binary, verifies SHA-256, writes `~/.pella/config.env` (mode 0600), installs + starts the OS service, and detaches. After install:

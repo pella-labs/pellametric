@@ -3,7 +3,7 @@ import { useState } from "react";
 import BackButton from "@/components/back-button";
 import CopyButton from "@/components/copy-button";
 
-const WEB_URL = "https://pella-web-production.up.railway.app";
+const WEB_URL = "https://pellametric.com";
 
 export default function SetupCollector() {
   const [token, setToken] = useState<string | null>(null);

@@ -570,7 +570,7 @@ async function runOnce(opts) {
 // src/index.ts
 var args = parseArgs(process.argv.slice(2));
 var TOKEN = args.token || process.env.PELLA_TOKEN;
-var DEFAULT_URL = "https://pella-web-production.up.railway.app";
+var DEFAULT_URL = "https://pellametric.com";
 var URL = (args.url || process.env.PELLA_URL || DEFAULT_URL).replace(/\/$/, "");
 var SINCE = args.since ? new Date(args.since) : new Date(0);
 if (!TOKEN) {

@@ -1,10 +1,10 @@
 # pella-metrics collector — installer (Windows PowerShell).
 #
 # Usage:
-#   $env:PELLA_TOKEN = "pm_xxx"; irm https://pella-web-production.up.railway.app/install.ps1 | iex
+#   $env:PELLA_TOKEN = "pm_xxx"; irm https://pellametric.com/install.ps1 | iex
 #
 # Or with a token param (requires invoke-expression with &):
-#   & ([scriptblock]::Create((irm https://pella-web-production.up.railway.app/install.ps1))) -Token pm_xxx
+#   & ([scriptblock]::Create((irm https://pellametric.com/install.ps1))) -Token pm_xxx
 #
 # Installs pella.exe to $env:LOCALAPPDATA\Pella\pella.exe, writes the
 # token to $env:USERPROFILE\.pella\config.env, and registers +
@@ -26,7 +26,7 @@ function Write-Err($msg)  { Write-Host "pella-install: $msg" -ForegroundColor Re
 
 if (-not $Token) {
   Write-Err '--Token is required (or set $env:PELLA_TOKEN).'
-  Write-Err 'Get one at https://pella-web-production.up.railway.app/setup/collector'
+  Write-Err 'Get one at https://pellametric.com/setup/collector'
   exit 2
 }
 

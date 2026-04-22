@@ -10,7 +10,7 @@ import { chmodSync } from "node:fs";
 
 const OUT = "../web/public/collector.mjs";
 const DEFAULT_URL =
-  process.env.PELLA_COLLECTOR_DEFAULT_URL ?? "https://pella-web-production.up.railway.app";
+  process.env.PELLA_COLLECTOR_DEFAULT_URL ?? "https://pellametric.com";
 
 const result = await build({
   entrypoints: ["src/index.ts"],

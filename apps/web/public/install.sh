@@ -5,7 +5,7 @@
 # can't execute a partial script. Exits non-zero on any failure.
 #
 # Usage:
-#   curl -fsSL https://pella-web-production.up.railway.app/install.sh | sh -s -- --token pm_xxx
+#   curl -fsSL https://pellametric.com/install.sh | sh -s -- --token pm_xxx
 #
 # Flags:
 #   --token <pm_…>    API token (required; can also come from $PELLA_TOKEN)
@@ -120,7 +120,7 @@ main() {
 
   if [ -z "$token" ]; then
     err "--token is required (or set \$PELLA_TOKEN)."
-    err "get one at https://pella-web-production.up.railway.app/setup/collector"
+    err "get one at https://pellametric.com/setup/collector"
     exit 2
   fi
 
