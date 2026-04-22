@@ -26,8 +26,8 @@ ENV DATABASE_URL=postgresql://user:pass@localhost:5432/db \
 RUN bun run build
 
 FROM oven/bun:1.3-slim AS runtime
-WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app ./
+COPY --from=build /app /app
+WORKDIR /app/apps/web
 EXPOSE 3000
-CMD ["bun", "--filter", "./apps/web", "run", "start"]
+CMD ["bun", "run", "start"]
