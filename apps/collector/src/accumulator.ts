@@ -1,4 +1,4 @@
-import type { IngestPrompt, IngestSession } from "@pella/shared";
+import type { IngestPrompt, IngestResponse, IngestSession } from "@pella/shared";
 import type { RepoInfo } from "./parsers/repo";
 import type { SessionMap, SessionState } from "./types";
 
@@ -15,9 +15,10 @@ export function finalizeSessions(
   sessions: SessionMap,
   resolveRepoFn: (cwd: string) => RepoInfo | null,
   only?: ReadonlySet<string>,
-): { sessions: IngestSession[]; prompts: IngestPrompt[] } {
+): { sessions: IngestSession[]; prompts: IngestPrompt[]; responses: IngestResponse[] } {
   const out: IngestSession[] = [];
   const prompts: IngestPrompt[] = [];
+  const responses: IngestResponse[] = [];
   for (const s of sessions.values()) {
     if (only && !only.has(s.sid)) continue;
     if (!s.start || !s.end || !s.cwd) continue;
@@ -32,8 +33,16 @@ export function finalizeSessions(
         wordCount: p.wordCount,
       });
     }
+    for (const r of s.responses) {
+      responses.push({
+        externalSessionId: s.sid,
+        tsResponse: r.ts.toISOString(),
+        text: r.text,
+        wordCount: r.wordCount,
+      });
+    }
   }
-  return { sessions: out, prompts };
+  return { sessions: out, prompts, responses };
 }
 
 function toWire(s: SessionState, info: RepoInfo): IngestSession {

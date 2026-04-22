@@ -32,9 +32,17 @@ export interface IngestPrompt {
   wordCount: number;
 }
 
+export interface IngestResponse {
+  externalSessionId: string;
+  tsResponse: string; // ISO
+  text: string;       // assistant text reply; server encrypts before storing
+  wordCount: number;
+}
+
 export interface IngestPayload {
   source: "claude" | "codex";
   collectorVersion?: string;
   sessions: IngestSession[];
   prompts?: IngestPrompt[];
+  responses?: IngestResponse[];
 }

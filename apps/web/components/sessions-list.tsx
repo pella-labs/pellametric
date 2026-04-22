@@ -86,10 +86,12 @@ export default function SessionsList({ sessions, canViewPrompts }: { sessions: S
   );
 }
 
+type Turn = { kind: "prompt" | "response"; id: string; ts: string; wordCount: number; text: string };
+
 function PromptDrawer({ session, onClose }: { session: Session; onClose: () => void }) {
   const [state, setState] = useState<"loading" | "error" | "ready">("loading");
   const [err, setErr] = useState<string>("");
-  const [prompts, setPrompts] = useState<Array<{ id: string; tsPrompt: string; wordCount: number; text: string }>>([]);
+  const [turns, setTurns] = useState<Turn[]>([]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -98,7 +100,7 @@ function PromptDrawer({ session, onClose }: { session: Session; onClose: () => v
       .then(async r => {
         if (!r.ok) throw new Error(`http ${r.status}`);
         const j = await r.json();
-        setPrompts(j.prompts ?? []);
+        setTurns(j.turns ?? []);
         setState("ready");
       })
       .catch(e => {
@@ -106,11 +108,13 @@ function PromptDrawer({ session, onClose }: { session: Session; onClose: () => v
         setErr(String(e.message ?? e));
         setState("error");
       });
-    // Close on Esc
     const onKey = (ev: KeyboardEvent) => { if (ev.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => { ac.abort(); window.removeEventListener("keydown", onKey); };
   }, [session.externalSessionId, session.source, onClose]);
+
+  const promptCount = turns.filter(t => t.kind === "prompt").length;
+  const responseCount = turns.filter(t => t.kind === "response").length;
 
   return (
     <div
@@ -128,6 +132,11 @@ function PromptDrawer({ session, onClose }: { session: Session; onClose: () => v
             <div className="text-[11px] text-muted-foreground mt-0.5 font-mono truncate">
               {new Date(session.startedAt).toISOString().replace("T", " ").slice(0, 19)} · {session.externalSessionId.slice(0, 8)}
             </div>
+            {state === "ready" && (
+              <div className="text-[11px] text-muted-foreground mt-1">
+                {promptCount} prompts · {responseCount} responses
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -140,20 +149,36 @@ function PromptDrawer({ session, onClose }: { session: Session; onClose: () => v
         <div className="px-5 py-5 space-y-3">
           {state === "loading" && <div className="text-sm text-muted-foreground">Loading…</div>}
           {state === "error" && <div className="text-sm text-destructive">Failed: {err}</div>}
-          {state === "ready" && prompts.length === 0 && (
-            <div className="text-sm text-muted-foreground">No prompts stored for this session yet. Re-run the collector to upload them.</div>
-          )}
-          {state === "ready" && prompts.map((p, i) => (
-            <div key={p.id} className="border border-border rounded-md bg-card">
-              <div className="px-4 py-2 border-b border-border flex justify-between text-[11px] font-mono text-muted-foreground">
-                <span>#{i + 1} · {new Date(p.tsPrompt).toISOString().replace("T", " ").slice(0, 19)}</span>
-                <span>{p.wordCount}w</span>
-              </div>
-              <pre className="px-4 py-3 text-[13px] text-foreground whitespace-pre-wrap break-words font-sans leading-snug">{p.text}</pre>
+          {state === "ready" && turns.length === 0 && (
+            <div className="text-sm text-muted-foreground">
+              No conversation stored for this session yet. Re-run the collector to upload it.
             </div>
+          )}
+          {state === "ready" && turns.map((t, i) => (
+            <TurnCard key={t.id} turn={t} index={i + 1} />
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function TurnCard({ turn, index }: { turn: Turn; index: number }) {
+  const isPrompt = turn.kind === "prompt";
+  const label = isPrompt ? "you" : "assistant";
+  const tone = isPrompt
+    ? "border-border bg-card"
+    : "border-accent/30 bg-[color:var(--popover)]";
+  const labelTone = isPrompt ? "text-muted-foreground" : "text-accent";
+  return (
+    <div className={`border rounded-md ${tone}`}>
+      <div className="px-4 py-2 border-b border-border/60 flex justify-between text-[11px] font-mono">
+        <span className={labelTone}>
+          #{index} · {label} · {new Date(turn.ts).toISOString().replace("T", " ").slice(0, 19)}
+        </span>
+        <span className="text-muted-foreground">{turn.wordCount}w</span>
+      </div>
+      <pre className="px-4 py-3 text-[13px] text-foreground whitespace-pre-wrap break-words font-sans leading-snug">{turn.text}</pre>
     </div>
   );
 }
