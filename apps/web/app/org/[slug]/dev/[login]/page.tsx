@@ -9,6 +9,7 @@ import WindowPicker from "@/components/window-picker";
 import { windowCutoff, parseWindow, type WindowKey } from "@/lib/window";
 import { prDetailsForMember } from "@/lib/gh-pr-details";
 import { costFor, money } from "@/lib/pricing";
+import SessionsList from "@/components/sessions-list";
 import {
   FolderGit2, Sparkles, Plug, Wrench, Activity, MessageSquare, Zap, Database,
   DatabaseZap, Clock, GitPullRequest, GitMerge, CircleDot, Plus, Minus,
@@ -125,7 +126,25 @@ export default async function DevDetailPage({
       {view === "mcp" && <McpView sessions={sessions} />}
       {view === "tools" && <ToolsView sessions={sessions} />}
       {view === "files" && <FilesView sessions={sessions} />}
-      {view === "sessions" && <SessionsView sessions={sessions} />}
+      {view === "sessions" && (
+        <SessionsList
+          sessions={sessions.map(s => ({
+            id: s.id,
+            source: s.source as "claude" | "codex",
+            externalSessionId: s.externalSessionId,
+            repo: s.repo,
+            startedAt: s.startedAt.toISOString(),
+            intentTop: s.intentTop,
+            messages: s.messages,
+            tokensOut: Number(s.tokensOut),
+            filesEdited: (Array.isArray(s.filesEdited) ? s.filesEdited : []) as string[],
+            errors: s.errors,
+            teacherMoments: s.teacherMoments ?? 0,
+            userTurns: s.userTurns,
+          }))}
+          canViewPrompts={targetUser.id === session.user.id}
+        />
+      )}
       {view === "prs" && <PrsView orgSlug={slug} login={targetUser.githubLogin} viewerId={session.user.id} sessions={sessions} cutoff={cutoff} />}
     </main>
   );

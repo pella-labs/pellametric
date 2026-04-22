@@ -12,7 +12,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import type { IngestPayload, IngestSession } from "@pella/shared";
+import type { IngestPayload, IngestSession, IngestPrompt } from "@pella/shared";
 
 const HOME = os.homedir();
 const args = parseArgs(process.argv.slice(2));
@@ -69,7 +69,7 @@ function* walkJsonl(dir: string, pattern: RegExp): Generator<string> {
 const TEACHER_RE = /\b(no|wrong|that'?s not|actually|instead|don'?t|undo|revert|not like that|nope)\b/i;
 const FRUSTRATION_RE = /\b(fuck|shit|wtf|damn|ugh)\b|!{2,}|\b[A-Z]{4,}\b/;
 
-function parseClaudeSessions(): IngestSession[] {
+function parseClaudeSessions(): { sessions: IngestSession[]; prompts: IngestPrompt[] } {
   const root = path.join(HOME, ".claude", "projects");
   const sessions = new Map<string, any>();
   for (const file of walkJsonl(root, /\.jsonl$/)) {
@@ -93,6 +93,7 @@ function parseClaudeSessions(): IngestSession[] {
             skillsUsed: new Set<string>(), mcpsUsed: new Set<string>(),
             intents: {} as Record<string,number>, model: undefined,
             teacherMoments: 0, frustrationSpikes: 0, promptWords: [] as number[],
+            prompts: [] as Array<{ ts: Date; text: string; wordCount: number }>,
           };
           sessions.set(sid, s);
         }
@@ -107,9 +108,13 @@ function parseClaudeSessions(): IngestSession[] {
           s.tokensOut += u.output_tokens || 0;
           s.tokensCacheRead += u.cache_read_input_tokens || 0;
           s.tokensCacheWrite += u.cache_creation_input_tokens || 0;
-          if (u && Object.keys(u).length) s.messages++;
           if (msg.model) s.model = msg.model;
           const content = Array.isArray(msg.content) ? msg.content : [];
+          // Count a "message" only when the assistant emits a text reply, to match Codex
+          // semantics ("response_item.message"). Tool-only steps are tracked via toolHist.
+          if (content.some((c: any) => c && typeof c === "object" && c.type === "text")) {
+            s.messages++;
+          }
           for (const c of content) {
             if (!c || typeof c !== "object") continue;
             if (c.type === "tool_use") {
@@ -127,9 +132,25 @@ function parseClaudeSessions(): IngestSession[] {
           if (Array.isArray(mc)) {
             for (const p of mc) if (p?.type === "tool_result" && p.is_error) s.errors++;
           }
-          const text = typeof d.message?.content === "string" ? d.message.content
+          // Sub-agent user messages (isSidechain:true) are prompts the agent wrote to
+          // itself — not real human turns. Skip them for human-prompt metrics (tokens
+          // and tools from sidechain turns are still aggregated as real computation).
+          if (d.isSidechain) continue;
+          const raw: string = typeof d.message?.content === "string" ? d.message.content
                      : Array.isArray(d.message?.content) ? d.message.content.map((x:any) => x?.text || "").join("") : "";
-          if (text && !text.startsWith("<local-command") && !text.startsWith("<command-name")) {
+          // Command-expansion wrappers have no user prompt — drop entirely.
+          if (!raw || raw.startsWith("<local-command") || raw.startsWith("<command-name")) continue;
+          // "Human: <info-msg>...</info-msg>\n{real prompt}" wraps a real prompt inside
+          // system metadata. Extract what's after the closing tag; drop if nothing left.
+          let text = raw;
+          if (raw.startsWith("Human: <info-msg>") || raw.startsWith("<info-msg>")) {
+            const close = raw.indexOf("</info-msg>");
+            text = close >= 0 ? raw.slice(close + "</info-msg>".length).trim() : "";
+          } else if (raw.startsWith("Human: <")) {
+            // Some other tagged synthetic prompt with no documented extractor — skip.
+            text = "";
+          }
+          if (text) {
             s.userTurns++;
             const intent = classifyIntent(text);
             s.intents[intent] = (s.intents[intent] || 0) + 1;
@@ -137,6 +158,7 @@ function parseClaudeSessions(): IngestSession[] {
             s.promptWords.push(wc);
             if (wc < 30 && TEACHER_RE.test(text)) s.teacherMoments++;
             if (FRUSTRATION_RE.test(text)) s.frustrationSpikes++;
+            if (ts) s.prompts.push({ ts, text, wordCount: wc });
           }
         }
       }
@@ -146,7 +168,7 @@ function parseClaudeSessions(): IngestSession[] {
 }
 
 // -------- Codex parser --------
-function parseCodexSessions(): IngestSession[] {
+function parseCodexSessions(): { sessions: IngestSession[]; prompts: IngestPrompt[] } {
   const sessions = new Map<string, any>();
   const roots = [
     path.join(HOME, ".codex", "sessions"),
@@ -176,18 +198,34 @@ function parseCodexSessions(): IngestSession[] {
               skillsUsed: new Set<string>(), mcpsUsed: new Set<string>(),
               intents: {} as Record<string,number>, model: "codex",
               teacherMoments: 0, frustrationSpikes: 0, promptWords: [] as number[],
+              prompts: [] as Array<{ ts: Date; text: string; wordCount: number }>,
             };
             sessions.set(sid!, s);
           } else if (!s) continue;
           else if (ts) { if (ts < s.start) s.start = ts; if (ts > s.end) s.end = ts; }
           if (t === "event_msg" && p.type === "token_count" && p.info?.total_token_usage) {
             lastUsage = p.info.total_token_usage;
-            s.tokensIn = lastUsage.input_tokens || 0;
+            // OpenAI's `input_tokens` is the TOTAL input and `cached_input_tokens` is a
+            // subset of it. Normalize to match Anthropic's disjoint semantics (tokensIn =
+            // non-cached input), so downstream cost/cache-hit math is consistent across
+            // sources. Clamp at 0 in case the API ever reports cached > input.
+            const ti = lastUsage.input_tokens || 0;
+            const cached = lastUsage.cached_input_tokens || 0;
+            s.tokensIn = Math.max(0, ti - cached);
             s.tokensOut = lastUsage.output_tokens || 0;
-            s.tokensCacheRead = lastUsage.cached_input_tokens || 0;
+            s.tokensCacheRead = cached;
             s.tokensReasoning = lastUsage.reasoning_output_tokens || 0;
           } else if (t === "event_msg" && p.type === "user_message") {
-            const text = p.message || "";
+            const raw: string = p.message || "";
+            // Codex's IDE extension wraps real prompts in a context block; the user's
+            // actual prompt sits under a "## My request for Codex:" header. Extract
+            // the real prompt if a wrapper is detected; otherwise use raw.
+            const trimmed = raw.replace(/^\s+/, "");
+            let text = raw;
+            if (trimmed.startsWith("# Context from my IDE setup:") || trimmed.startsWith("# Files mentioned by the user:")) {
+              const marker = trimmed.indexOf("## My request for Codex:");
+              text = marker >= 0 ? trimmed.slice(marker + "## My request for Codex:".length).trim() : "";
+            }
             if (text) {
               s.userTurns++;
               const intent = classifyIntent(text);
@@ -196,15 +234,34 @@ function parseCodexSessions(): IngestSession[] {
               s.promptWords.push(wc);
               if (wc < 30 && TEACHER_RE.test(text)) s.teacherMoments++;
               if (FRUSTRATION_RE.test(text)) s.frustrationSpikes++;
+              if (ts) s.prompts.push({ ts, text, wordCount: wc });
             }
           } else if (t === "response_item" && (p.type === "function_call" || p.type === "custom_tool_call")) {
             const name = p.name || "unknown";
             s.toolHist[name] = (s.toolHist[name] || 0) + 1;
+            // Modern Codex applies patches via custom_tool_call apply_patch. Parse the
+            // patch header markers to extract edited paths; patch_apply_end is legacy.
+            if (p.type === "custom_tool_call" && name === "apply_patch" && typeof p.input === "string") {
+              const re = /^\*\*\* (?:Update File|Add File|Delete File|Move to): (.+)$/gm;
+              for (const m of p.input.matchAll(re)) s.filesEdited.add(m[1].trim());
+            }
           } else if (t === "response_item" && p.type === "message" && p.role === "assistant") {
             s.messages++;
+          } else if (t === "response_item" && (p.type === "function_call_output" || p.type === "custom_tool_call_output")) {
+            // exit_code != 0 in the tool output metadata indicates a failed execution.
+            const out = p.output;
+            if (typeof out === "string" && out.startsWith("{")) {
+              try {
+                const parsed = JSON.parse(out);
+                const ec = parsed?.metadata?.exit_code;
+                if (typeof ec === "number" && ec !== 0) s.errors++;
+              } catch { /* ignore malformed */ }
+            }
           } else if (t === "event_msg" && p.type === "patch_apply_end") {
             const changes = p.changes || {};
             for (const fp of Object.keys(changes)) s.filesEdited.add(fp);
+          } else if (t === "event_msg" && p.type === "error") {
+            s.errors++;
           }
         }
       } catch { /* skip */ }
@@ -213,8 +270,9 @@ function parseCodexSessions(): IngestSession[] {
   return finalize(sessions);
 }
 
-function finalize(sessions: Map<string, any>): IngestSession[] {
+function finalize(sessions: Map<string, any>): { sessions: IngestSession[]; prompts: IngestPrompt[] } {
   const out: IngestSession[] = [];
+  const prompts: IngestPrompt[] = [];
   for (const s of sessions.values()) {
     if (!s.start || !s.end || !s.cwd) continue;
     const info = resolveRepo(s.cwd);
@@ -245,8 +303,16 @@ function finalize(sessions: Map<string, any>): IngestSession[] {
       promptWordsMedian: median,
       promptWordsP95: p95,
     });
+    for (const p of s.prompts || []) {
+      prompts.push({
+        externalSessionId: s.sid,
+        tsPrompt: new Date(p.ts).toISOString(),
+        text: p.text,
+        wordCount: p.wordCount,
+      });
+    }
   }
-  return out;
+  return { sessions: out, prompts };
 }
 
 function classifyIntent(text: string): string {
@@ -272,34 +338,46 @@ function parseArgs(argv: string[]): Record<string,string> {
   return out;
 }
 
-async function upload(source: "claude" | "codex", sessions: IngestSession[]) {
+async function upload(source: "claude" | "codex", sessions: IngestSession[], prompts: IngestPrompt[]) {
   if (sessions.length === 0) { console.log(`[${source}] no sessions`); return; }
-  const payload: IngestPayload = { source, collectorVersion: "0.0.1", sessions };
   const BATCH = 200;
-  let inserted = 0, rejected = 0;
+  // Group prompts by session so we only send prompts for sessions in the current chunk.
+  const promptsBySid = new Map<string, IngestPrompt[]>();
+  for (const p of prompts) {
+    const arr = promptsBySid.get(p.externalSessionId);
+    if (arr) arr.push(p); else promptsBySid.set(p.externalSessionId, [p]);
+  }
+  let inserted = 0, rejected = 0, pInserted = 0;
   for (let i = 0; i < sessions.length; i += BATCH) {
     const chunk = sessions.slice(i, i + BATCH);
+    const chunkPrompts: IngestPrompt[] = [];
+    for (const sess of chunk) {
+      const list = promptsBySid.get(sess.externalSessionId);
+      if (list) chunkPrompts.push(...list);
+    }
+    const payload: IngestPayload = { source, collectorVersion: "0.0.1", sessions: chunk, prompts: chunkPrompts };
     const r = await fetch(`${URL}/api/ingest`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
-      body: JSON.stringify({ ...payload, sessions: chunk }),
+      body: JSON.stringify(payload),
     });
     const j: any = await r.json().catch(() => ({}));
     if (!r.ok) { console.error(`[${source}] batch ${i}: ${r.status}`, j); continue; }
     inserted += j.inserted || 0;
     rejected += (j.rejected?.length || 0);
-    console.log(`[${source}] batch ${i}-${i+chunk.length}: inserted ${j.inserted}, rejected ${j.rejected?.length || 0}`);
+    pInserted += j.promptsInserted || 0;
+    console.log(`[${source}] batch ${i}-${i+chunk.length}: inserted ${j.inserted}, prompts ${j.promptsInserted || 0}, rejected ${j.rejected?.length || 0}`);
   }
-  console.log(`[${source}] total inserted ${inserted}, rejected ${rejected}`);
+  console.log(`[${source}] total inserted ${inserted}, prompts ${pInserted}, rejected ${rejected}`);
 }
 
 (async () => {
   console.log(`pella-metrics collector → ${URL}`);
   console.log(`since: ${SINCE.toISOString().slice(0,10)}`);
   const claude = parseClaudeSessions();
-  console.log(`claude sessions in-scope: ${claude.length}`);
-  await upload("claude", claude);
+  console.log(`claude sessions in-scope: ${claude.sessions.length} (prompts: ${claude.prompts.length})`);
+  await upload("claude", claude.sessions, claude.prompts);
   const codex = parseCodexSessions();
-  console.log(`codex sessions in-scope: ${codex.length}`);
-  await upload("codex", codex);
+  console.log(`codex sessions in-scope: ${codex.sessions.length} (prompts: ${codex.prompts.length})`);
+  await upload("codex", codex.sessions, codex.prompts);
 })().catch(e => { console.error(e); process.exit(1); });

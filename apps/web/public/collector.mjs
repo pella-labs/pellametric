@@ -112,7 +112,8 @@ function parseClaudeSessions() {
             model: undefined,
             teacherMoments: 0,
             frustrationSpikes: 0,
-            promptWords: []
+            promptWords: [],
+            prompts: []
           };
           sessions.set(sid, s);
         }
@@ -129,11 +130,12 @@ function parseClaudeSessions() {
           s.tokensOut += u.output_tokens || 0;
           s.tokensCacheRead += u.cache_read_input_tokens || 0;
           s.tokensCacheWrite += u.cache_creation_input_tokens || 0;
-          if (u && Object.keys(u).length)
-            s.messages++;
           if (msg.model)
             s.model = msg.model;
           const content2 = Array.isArray(msg.content) ? msg.content : [];
+          if (content2.some((c) => c && typeof c === "object" && c.type === "text")) {
+            s.messages++;
+          }
           for (const c of content2) {
             if (!c || typeof c !== "object")
               continue;
@@ -156,8 +158,19 @@ function parseClaudeSessions() {
               if (p?.type === "tool_result" && p.is_error)
                 s.errors++;
           }
-          const text = typeof d.message?.content === "string" ? d.message.content : Array.isArray(d.message?.content) ? d.message.content.map((x) => x?.text || "").join("") : "";
-          if (text && !text.startsWith("<local-command") && !text.startsWith("<command-name")) {
+          if (d.isSidechain)
+            continue;
+          const raw = typeof d.message?.content === "string" ? d.message.content : Array.isArray(d.message?.content) ? d.message.content.map((x) => x?.text || "").join("") : "";
+          if (!raw || raw.startsWith("<local-command") || raw.startsWith("<command-name"))
+            continue;
+          let text = raw;
+          if (raw.startsWith("Human: <info-msg>") || raw.startsWith("<info-msg>")) {
+            const close = raw.indexOf("</info-msg>");
+            text = close >= 0 ? raw.slice(close + "</info-msg>".length).trim() : "";
+          } else if (raw.startsWith("Human: <")) {
+            text = "";
+          }
+          if (text) {
             s.userTurns++;
             const intent = classifyIntent(text);
             s.intents[intent] = (s.intents[intent] || 0) + 1;
@@ -167,6 +180,8 @@ function parseClaudeSessions() {
               s.teacherMoments++;
             if (FRUSTRATION_RE.test(text))
               s.frustrationSpikes++;
+            if (ts)
+              s.prompts.push({ ts, text, wordCount: wc });
           }
         }
       }
@@ -227,7 +242,8 @@ function parseCodexSessions() {
               model: "codex",
               teacherMoments: 0,
               frustrationSpikes: 0,
-              promptWords: []
+              promptWords: [],
+              prompts: []
             };
             sessions.set(sid, s);
           } else if (!s)
@@ -240,12 +256,20 @@ function parseCodexSessions() {
           }
           if (t === "event_msg" && p.type === "token_count" && p.info?.total_token_usage) {
             lastUsage = p.info.total_token_usage;
-            s.tokensIn = lastUsage.input_tokens || 0;
+            const ti = lastUsage.input_tokens || 0;
+            const cached = lastUsage.cached_input_tokens || 0;
+            s.tokensIn = Math.max(0, ti - cached);
             s.tokensOut = lastUsage.output_tokens || 0;
-            s.tokensCacheRead = lastUsage.cached_input_tokens || 0;
+            s.tokensCacheRead = cached;
             s.tokensReasoning = lastUsage.reasoning_output_tokens || 0;
           } else if (t === "event_msg" && p.type === "user_message") {
-            const text = p.message || "";
+            const raw = p.message || "";
+            const trimmed = raw.replace(/^\s+/, "");
+            let text = raw;
+            if (trimmed.startsWith("# Context from my IDE setup:") || trimmed.startsWith("# Files mentioned by the user:")) {
+              const marker = trimmed.indexOf("## My request for Codex:");
+              text = marker >= 0 ? trimmed.slice(marker + "## My request for Codex:".length).trim() : "";
+            }
             if (text) {
               s.userTurns++;
               const intent = classifyIntent(text);
@@ -256,16 +280,35 @@ function parseCodexSessions() {
                 s.teacherMoments++;
               if (FRUSTRATION_RE.test(text))
                 s.frustrationSpikes++;
+              if (ts)
+                s.prompts.push({ ts, text, wordCount: wc });
             }
           } else if (t === "response_item" && (p.type === "function_call" || p.type === "custom_tool_call")) {
             const name = p.name || "unknown";
             s.toolHist[name] = (s.toolHist[name] || 0) + 1;
+            if (p.type === "custom_tool_call" && name === "apply_patch" && typeof p.input === "string") {
+              const re = /^\*\*\* (?:Update File|Add File|Delete File|Move to): (.+)$/gm;
+              for (const m of p.input.matchAll(re))
+                s.filesEdited.add(m[1].trim());
+            }
           } else if (t === "response_item" && p.type === "message" && p.role === "assistant") {
             s.messages++;
+          } else if (t === "response_item" && (p.type === "function_call_output" || p.type === "custom_tool_call_output")) {
+            const out = p.output;
+            if (typeof out === "string" && out.startsWith("{")) {
+              try {
+                const parsed = JSON.parse(out);
+                const ec = parsed?.metadata?.exit_code;
+                if (typeof ec === "number" && ec !== 0)
+                  s.errors++;
+              } catch {}
+            }
           } else if (t === "event_msg" && p.type === "patch_apply_end") {
             const changes = p.changes || {};
             for (const fp of Object.keys(changes))
               s.filesEdited.add(fp);
+          } else if (t === "event_msg" && p.type === "error") {
+            s.errors++;
           }
         }
       } catch {}
@@ -275,6 +318,7 @@ function parseCodexSessions() {
 }
 function finalize(sessions) {
   const out = [];
+  const prompts = [];
   for (const s of sessions.values()) {
     if (!s.start || !s.end || !s.cwd)
       continue;
@@ -311,8 +355,16 @@ function finalize(sessions) {
       promptWordsMedian: median,
       promptWordsP95: p95
     });
+    for (const p of s.prompts || []) {
+      prompts.push({
+        externalSessionId: s.sid,
+        tsPrompt: new Date(p.ts).toISOString(),
+        text: p.text,
+        wordCount: p.wordCount
+      });
+    }
   }
-  return out;
+  return { sessions: out, prompts };
 }
 function classifyIntent(text) {
   const t = text.slice(0, 2000).trim();
@@ -340,20 +392,34 @@ function parseArgs(argv) {
   }
   return out;
 }
-async function upload(source, sessions) {
+async function upload(source, sessions, prompts) {
   if (sessions.length === 0) {
     console.log(`[${source}] no sessions`);
     return;
   }
-  const payload = { source, collectorVersion: "0.0.1", sessions };
   const BATCH = 200;
-  let inserted = 0, rejected = 0;
+  const promptsBySid = new Map;
+  for (const p of prompts) {
+    const arr = promptsBySid.get(p.externalSessionId);
+    if (arr)
+      arr.push(p);
+    else
+      promptsBySid.set(p.externalSessionId, [p]);
+  }
+  let inserted = 0, rejected = 0, pInserted = 0;
   for (let i = 0;i < sessions.length; i += BATCH) {
     const chunk = sessions.slice(i, i + BATCH);
+    const chunkPrompts = [];
+    for (const sess of chunk) {
+      const list = promptsBySid.get(sess.externalSessionId);
+      if (list)
+        chunkPrompts.push(...list);
+    }
+    const payload = { source, collectorVersion: "0.0.1", sessions: chunk, prompts: chunkPrompts };
     const r = await fetch(`${URL}/api/ingest`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
-      body: JSON.stringify({ ...payload, sessions: chunk })
+      body: JSON.stringify(payload)
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) {
@@ -362,19 +428,20 @@ async function upload(source, sessions) {
     }
     inserted += j.inserted || 0;
     rejected += j.rejected?.length || 0;
-    console.log(`[${source}] batch ${i}-${i + chunk.length}: inserted ${j.inserted}, rejected ${j.rejected?.length || 0}`);
+    pInserted += j.promptsInserted || 0;
+    console.log(`[${source}] batch ${i}-${i + chunk.length}: inserted ${j.inserted}, prompts ${j.promptsInserted || 0}, rejected ${j.rejected?.length || 0}`);
   }
-  console.log(`[${source}] total inserted ${inserted}, rejected ${rejected}`);
+  console.log(`[${source}] total inserted ${inserted}, prompts ${pInserted}, rejected ${rejected}`);
 }
 (async () => {
   console.log(`pella-metrics collector → ${URL}`);
   console.log(`since: ${SINCE.toISOString().slice(0, 10)}`);
   const claude = parseClaudeSessions();
-  console.log(`claude sessions in-scope: ${claude.length}`);
-  await upload("claude", claude);
+  console.log(`claude sessions in-scope: ${claude.sessions.length} (prompts: ${claude.prompts.length})`);
+  await upload("claude", claude.sessions, claude.prompts);
   const codex = parseCodexSessions();
-  console.log(`codex sessions in-scope: ${codex.length}`);
-  await upload("codex", codex);
+  console.log(`codex sessions in-scope: ${codex.sessions.length} (prompts: ${codex.prompts.length})`);
+  await upload("codex", codex.sessions, codex.prompts);
 })().catch((e) => {
   console.error(e);
   process.exit(1);

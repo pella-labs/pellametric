@@ -25,8 +25,16 @@ export interface IngestSession {
   promptWordsP95?: number;
 }
 
+export interface IngestPrompt {
+  externalSessionId: string;
+  tsPrompt: string;   // ISO
+  text: string;       // plaintext; server encrypts before storing
+  wordCount: number;
+}
+
 export interface IngestPayload {
   source: "claude" | "codex";
   collectorVersion?: string;
   sessions: IngestSession[];
+  prompts?: IngestPrompt[];
 }
