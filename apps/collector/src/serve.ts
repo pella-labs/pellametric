@@ -76,7 +76,13 @@ export function startServeLoop(cfg: CollectorConfig): LoopHandle {
     );
     // Cursor's SQLite source has its own PRAGMA data_version + per-composer
     // lastUpdatedAt watermarks (no byte-offset cursor — rows mutate in place).
-    const touchedCursor = sweepCursor(cursorSessions, cursorSweepState, cfg.since);
+    // Opt-out escape hatch: users whose state.vscdb has grown to multi-GB can
+    // set PELLA_SKIP_CURSOR=1 in ~/.pella/config.env — the first cold-start
+    // pass across the whole DB can otherwise peg CPU long enough for macOS's
+    // "inefficient" killer to SIGTERM the daemon before it emits a tick.
+    const touchedCursor = process.env.PELLA_SKIP_CURSOR === "1"
+      ? new Set<string>()
+      : sweepCursor(cursorSessions, cursorSweepState, cfg.since);
 
     if (touchedClaude.size > 0) {
       const { sessions, prompts, responses } = finalizeSessions(claudeSessions, resolver, touchedClaude);

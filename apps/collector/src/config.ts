@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-export const COLLECTOR_VERSION = "0.0.6";
+export const COLLECTOR_VERSION = "0.0.7";
 export const DEFAULT_URL = "https://pellametric.com";
 export const DEFAULT_POLL_INTERVAL_MS = 10_000;
 
@@ -64,6 +64,12 @@ export function loadConfig(): CollectorConfig {
   // process.env wins over config.env — lets users override per-invocation.
   for (const k of ["PELLA_TOKEN", "PELLA_URL", "PELLA_POLL_INTERVAL_MS", "PELLA_SINCE"]) {
     if (process.env[k]) vars[k] = process.env[k]!;
+  }
+  // Feature flags read directly off process.env elsewhere (e.g.
+  // PELLA_SKIP_CURSOR in serve.ts) — propagate from config.env so users
+  // can set them persistently without editing the launchd plist.
+  for (const k of ["PELLA_SKIP_CURSOR"]) {
+    if (vars[k] && !process.env[k]) process.env[k] = vars[k];
   }
   const token = vars.PELLA_TOKEN ?? "";
   const url = (vars.PELLA_URL || DEFAULT_URL).replace(/\/$/, "");
