@@ -3,21 +3,22 @@
   "private": true,
   "version": "0.0.1",
   "description": "Per-dev productivity metrics from Claude Code + Codex sessions, org-scoped via GitHub",
-  "packageManager": "pnpm@9.12.0",
+  "packageManager": "bun@1.3.9",
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "pnpm --filter @pella/web dev",
-    "build": "pnpm --filter @pella/collector build && pnpm --filter @pella/web build",
-    "start": "pnpm --filter @pella/web start",
-    "db:push": "pnpm --filter @pella/web db:push",
-    "db:studio": "pnpm --filter @pella/web db:studio",
-    "collector": "pnpm --filter @pella/collector start",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "dev": "bun --filter='./apps/web' run dev",
+    "build": "bun --filter='./apps/collector' run build && bun --filter='./apps/web' run build",
+    "start": "bun --filter='./apps/web' run start",
+    "db:push": "bun --filter='./apps/web' run db:push",
+    "db:studio": "bun --filter='./apps/web' run db:studio",
+    "collector": "bun --filter='./apps/collector' run start",
+    "test": "bun --filter='./apps/*' --filter='./packages/*' run test",
+    "typecheck": "bun --filter='./apps/*' --filter='./packages/*' run typecheck"
   },
   "devDependencies": {
     "typescript": "^5.6.3"
   },
   "engines": {
-    "node": ">=20"
+    "bun": ">=1.3.4"
   }
 }

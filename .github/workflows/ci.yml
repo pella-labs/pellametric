@@ -21,18 +21,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: pnpm
+          bun-version: 1.3.9
 
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Run ${{ matrix.task }}
-        run: pnpm ${{ matrix.task }}
+        run: bun run ${{ matrix.task }}
 
   build:
     name: build (web)
@@ -41,15 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: pnpm
+          bun-version: 1.3.9
 
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Build web
         env:
@@ -60,7 +54,7 @@ jobs:
           GITHUB_CLIENT_ID: ci_client_id
           GITHUB_CLIENT_SECRET: ci_client_secret
           NEXT_PUBLIC_BETTER_AUTH_URL: http://localhost:3000
-        run: pnpm --filter @pella/web build
+        run: bun --filter='./apps/web' run build
 
-      - name: Build collector (esbuild bundle)
-        run: pnpm --filter @pella/collector build
+      - name: Build collector (bun bundle)
+        run: bun --filter='./apps/collector' run build
