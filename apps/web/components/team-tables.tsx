@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { money } from "@/lib/pricing";
 
 function fmt(n: number) {
@@ -8,6 +9,47 @@ function fmt(n: number) {
   if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
   if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
   return n.toLocaleString();
+}
+
+type SortDir = "asc" | "desc";
+type SortState<K extends string> = { key: K; dir: SortDir };
+
+function toggleSort<K extends string>(cur: SortState<K> | null, key: K): SortState<K> {
+  if (!cur || cur.key !== key) return { key, dir: "desc" };
+  return { key, dir: cur.dir === "desc" ? "asc" : "desc" };
+}
+
+function sortRows<T, K extends string>(rows: T[], sort: SortState<K> | null, get: (r: T, k: K) => string | number | null | undefined): T[] {
+  if (!sort) return rows;
+  const mult = sort.dir === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const av = get(a, sort.key);
+    const bv = get(b, sort.key);
+    // nulls always last regardless of dir
+    const an = av == null, bn = bv == null;
+    if (an && bn) return 0;
+    if (an) return 1;
+    if (bn) return -1;
+    if (typeof av === "number" && typeof bv === "number") return (av - bv) * mult;
+    return String(av).localeCompare(String(bv)) * mult;
+  });
+}
+
+function SortTh({
+  label, active, align = "right", onClick,
+}: { label: string; active: SortDir | null; align?: "left" | "right"; onClick: () => void }) {
+  const arrow = active === "desc" ? "↓" : active === "asc" ? "↑" : "";
+  return (
+    <th className={`text-${align} py-2 px-3`}>
+      <button
+        onClick={onClick}
+        className={`inline-flex items-center gap-1 hover:text-foreground transition ${active ? "text-foreground" : ""}`}
+      >
+        <span>{label}</span>
+        <span className="text-[10px] text-accent w-2.5 inline-block">{arrow}</span>
+      </button>
+    </th>
+  );
 }
 
 export type TeamRow = {
@@ -119,25 +161,34 @@ function timeAgo(iso: string | null) {
   return `${Math.round(mins / 1440)}d ago`;
 }
 
+type DeliveryKey = "name" | "prOpened" | "prOpenNow" | "prMerged" | "prClosed" | "tokensIn" | "tokensOut" | "additions" | "deletions" | "sessions";
+
 function DeliveryTable({ rows }: { rows: TeamRow[] }) {
+  const [sort, setSort] = useState<SortState<DeliveryKey> | null>(null);
+  const sorted = useMemo(() => sortRows<TeamRow, DeliveryKey>(rows, sort, (r, k) => {
+    if (k === "name") return r.name.toLowerCase();
+    return r[k as Exclude<DeliveryKey, "name">] ?? null;
+  }), [rows, sort]);
+  const active = (k: DeliveryKey) => sort?.key === k ? sort.dir : null;
+  const click = (k: DeliveryKey) => () => setSort(prev => toggleSort(prev, k));
   return (
     <table className="w-full text-xs">
       <thead className="text-muted-foreground">
         <tr className="border-b border-border">
-          <th className="text-left py-2 px-3">Dev</th>
-          <th className="text-right py-2 px-3">PRs total</th>
-          <th className="text-right py-2 px-3">Open</th>
-          <th className="text-right py-2 px-3">Merged</th>
-          <th className="text-right py-2 px-3">Closed</th>
-          <th className="text-right py-2 px-3">Input (cost)</th>
-          <th className="text-right py-2 px-3">Output (cost)</th>
-          <th className="text-right py-2 px-3">+LOC</th>
-          <th className="text-right py-2 px-3">−LOC</th>
-          <th className="text-right py-2 px-3">Sessions</th>
+          <SortTh label="Dev"          align="left"  active={active("name")}       onClick={click("name")} />
+          <SortTh label="PRs total"    active={active("prOpened")}   onClick={click("prOpened")} />
+          <SortTh label="Open"         active={active("prOpenNow")}  onClick={click("prOpenNow")} />
+          <SortTh label="Merged"       active={active("prMerged")}   onClick={click("prMerged")} />
+          <SortTh label="Closed"       active={active("prClosed")}   onClick={click("prClosed")} />
+          <SortTh label="Input (cost)" active={active("tokensIn")}   onClick={click("tokensIn")} />
+          <SortTh label="Output (cost)" active={active("tokensOut")} onClick={click("tokensOut")} />
+          <SortTh label="+LOC"         active={active("additions")}  onClick={click("additions")} />
+          <SortTh label="−LOC"         active={active("deletions")}  onClick={click("deletions")} />
+          <SortTh label="Sessions"     active={active("sessions")}   onClick={click("sessions")} />
         </tr>
       </thead>
       <tbody>
-        {rows.map(r => (
+        {sorted.map(r => (
           <tr key={r.userId} className="border-b border-border/50 hover:bg-popover/40">
             <td className="py-2 px-3"><DevCell r={r} /></td>
             <td className="py-2 px-3 text-right"><LinkCell r={r} view="prs">{r.prOpened ?? "—"}</LinkCell></td>
@@ -163,20 +214,30 @@ function DeliveryTable({ rows }: { rows: TeamRow[] }) {
   );
 }
 
+type SkillKey = "name" | "skillSessions" | "skillTokens" | "skillPct" | "tokensOut";
+
 function SkillsOnlyTable({ rows }: { rows: TeamRow[] }) {
+  const [sort, setSort] = useState<SortState<SkillKey> | null>(null);
+  const sorted = useMemo(() => sortRows<TeamRow, SkillKey>(rows, sort, (r, k) => {
+    if (k === "name") return r.name.toLowerCase();
+    if (k === "skillPct") return r.tokensOut > 0 ? (100 * r.skillTokens) / r.tokensOut : 0;
+    return r[k as "skillSessions" | "skillTokens" | "tokensOut"];
+  }), [rows, sort]);
+  const active = (k: SkillKey) => sort?.key === k ? sort.dir : null;
+  const click = (k: SkillKey) => () => setSort(prev => toggleSort(prev, k));
   return (
     <table className="w-full text-xs">
       <thead className="text-muted-foreground">
         <tr className="border-b border-border">
-          <th className="text-left py-2 px-3">Dev</th>
-          <th className="text-right py-2 px-3">Skill sessions</th>
-          <th className="text-right py-2 px-3">Skill tokens</th>
-          <th className="text-right py-2 px-3">% of output</th>
-          <th className="text-right py-2 px-3">Total output</th>
+          <SortTh label="Dev"            align="left" active={active("name")}          onClick={click("name")} />
+          <SortTh label="Skill sessions"              active={active("skillSessions")} onClick={click("skillSessions")} />
+          <SortTh label="Skill tokens"                active={active("skillTokens")}   onClick={click("skillTokens")} />
+          <SortTh label="% of output"                 active={active("skillPct")}      onClick={click("skillPct")} />
+          <SortTh label="Total output"                active={active("tokensOut")}     onClick={click("tokensOut")} />
         </tr>
       </thead>
       <tbody>
-        {rows.map(r => (
+        {sorted.map(r => (
           <tr key={r.userId} className="border-b border-border/50 hover:bg-popover/40">
             <td className="py-2 px-3"><DevCell r={r} /></td>
             <td className="py-2 px-3 text-right"><LinkCell r={r} view="skills">{r.skillSessions}</LinkCell></td>
@@ -191,20 +252,30 @@ function SkillsOnlyTable({ rows }: { rows: TeamRow[] }) {
   );
 }
 
+type McpKey = "name" | "mcpSessions" | "mcpTokens" | "mcpPct" | "tokensOut";
+
 function McpOnlyTable({ rows }: { rows: TeamRow[] }) {
+  const [sort, setSort] = useState<SortState<McpKey> | null>(null);
+  const sorted = useMemo(() => sortRows<TeamRow, McpKey>(rows, sort, (r, k) => {
+    if (k === "name") return r.name.toLowerCase();
+    if (k === "mcpPct") return r.tokensOut > 0 ? (100 * r.mcpTokens) / r.tokensOut : 0;
+    return r[k as "mcpSessions" | "mcpTokens" | "tokensOut"];
+  }), [rows, sort]);
+  const active = (k: McpKey) => sort?.key === k ? sort.dir : null;
+  const click = (k: McpKey) => () => setSort(prev => toggleSort(prev, k));
   return (
     <table className="w-full text-xs">
       <thead className="text-muted-foreground">
         <tr className="border-b border-border">
-          <th className="text-left py-2 px-3">Dev</th>
-          <th className="text-right py-2 px-3">MCP sessions</th>
-          <th className="text-right py-2 px-3">MCP tokens</th>
-          <th className="text-right py-2 px-3">% of output</th>
-          <th className="text-right py-2 px-3">Total output</th>
+          <SortTh label="Dev"          align="left" active={active("name")}         onClick={click("name")} />
+          <SortTh label="MCP sessions"              active={active("mcpSessions")}  onClick={click("mcpSessions")} />
+          <SortTh label="MCP tokens"                active={active("mcpTokens")}    onClick={click("mcpTokens")} />
+          <SortTh label="% of output"               active={active("mcpPct")}       onClick={click("mcpPct")} />
+          <SortTh label="Total output"              active={active("tokensOut")}    onClick={click("tokensOut")} />
         </tr>
       </thead>
       <tbody>
-        {rows.map(r => (
+        {sorted.map(r => (
           <tr key={r.userId} className="border-b border-border/50 hover:bg-popover/40">
             <td className="py-2 px-3"><DevCell r={r} /></td>
             <td className="py-2 px-3 text-right"><LinkCell r={r} view="mcp">{r.mcpSessions}</LinkCell></td>
