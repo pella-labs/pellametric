@@ -22,8 +22,12 @@ export const LAUNCHD_PLIST_TMPL = `<?xml version="1.0" encoding="UTF-8"?>
   <key>KeepAlive</key>
   <true/>
 
-  <key>ProcessType</key>
-  <string>Background</string>
+  <!--
+    No ProcessType → defaults to Standard. ProcessType=Background makes
+    launchd SIGTERM this job with reason="inefficient" under even mild
+    system load; KeepAlive restarts it, but every restart pays the full
+    cold-start re-parse, so the collector appears to stall.
+  -->
 
   <key>StandardOutPath</key>
   <string>@HOME@/.pella/logs/out.log</string>

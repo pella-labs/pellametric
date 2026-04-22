@@ -29,8 +29,14 @@
   <key>KeepAlive</key>
   <true/>
 
-  <key>ProcessType</key>
-  <string>Background</string>
+  <!--
+    No ProcessType → defaults to Standard. ProcessType=Background tells
+    launchd this job is low-priority and eligible to be SIGTERM'd with
+    reason="inefficient" under even mild system load; KeepAlive does
+    restart it, but every restart pays the cold-start re-parse cost
+    (tens of seconds for a large ~/.claude/projects), so the collector
+    appears to stall for minutes at a time. Standard avoids that killer.
+  -->
 
   <key>StandardOutPath</key>
   <string>@HOME@/.pella/logs/out.log</string>
