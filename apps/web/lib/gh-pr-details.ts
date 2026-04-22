@@ -13,6 +13,7 @@ export type PrDetail = {
   commits: number;
   reviewComments: number;
   url: string;
+  files: string[];      // repo-relative paths (for session attribution)
 };
 
 async function gh(path: string, token: string) {
@@ -30,7 +31,10 @@ export async function prDetailsForMember(org: string, login: string, token: stri
   const items = (data?.items ?? []) as any[];
   const out = await Promise.all(items.slice(0, 50).map(async (it: any) => {
     const [owner, repo] = (it.repository_url as string).replace("https://api.github.com/repos/", "").split("/");
-    const pr: any = await gh(`/repos/${owner}/${repo}/pulls/${it.number}`, token);
+    const [pr, fileList] = await Promise.all([
+      gh(`/repos/${owner}/${repo}/pulls/${it.number}`, token),
+      gh(`/repos/${owner}/${repo}/pulls/${it.number}/files?per_page=100`, token),
+    ]);
     if (!pr) return null;
     return {
       repo: `${owner}/${repo}`,
@@ -46,6 +50,7 @@ export async function prDetailsForMember(org: string, login: string, token: stri
       commits: pr.commits ?? 0,
       reviewComments: pr.review_comments ?? 0,
       url: pr.html_url,
+      files: Array.isArray(fileList) ? fileList.map((f: any) => f.filename) : [],
     } as PrDetail;
   }));
   return out.filter(Boolean) as PrDetail[];

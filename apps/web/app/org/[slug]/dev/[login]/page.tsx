@@ -121,7 +121,7 @@ export default async function DevDetailPage({
       {view === "tools" && <ToolsView sessions={sessions} />}
       {view === "files" && <FilesView sessions={sessions} />}
       {view === "sessions" && <SessionsView sessions={sessions} />}
-      {view === "prs" && <PrsView orgSlug={slug} login={targetUser.githubLogin} viewerId={session.user.id} />}
+      {view === "prs" && <PrsView orgSlug={slug} login={targetUser.githubLogin} viewerId={session.user.id} sessions={sessions} />}
     </main>
   );
 }
@@ -354,7 +354,7 @@ function SessionsView({ sessions }: { sessions: any[] }) {
   );
 }
 
-async function PrsView({ orgSlug, login, viewerId }: { orgSlug: string; login: string | null; viewerId: string }) {
+async function PrsView({ orgSlug, login, viewerId, sessions }: { orgSlug: string; login: string | null; viewerId: string; sessions: any[] }) {
   if (!login) return <Empty msg="No GitHub login on account." />;
   const [acc] = await db.select().from(schema.account)
     .where(and(eq(schema.account.userId, viewerId), eq(schema.account.providerId, "github")))
@@ -362,6 +362,30 @@ async function PrsView({ orgSlug, login, viewerId }: { orgSlug: string; login: s
   if (!acc?.accessToken) return <Empty msg="No GitHub token on file." />;
   const prs = await prDetailsForMember(orgSlug, login, acc.accessToken);
   if (prs.length === 0) return <Empty msg="No PRs found." />;
+
+  // Token attribution: file-overlap + time-window match.
+  const prTokens = new Map<string, { input: number; output: number; sessions: number }>();
+  for (const pr of prs) {
+    const winStart = new Date(new Date(pr.createdAt).getTime() - 30 * 60_000);         // -30 min
+    const winEnd = pr.mergedAt ? new Date(new Date(pr.mergedAt).getTime() + 60 * 60_000) : new Date();  // merged +1h, or now
+    const prFiles = new Set(pr.files);
+    let input = 0, output = 0, n = 0;
+    for (const s of sessions) {
+      if (s.repo !== pr.repo) continue;
+      if (s.startedAt > winEnd || s.endedAt < winStart) continue;
+      const files: string[] = Array.isArray(s.filesEdited) ? s.filesEdited : [];
+      const overlap = files.some(f => {
+        // session files are absolute paths; match suffix against pr repo-relative paths
+        for (const pf of prFiles) if (f.endsWith("/" + pf) || f === pf) return true;
+        return false;
+      });
+      if (!overlap) continue;
+      input += Number(s.tokensIn) + Number(s.tokensCacheRead) + Number(s.tokensCacheWrite);
+      output += Number(s.tokensOut);
+      n++;
+    }
+    prTokens.set(`${pr.repo}#${pr.number}`, { input, output, sessions: n });
+  }
 
   const merged = prs.filter(p => p.merged);
   const open = prs.filter(p => p.state === "open");
@@ -384,6 +408,8 @@ async function PrsView({ orgSlug, login, viewerId }: { orgSlug: string; login: s
         cols={[
           { label: "PR", align: "left" },
           { label: "Title", align: "left" },
+          { label: "Input tok", align: "right" },
+          { label: "Output tok", align: "right" },
           { label: "+LOC", align: "right" },
           { label: "−LOC", align: "right" },
           { label: "Files", align: "right" },
@@ -395,10 +421,15 @@ async function PrsView({ orgSlug, login, viewerId }: { orgSlug: string; login: s
       >
         {prs.sort((a, b) => b.additions - a.additions).map(p => {
           const mergeHrs = p.merged && p.mergedAt ? (new Date(p.mergedAt).getTime() - new Date(p.createdAt).getTime()) / 3600000 : null;
+          const tok = prTokens.get(`${p.repo}#${p.number}`) ?? { input: 0, output: 0, sessions: 0 };
           return (
             <tr key={`${p.repo}#${p.number}`} className="border-b border-border/50">
-              <td className="py-1.5 px-3"><a href={p.url} target="_blank" className="text-primary hover:underline font-mono">{p.repo.split("/")[1]}#{p.number}</a></td>
-              <td className="py-1.5 px-3 text-muted-foreground truncate max-w-sm">{p.title}</td>
+              <td className="py-1.5 px-3 whitespace-nowrap"><a href={p.url} target="_blank" className="text-primary hover:underline font-mono">{p.repo.split("/")[1]}#{p.number}</a></td>
+              <td className="py-1.5 px-3 text-muted-foreground max-w-[22rem]">
+                <div title={p.title} className="truncate">{p.title}</div>
+              </td>
+              <td className="py-1.5 px-3 text-right font-mono text-[11px]" title={`${tok.input.toLocaleString()} input tokens across ${tok.sessions} session${tok.sessions === 1 ? "" : "s"}`}>{tok.input > 0 ? fmt(tok.input) : "—"}</td>
+              <td className="py-1.5 px-3 text-right font-mono text-[11px]" title={`${tok.output.toLocaleString()} output tokens across ${tok.sessions} session${tok.sessions === 1 ? "" : "s"}`}>{tok.output > 0 ? fmt(tok.output) : "—"}</td>
               <td className="py-1.5 px-3 text-right text-positive">+{p.additions.toLocaleString()}</td>
               <td className="py-1.5 px-3 text-right text-destructive">−{p.deletions.toLocaleString()}</td>
               <td className="py-1.5 px-3 text-right">{p.changedFiles}</td>

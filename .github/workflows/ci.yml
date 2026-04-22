@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: ${{ matrix.task }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [typecheck, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ${{ matrix.task }}
+        run: pnpm ${{ matrix.task }}
+
+  build:
+    name: build (web)
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web
+        env:
+          # Dummy values so Next.js build can evaluate pages that read process.env
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db
+          BETTER_AUTH_SECRET: ci_placeholder_secret_please_ignore
+          BETTER_AUTH_URL: http://localhost:3000
+          GITHUB_CLIENT_ID: ci_client_id
+          GITHUB_CLIENT_SECRET: ci_client_secret
+          NEXT_PUBLIC_BETTER_AUTH_URL: http://localhost:3000
+        run: pnpm --filter @pella/web build
+
+      - name: Build collector (esbuild bundle)
+        run: pnpm --filter @pella/collector build

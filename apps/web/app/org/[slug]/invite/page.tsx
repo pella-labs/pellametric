@@ -41,12 +41,17 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
       </header>
 
       <form onSubmit={send} className="flex gap-2 mb-8">
-        <input value={login} onChange={e => setLogin(e.target.value)} placeholder="github login (e.g. alice)" className="flex-1 px-3 py-2 rounded-md bg-card border border-border text-sm focus:outline-none focus:border-primary transition" />
-        <button className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90 transition">Invite</button>
+        <input
+          value={login}
+          onChange={e => setLogin(e.target.value)}
+          placeholder="github login (e.g. alice)"
+          className="flex-1 h-10 px-3 rounded-md bg-card border border-border text-sm leading-none focus:outline-none focus:border-accent transition"
+        />
+        <button className="h-10 px-4 rounded-md bg-accent text-accent-foreground mk-label leading-none hover:opacity-90 transition">Invite</button>
       </form>
       {msg && <p className="text-xs text-muted-foreground mb-4">{msg}</p>}
 
-      <h2 className="text-sm uppercase tracking-wider text-muted-foreground font-semibold mb-2">Pending + accepted</h2>
+      <h2 className="mk-eyebrow mb-3">Pending + accepted</h2>
       <ul className="space-y-1 text-sm">
         {invites.length === 0 && <li className="text-muted-foreground text-xs">No invites yet.</li>}
         {invites.map(i => (
