@@ -52,11 +52,31 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import type { SessionMap, SessionState } from "../types";
 import { newSessionState } from "../types";
 import { classifyIntent, FRUSTRATION_RE, TEACHER_RE } from "./intent";
+
+/**
+ * Decode a `file://` URI into a plain platform path. Cross-platform safe:
+ *   macOS / Linux: "file:///Users/a/b.ts"      → "/Users/a/b.ts"
+ *   Windows:       "file:///C:/Users/a/b.ts"   → "C:\\Users\\a\\b.ts"
+ * A bare path (no scheme) is returned as-is. Returns null on parse failure
+ * so the caller can skip that entry rather than crash the sweep.
+ */
+export function fileUriToPath(raw: string): string | null {
+  if (!raw) return null;
+  try {
+    if (raw.startsWith("file://")) return fileURLToPath(raw);
+    // decodeURIComponent handles %20 etc. for anything that slipped past the
+    // URI check (some Cursor versions stored workspace folders pre-decoded).
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
 
 // ----------------------------- paths --------------------------------------
 
@@ -277,12 +297,8 @@ export function buildCursorSessionState(
 
   // Files touched — originalFileStates is Cursor's pre-edit snapshot map.
   for (const uri of Object.keys(cd.originalFileStates || {})) {
-    try {
-      const p = decodeURIComponent(uri.replace(/^file:\/\//, ""));
-      if (p) s.filesEdited.add(p);
-    } catch {
-      s.filesEdited.add(uri);
-    }
+    const p = fileUriToPath(uri);
+    if (p) s.filesEdited.add(p);
   }
   for (const f of cd.newlyCreatedFiles || []) s.filesEdited.add(f);
 
@@ -364,6 +380,10 @@ export function sweepCursor(
   const sinceMs = since.getTime();
 
   for (const { key, value } of composerRows) {
+    // Defensive: one malformed / schema-drifted composer must NOT take down
+    // the whole sweep. Wrap the per-composer work so a single bad row
+    // degrades to "session not emitted" rather than "no sessions emitted".
+    try {
     const cid = key.slice("composerData:".length);
     if (!isSafeCursorId(cid)) continue;
     let cd: CursorComposer;
@@ -422,6 +442,11 @@ export function sweepCursor(
     sessions.set(cid, s);
     state.lastSeen.set(cid, lastUpdatedAt);
     touched.add(cid);
+    } catch (e) {
+      // Schema drift, truncated JSON, or any other per-composer failure.
+      // Log once so operators see it, but don't abort the sweep.
+      console.error(`pella cursor: skipped composer — ${(e as Error).message}`);
+    }
   }
 
   state.dataVersion = dv;
@@ -445,10 +470,10 @@ function buildComposerIdToCwd(root: string): Map<string, string> {
     const sdb = path.join(dir, "state.vscdb");
     if (!fs.existsSync(wj) || !fs.existsSync(sdb)) continue;
 
-    let folder = "";
+    let folder: string | null = null;
     try {
       const j = JSON.parse(fs.readFileSync(wj, "utf8"));
-      folder = decodeURIComponent((j.folder || "").replace(/^file:\/\//, ""));
+      folder = fileUriToPath(j.folder || "");
     } catch {
       continue;
     }

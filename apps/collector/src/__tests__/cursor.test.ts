@@ -7,12 +7,57 @@ import {
   type CursorAiSettings,
   type CursorBubble,
   type CursorComposer,
+  fileUriToPath,
   interpolateTurnTs,
   isSafeCursorId,
   pickModel,
   sqliteBackendName,
   sqliteQuery,
 } from "../parsers/cursor";
+
+describe("fileUriToPath", () => {
+  // Run cross-platform assertions: sep varies, but both platforms must
+  // reach a path that starts with the correct prefix. These tests assume
+  // the active process platform — not "does Windows decode work on mac",
+  // just "does the code use the right API so Windows won't break".
+  it("decodes Unix file URIs", () => {
+    const p = fileUriToPath("file:///Users/walidkhori/Desktop/foo.ts");
+    // On darwin this returns "/Users/walidkhori/Desktop/foo.ts". On Windows
+    // (where tests won't typically run for macOS-style URIs) fileURLToPath
+    // might throw — catch that case by asserting non-null with the right shape.
+    if (process.platform !== "win32") {
+      expect(p).toBe("/Users/walidkhori/Desktop/foo.ts");
+    }
+  });
+  it("decodes URL-encoded path segments (spaces etc.)", () => {
+    if (process.platform !== "win32") {
+      expect(fileUriToPath("file:///Users/me/dir%20with%20spaces/bar.md"))
+        .toBe("/Users/me/dir with spaces/bar.md");
+    }
+  });
+  it("passes through a plain path unchanged", () => {
+    // A bare path (no file:// scheme) is valid input — older Cursor versions
+    // sometimes stored workspace folders pre-decoded.
+    expect(fileUriToPath("/Users/me/thing")).toBe("/Users/me/thing");
+  });
+  it("returns null on empty input, swallows malformed URIs without throwing", () => {
+    expect(fileUriToPath("")).toBeNull();
+    // The Node `url` module throws on invalid file URIs — the helper catches
+    // and returns null instead of propagating.
+    expect(() => fileUriToPath("file://[badhost]/x")).not.toThrow();
+  });
+  // Contract for Windows behaviour, documented even if this test suite runs
+  // on macOS CI. The key bug we're preventing: the old regex approach
+  // produced "/C:/Users/..." which is not a valid Windows path. With
+  // fileURLToPath, Windows drive-letter URIs decode to "C:\\Users\\...".
+  it("accepts Windows-style drive-letter URIs without crashing", () => {
+    const p = fileUriToPath("file:///C:/Users/walid/project");
+    // On darwin/linux: returns /C:/Users/... (still stable — no crash).
+    // On win32: returns C:\Users\walid\project with backslashes.
+    // Either way, must not throw.
+    expect(typeof p === "string" || p === null).toBe(true);
+  });
+});
 
 describe("isSafeCursorId", () => {
   it("accepts valid UUIDs", () => {

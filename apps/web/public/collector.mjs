@@ -438,8 +438,20 @@ function ingestCodexFileSlice(sessions, absPath, startOffset, ctxMap, since) {
 import fs2 from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
+function fileUriToPath(raw) {
+  if (!raw)
+    return null;
+  try {
+    if (raw.startsWith("file://"))
+      return fileURLToPath(raw);
+    return decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+}
 function cursorDataRoot() {
   if (process.platform === "darwin") {
     return path.join(os.homedir(), "Library", "Application Support", "Cursor");
@@ -553,13 +565,9 @@ function buildCursorSessionState(cd, bubblesOrdered, bubblesAll, cwd, model) {
     }
   }
   for (const uri of Object.keys(cd.originalFileStates || {})) {
-    try {
-      const p = decodeURIComponent(uri.replace(/^file:\/\//, ""));
-      if (p)
-        s.filesEdited.add(p);
-    } catch {
-      s.filesEdited.add(uri);
-    }
+    const p = fileUriToPath(uri);
+    if (p)
+      s.filesEdited.add(p);
   }
   for (const f of cd.newlyCreatedFiles || [])
     s.filesEdited.add(f);
@@ -602,57 +610,61 @@ function sweepCursor(sessions, state, since, root = cursorDataRoot()) {
   const composerRows = sqliteQuery(gdb, "SELECT key, value FROM cursorDiskKV WHERE key LIKE 'composerData:%'");
   const sinceMs = since.getTime();
   for (const { key, value } of composerRows) {
-    const cid = key.slice("composerData:".length);
-    if (!isSafeCursorId(cid))
-      continue;
-    let cd;
     try {
-      cd = JSON.parse(value);
-    } catch {
-      continue;
-    }
-    cd.composerId = cid;
-    const headers = cd.fullConversationHeadersOnly || [];
-    if ((!cd.status || cd.status === "none") && headers.length === 0)
-      continue;
-    const createdAt = cd.createdAt || 0;
-    const lastUpdatedAt = cd.lastUpdatedAt || createdAt;
-    if (!createdAt)
-      continue;
-    if (lastUpdatedAt < sinceMs)
-      continue;
-    const prevSeen = state.lastSeen.get(cid) || 0;
-    if (lastUpdatedAt <= prevSeen)
-      continue;
-    const cwd = cidToCwd.get(cid);
-    if (!cwd)
-      continue;
-    const DAY = 24 * 60 * 60 * 1000;
-    if (lastUpdatedAt - createdAt > DAY)
-      cd.lastUpdatedAt = createdAt + DAY;
-    const bubbleRows = sqliteQuery(gdb, `SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:${cid}:%'`);
-    const byId = new Map;
-    const prefix = `bubbleId:${cid}:`;
-    for (const { key: bk, value: bv } of bubbleRows) {
-      if (!bv)
+      const cid = key.slice("composerData:".length);
+      if (!isSafeCursorId(cid))
         continue;
-      const bid = bk.slice(prefix.length);
+      let cd;
       try {
-        byId.set(bid, JSON.parse(bv));
-      } catch {}
+        cd = JSON.parse(value);
+      } catch {
+        continue;
+      }
+      cd.composerId = cid;
+      const headers = cd.fullConversationHeadersOnly || [];
+      if ((!cd.status || cd.status === "none") && headers.length === 0)
+        continue;
+      const createdAt = cd.createdAt || 0;
+      const lastUpdatedAt = cd.lastUpdatedAt || createdAt;
+      if (!createdAt)
+        continue;
+      if (lastUpdatedAt < sinceMs)
+        continue;
+      const prevSeen = state.lastSeen.get(cid) || 0;
+      if (lastUpdatedAt <= prevSeen)
+        continue;
+      const cwd = cidToCwd.get(cid);
+      if (!cwd)
+        continue;
+      const DAY = 24 * 60 * 60 * 1000;
+      if (lastUpdatedAt - createdAt > DAY)
+        cd.lastUpdatedAt = createdAt + DAY;
+      const bubbleRows = sqliteQuery(gdb, `SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:${cid}:%'`);
+      const byId = new Map;
+      const prefix = `bubbleId:${cid}:`;
+      for (const { key: bk, value: bv } of bubbleRows) {
+        if (!bv)
+          continue;
+        const bid = bk.slice(prefix.length);
+        try {
+          byId.set(bid, JSON.parse(bv));
+        } catch {}
+      }
+      const bubblesOrdered = [];
+      for (const h of headers) {
+        const b = byId.get(h.bubbleId);
+        if (b)
+          bubblesOrdered.push(b);
+      }
+      const bubblesAll = Array.from(byId.values());
+      const model = pickModel(cd, aiSettings);
+      const s = buildCursorSessionState(cd, bubblesOrdered, bubblesAll, cwd, model);
+      sessions.set(cid, s);
+      state.lastSeen.set(cid, lastUpdatedAt);
+      touched.add(cid);
+    } catch (e) {
+      console.error(`pella cursor: skipped composer — ${e.message}`);
     }
-    const bubblesOrdered = [];
-    for (const h of headers) {
-      const b = byId.get(h.bubbleId);
-      if (b)
-        bubblesOrdered.push(b);
-    }
-    const bubblesAll = Array.from(byId.values());
-    const model = pickModel(cd, aiSettings);
-    const s = buildCursorSessionState(cd, bubblesOrdered, bubblesAll, cwd, model);
-    sessions.set(cid, s);
-    state.lastSeen.set(cid, lastUpdatedAt);
-    touched.add(cid);
   }
   state.dataVersion = dv;
   return touched;
@@ -676,10 +688,10 @@ function buildComposerIdToCwd(root) {
     const sdb = path.join(dir, "state.vscdb");
     if (!fs2.existsSync(wj) || !fs2.existsSync(sdb))
       continue;
-    let folder = "";
+    let folder = null;
     try {
       const j = JSON.parse(fs2.readFileSync(wj, "utf8"));
-      folder = decodeURIComponent((j.folder || "").replace(/^file:\/\//, ""));
+      folder = fileUriToPath(j.folder || "");
     } catch {
       continue;
     }
