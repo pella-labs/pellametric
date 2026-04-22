@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // src/commands/runOnce.ts
-import os from "node:os";
-import path3 from "node:path";
+import os2 from "node:os";
+import path4 from "node:path";
 
 // src/accumulator.ts
 function finalizeSessions(sessions, resolveRepoFn, only) {
@@ -434,9 +434,277 @@ function ingestCodexFileSlice(sessions, absPath, startOffset, ctxMap, since) {
   return { endOffset: bytesConsumed, fileSize, touched };
 }
 
-// src/parsers/repo.ts
+// src/parsers/cursor.ts
 import fs2 from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
+function cursorDataRoot() {
+  if (process.platform === "darwin") {
+    return path.join(os.homedir(), "Library", "Application Support", "Cursor");
+  }
+  if (process.platform === "win32") {
+    const appdata = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
+    return path.join(appdata, "Cursor");
+  }
+  const xdg = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
+  return path.join(xdg, "Cursor");
+}
+function globalDb(root) {
+  return path.join(root, "User", "globalStorage", "state.vscdb");
+}
+function workspaceStorageDir(root) {
+  return path.join(root, "User", "workspaceStorage");
+}
+function tryBunBackend() {
+  const bunGlobal = globalThis.Bun;
+  if (!bunGlobal)
+    return null;
+  try {
+    const nodeRequire = createRequire(import.meta.url);
+    const spec = "bun" + ":" + "sqlite";
+    const Database = nodeRequire(spec).Database;
+    return {
+      name: "bun",
+      query(dbPath, sql) {
+        if (!fs2.existsSync(dbPath))
+          return [];
+        let db = null;
+        try {
+          db = new Database(dbPath, { readonly: true });
+          db.run("PRAGMA busy_timeout = 2000");
+          return db.query(sql).all();
+        } catch {
+          return [];
+        } finally {
+          try {
+            db?.close();
+          } catch {}
+        }
+      }
+    };
+  } catch {
+    return null;
+  }
+}
+function makeCliBackend() {
+  return {
+    name: "cli",
+    query(dbPath, sql) {
+      if (!fs2.existsSync(dbPath))
+        return [];
+      try {
+        const out = execFileSync("sqlite3", ["-readonly", "-bail", "-cmd", ".timeout 2000", "-cmd", ".mode json", dbPath, sql], { encoding: "utf8", maxBuffer: 512 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] });
+        if (!out.trim())
+          return [];
+        return JSON.parse(out);
+      } catch {
+        return [];
+      }
+    }
+  };
+}
+var backend = tryBunBackend() ?? makeCliBackend();
+function sqliteQuery(dbPath, sql) {
+  return backend.query(dbPath, sql);
+}
+function sqliteOne(dbPath, sql) {
+  const rows = sqliteQuery(dbPath, sql);
+  return rows.length ? rows[0].value : null;
+}
+function sqliteDataVersion(dbPath) {
+  const rows = sqliteQuery(dbPath, "PRAGMA data_version");
+  return rows[0]?.data_version ?? 0;
+}
+var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isSafeCursorId(id) {
+  return UUID_RE.test(id);
+}
+function pickModel(cd, ai) {
+  const mode = cd.unifiedMode || cd.forceMode;
+  if (mode === "chat")
+    return ai.regularChatModel || ai.composerModel;
+  return ai.composerModel || ai.regularChatModel;
+}
+function interpolateTurnTs(startMs, endMs, turnIndex, totalTurns) {
+  const span = Math.max(0, endMs - startMs);
+  if (totalTurns <= 1)
+    return new Date(startMs + turnIndex);
+  const t = startMs + Math.floor(span * turnIndex / (totalTurns - 1));
+  return new Date(t + turnIndex);
+}
+function buildCursorSessionState(cd, bubblesOrdered, bubblesAll, cwd, model) {
+  const sid = cd.composerId;
+  const s = newSessionState(sid, cwd, false, model);
+  s.start = new Date(cd.createdAt || 0);
+  s.end = new Date(cd.lastUpdatedAt || cd.createdAt || 0);
+  for (const b of bubblesAll) {
+    const tc = b.tokenCount || {};
+    s.tokensIn += tc.inputTokens || 0;
+    s.tokensOut += tc.outputTokens || 0;
+    const tfd = b.toolFormerData;
+    if (tfd?.name) {
+      s.toolHist[tfd.name] = (s.toolHist[tfd.name] || 0) + 1;
+      if (tfd.status === "error" || tfd.status === "cancelled")
+        s.errors++;
+    } else if (b.type === 2 && (b.text || "").length > 0) {
+      s.messages++;
+    }
+  }
+  for (const uri of Object.keys(cd.originalFileStates || {})) {
+    try {
+      const p = decodeURIComponent(uri.replace(/^file:\/\//, ""));
+      if (p)
+        s.filesEdited.add(p);
+    } catch {
+      s.filesEdited.add(uri);
+    }
+  }
+  for (const f of cd.newlyCreatedFiles || [])
+    s.filesEdited.add(f);
+  const userBubbles = bubblesOrdered.filter((b) => b.type === 1 && (b.text || "").length > 0);
+  for (let i = 0;i < userBubbles.length; i++) {
+    const text = userBubbles[i].text || "";
+    s.userTurns++;
+    const intent = classifyIntent(text);
+    s.intents[intent] = (s.intents[intent] || 0) + 1;
+    const wc = text.split(/\s+/).filter(Boolean).length;
+    s.promptWords.push(wc);
+    if (wc < 30 && TEACHER_RE.test(text))
+      s.teacherMoments++;
+    if (FRUSTRATION_RE.test(text))
+      s.frustrationSpikes++;
+    const ts = interpolateTurnTs(s.start.getTime(), s.end.getTime(), i, userBubbles.length);
+    s.prompts.push({ ts, text, wordCount: wc });
+  }
+  return s;
+}
+function newCursorSweepState() {
+  return { dataVersion: -1, lastSeen: new Map };
+}
+function sweepCursor(sessions, state, since, root = cursorDataRoot()) {
+  const touched = new Set;
+  const gdb = globalDb(root);
+  if (!fs2.existsSync(gdb))
+    return touched;
+  const dv = sqliteDataVersion(gdb);
+  if (dv > 0 && dv === state.dataVersion)
+    return touched;
+  const userBlob = sqliteOne(gdb, "SELECT value FROM ItemTable WHERE key = 'src.vs.platform.reactivestorage.browser.reactiveStorageServiceImpl.persistentStorage.applicationUser'");
+  let aiSettings = {};
+  if (userBlob) {
+    try {
+      aiSettings = JSON.parse(userBlob).aiSettings || {};
+    } catch {}
+  }
+  const cidToCwd = buildComposerIdToCwd(root);
+  const composerRows = sqliteQuery(gdb, "SELECT key, value FROM cursorDiskKV WHERE key LIKE 'composerData:%'");
+  const sinceMs = since.getTime();
+  for (const { key, value } of composerRows) {
+    const cid = key.slice("composerData:".length);
+    if (!isSafeCursorId(cid))
+      continue;
+    let cd;
+    try {
+      cd = JSON.parse(value);
+    } catch {
+      continue;
+    }
+    cd.composerId = cid;
+    const headers = cd.fullConversationHeadersOnly || [];
+    if ((!cd.status || cd.status === "none") && headers.length === 0)
+      continue;
+    const createdAt = cd.createdAt || 0;
+    const lastUpdatedAt = cd.lastUpdatedAt || createdAt;
+    if (!createdAt)
+      continue;
+    if (lastUpdatedAt < sinceMs)
+      continue;
+    const prevSeen = state.lastSeen.get(cid) || 0;
+    if (lastUpdatedAt <= prevSeen)
+      continue;
+    const cwd = cidToCwd.get(cid);
+    if (!cwd)
+      continue;
+    const DAY = 24 * 60 * 60 * 1000;
+    if (lastUpdatedAt - createdAt > DAY)
+      cd.lastUpdatedAt = createdAt + DAY;
+    const bubbleRows = sqliteQuery(gdb, `SELECT key, value FROM cursorDiskKV WHERE key LIKE 'bubbleId:${cid}:%'`);
+    const byId = new Map;
+    const prefix = `bubbleId:${cid}:`;
+    for (const { key: bk, value: bv } of bubbleRows) {
+      if (!bv)
+        continue;
+      const bid = bk.slice(prefix.length);
+      try {
+        byId.set(bid, JSON.parse(bv));
+      } catch {}
+    }
+    const bubblesOrdered = [];
+    for (const h of headers) {
+      const b = byId.get(h.bubbleId);
+      if (b)
+        bubblesOrdered.push(b);
+    }
+    const bubblesAll = Array.from(byId.values());
+    const model = pickModel(cd, aiSettings);
+    const s = buildCursorSessionState(cd, bubblesOrdered, bubblesAll, cwd, model);
+    sessions.set(cid, s);
+    state.lastSeen.set(cid, lastUpdatedAt);
+    touched.add(cid);
+  }
+  state.dataVersion = dv;
+  return touched;
+}
+function buildComposerIdToCwd(root) {
+  const out = new Map;
+  const wsRoot = workspaceStorageDir(root);
+  if (!fs2.existsSync(wsRoot))
+    return out;
+  let entries;
+  try {
+    entries = fs2.readdirSync(wsRoot, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory())
+      continue;
+    const dir = path.join(wsRoot, entry.name);
+    const wj = path.join(dir, "workspace.json");
+    const sdb = path.join(dir, "state.vscdb");
+    if (!fs2.existsSync(wj) || !fs2.existsSync(sdb))
+      continue;
+    let folder = "";
+    try {
+      const j = JSON.parse(fs2.readFileSync(wj, "utf8"));
+      folder = decodeURIComponent((j.folder || "").replace(/^file:\/\//, ""));
+    } catch {
+      continue;
+    }
+    if (!folder)
+      continue;
+    const v = sqliteOne(sdb, "SELECT value FROM ItemTable WHERE key = 'composer.composerData'");
+    if (!v)
+      continue;
+    let parsed;
+    try {
+      parsed = JSON.parse(v);
+    } catch {
+      continue;
+    }
+    for (const c of parsed.allComposers || []) {
+      if (c.composerId)
+        out.set(c.composerId, folder);
+    }
+  }
+  return out;
+}
+
+// src/parsers/repo.ts
+import fs3 from "node:fs";
+import path2 from "node:path";
 import { execSync } from "node:child_process";
 function makeRepoCache() {
   return new Map;
@@ -456,11 +724,11 @@ function resolveRepo(cwd, cache) {
   let cur = trimmed;
   let root = null;
   for (let i = 0;i < 8; i++) {
-    if (fs2.existsSync(path.join(cur, ".git"))) {
+    if (fs3.existsSync(path2.join(cur, ".git"))) {
       root = cur;
       break;
     }
-    const parent = path.dirname(cur);
+    const parent = path2.dirname(cur);
     if (parent === cur)
       break;
     cur = parent;
@@ -484,13 +752,13 @@ function resolveRepo(cwd, cache) {
 }
 
 // src/parsers/walk.ts
-import fs3 from "node:fs";
-import path2 from "node:path";
+import fs4 from "node:fs";
+import path3 from "node:path";
 function* walkJsonl(dir, pattern) {
-  if (!fs3.existsSync(dir))
+  if (!fs4.existsSync(dir))
     return;
-  for (const entry of fs3.readdirSync(dir, { withFileTypes: true })) {
-    const full = path2.join(dir, entry.name);
+  for (const entry of fs4.readdirSync(dir, { withFileTypes: true })) {
+    const full = path3.join(dir, entry.name);
     if (entry.isDirectory())
       yield* walkJsonl(full, pattern);
     else if (entry.isFile() && pattern.test(entry.name))
@@ -573,14 +841,14 @@ async function uploadBatch(opts) {
 
 // src/commands/runOnce.ts
 async function runOnce(opts) {
-  const HOME = os.homedir();
+  const HOME = os2.homedir();
   const since = opts.since ?? new Date(0);
   console.log(`pella-metrics collector → ${opts.url}`);
   console.log(`since: ${since.toISOString().slice(0, 10)}`);
   const repoCache = makeRepoCache();
   const resolver = (cwd) => resolveRepo(cwd, repoCache);
   const claudeSessions = new Map;
-  const claudeRoot = path3.join(HOME, ".claude", "projects");
+  const claudeRoot = path4.join(HOME, ".claude", "projects");
   for (const file of walkJsonl(claudeRoot, /\.jsonl$/)) {
     ingestClaudeFileSlice(claudeSessions, file, 0, since);
   }
@@ -596,7 +864,7 @@ async function runOnce(opts) {
   });
   const codexSessions = new Map;
   const codexCtx = new Map;
-  const codexRoots = [path3.join(HOME, ".codex", "sessions"), path3.join(HOME, ".codex", "archived_sessions")];
+  const codexRoots = [path4.join(HOME, ".codex", "sessions"), path4.join(HOME, ".codex", "archived_sessions")];
   for (const root of codexRoots) {
     for (const file of walkJsonl(root, /^rollout-.*\.jsonl$/)) {
       ingestCodexFileSlice(codexSessions, file, 0, codexCtx, since);
@@ -611,6 +879,17 @@ async function runOnce(opts) {
     sessions: codexFinal.sessions,
     prompts: codexFinal.prompts,
     responses: codexFinal.responses
+  });
+  const cursorSessions = new Map;
+  sweepCursor(cursorSessions, newCursorSweepState(), since);
+  const cursorFinal = finalizeSessions(cursorSessions, resolver);
+  console.log(`cursor sessions in-scope: ${cursorFinal.sessions.length} (prompts: ${cursorFinal.prompts.length})`);
+  await uploadBatch({
+    url: opts.url,
+    token: opts.token,
+    source: "cursor",
+    sessions: cursorFinal.sessions,
+    prompts: cursorFinal.prompts
   });
 }
 

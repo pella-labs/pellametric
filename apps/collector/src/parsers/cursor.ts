@@ -14,11 +14,18 @@
 //   workspaceStorage/<hash>/state.vscdb     ← ItemTable['composer.composerData']
 //                                              .allComposers[] maps cid → workspace
 //
-// Access: shell out to the `sqlite3` CLI with `.mode json`. Reason: zero
-// native deps, bundle-compatible (this collector ships as a single Node
-// bundle or a `bun build --compile` binary), and works identically on
-// macOS/Linux/Windows. The existing collector already shells out to `git`,
-// so this adds only one more external tool dependency.
+// Access: dual backend.
+//   1. `bun:sqlite` when running under Bun (the `bun build --compile`
+//      binary produced by release.yml is a Bun runtime, so this is free —
+//      no npm install, no native prebuild, and ~10× faster than shell-out
+//      for the many-small-queries pattern in sweepCursor).
+//   2. Shell out to the `sqlite3` CLI when running under plain Node (the
+//      legacy `collector.mjs` fallback served from /setup/collector for
+//      users who can't install a service). Same args the adapter used
+//      before the dual-backend refactor. The existing collector already
+//      shells out to `git`, so this adds nothing new to that code path.
+// Selection happens once at module load. Both backends return identical
+// row shapes (arrays of plain objects keyed by column name).
 //
 // Unlike Claude/Codex JSONL (append-only, byte-offset cursor), Cursor's
 // SQLite rows are mutated in place as the session grows. The incremental
@@ -46,6 +53,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import type { SessionMap, SessionState } from "../types";
 import { newSessionState } from "../types";
 import { classifyIntent, FRUSTRATION_RE, TEACHER_RE } from "./intent";
@@ -74,26 +82,87 @@ function workspaceStorageDir(root: string): string {
 
 // ----------------------------- sqlite -------------------------------------
 
+interface SqliteBackend {
+  name: "bun" | "cli";
+  query<T>(dbPath: string, sql: string): T[];
+}
+
 /**
- * Run one SELECT via the sqlite3 CLI in JSON mode (SQLite ≥3.33). Returns
- * each row as a typed object. Values may contain newlines / pipes / any
- * ASCII — JSON handles them so we don't have to worry about delimiter
- * collisions. `-readonly` + `.timeout 2000` keeps us polite if Cursor is
- * actively writing.
+ * Try to load `bun:sqlite` via createRequire with a runtime-built specifier
+ * string — that prevents bundlers (including `bun build --target=node`) from
+ * trying to resolve the module at compile time. Returns null when running
+ * under plain Node, where `bun:sqlite` isn't a thing.
+ */
+function tryBunBackend(): SqliteBackend | null {
+  const bunGlobal = (globalThis as { Bun?: unknown }).Bun;
+  if (!bunGlobal) return null;
+  try {
+    const nodeRequire = createRequire(import.meta.url);
+    const spec = "bun" + ":" + "sqlite";
+    const Database = (nodeRequire(spec) as { Database: new (p: string, o?: unknown) => BunDbHandle }).Database;
+    return {
+      name: "bun",
+      query<T>(dbPath: string, sql: string): T[] {
+        if (!fs.existsSync(dbPath)) return [];
+        let db: BunDbHandle | null = null;
+        try {
+          db = new Database(dbPath, { readonly: true });
+          db.run("PRAGMA busy_timeout = 2000");
+          return db.query(sql).all() as T[];
+        } catch {
+          return [];
+        } finally {
+          try { db?.close(); } catch { /* ignore */ }
+        }
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+interface BunDbHandle {
+  run(sql: string): void;
+  query(sql: string): { all(): unknown[] };
+  close(): void;
+}
+
+function makeCliBackend(): SqliteBackend {
+  return {
+    name: "cli",
+    query<T>(dbPath: string, sql: string): T[] {
+      if (!fs.existsSync(dbPath)) return [];
+      try {
+        const out = execFileSync(
+          "sqlite3",
+          ["-readonly", "-bail", "-cmd", ".timeout 2000", "-cmd", ".mode json", dbPath, sql],
+          { encoding: "utf8", maxBuffer: 512 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] },
+        );
+        if (!out.trim()) return [];
+        return JSON.parse(out) as T[];
+      } catch {
+        return [];
+      }
+    },
+  };
+}
+
+const backend: SqliteBackend = tryBunBackend() ?? makeCliBackend();
+
+/** For logs / diagnostics — lets `pella doctor` (future) report which path is active. */
+export function sqliteBackendName(): "bun" | "cli" {
+  return backend.name;
+}
+
+/**
+ * Run one SELECT and return rows as plain objects keyed by column name.
+ * Values may contain newlines / pipes / any ASCII — both backends preserve
+ * them as native strings, no delimiter collisions. `PRAGMA busy_timeout =
+ * 2000` (bun) / `.timeout 2000` (cli) keeps us polite if Cursor is actively
+ * writing.
  */
 export function sqliteQuery<T = Record<string, string>>(dbPath: string, sql: string): T[] {
-  if (!fs.existsSync(dbPath)) return [];
-  try {
-    const out = execFileSync(
-      "sqlite3",
-      ["-readonly", "-bail", "-cmd", ".timeout 2000", "-cmd", ".mode json", dbPath, sql],
-      { encoding: "utf8", maxBuffer: 512 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] },
-    );
-    if (!out.trim()) return [];
-    return JSON.parse(out) as T[];
-  } catch {
-    return [];
-  }
+  return backend.query<T>(dbPath, sql);
 }
 
 /** Convenience: return the `value` column of the first row, or null. */

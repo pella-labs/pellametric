@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildCursorSessionState,
@@ -7,6 +10,8 @@ import {
   interpolateTurnTs,
   isSafeCursorId,
   pickModel,
+  sqliteBackendName,
+  sqliteQuery,
 } from "../parsers/cursor";
 
 describe("isSafeCursorId", () => {
@@ -160,5 +165,60 @@ describe("buildCursorSessionState", () => {
     expect(s.isSidechain).toBe(false);
     expect([...s.skillsUsed]).toEqual([]);
     expect([...s.mcpsUsed]).toEqual([]);
+  });
+});
+
+describe("sqlite backend selection", () => {
+  it("picks bun:sqlite when running under Bun, else the sqlite3 CLI", () => {
+    const backend = sqliteBackendName();
+    // vitest runs under Node or Bun depending on the caller. Either is OK —
+    // we just assert the selection is consistent with the runtime.
+    const isBun = typeof (globalThis as { Bun?: unknown }).Bun !== "undefined";
+    expect(backend).toBe(isBun ? "bun" : "cli");
+  });
+
+  it("reads a real SQLite file end-to-end via whichever backend is active", () => {
+    // Only run if the active backend has a usable path to SQLite. On CI
+    // (linux runners with sqlite3 installed) both backends work; on a
+    // sandboxed Node with no sqlite3 CLI and no Bun, skip — the adapter's
+    // public contract is "return [] on any read error", which is tested
+    // elsewhere by passing non-existent paths.
+    const dbPath = path.join(os.tmpdir(), `pella-cursor-test-${process.pid}.db`);
+    try {
+      // Seed the DB via the active backend by writing through a raw sqlite3
+      // CLI call if present. If not present and we're on Bun, use bun:sqlite
+      // directly. Either way produces a tiny DB we can read back.
+      if (sqliteBackendName() === "bun") {
+        const bunGlobal = (globalThis as { Bun?: unknown }).Bun;
+        if (!bunGlobal) return;
+        // biome-ignore lint/suspicious/noExplicitAny: bun:sqlite only loads under Bun
+        const { Database } = require("bun" + ":sqlite") as any;
+        const seed = new Database(dbPath);
+        seed.run("CREATE TABLE kv (k TEXT, v TEXT)");
+        seed.run("INSERT INTO kv VALUES ('hello', 'world')");
+        seed.run("INSERT INTO kv VALUES ('multi', 'line\nvalue|with|pipes')");
+        seed.close();
+      } else {
+        // CLI backend: use the system sqlite3 to seed, skip test if absent.
+        try {
+          const { execFileSync } = require("node:child_process") as typeof import("node:child_process");
+          execFileSync("sqlite3", [dbPath, "CREATE TABLE kv (k TEXT, v TEXT); INSERT INTO kv VALUES ('hello','world'), ('multi','line\nvalue|with|pipes');"]);
+        } catch {
+          return; // no sqlite3 CLI on this host — skip
+        }
+      }
+      const rows = sqliteQuery<{ k: string; v: string }>(dbPath, "SELECT k, v FROM kv ORDER BY k");
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toEqual({ k: "hello", v: "world" });
+      // The point of this test: pipes and newlines in values survive both backends.
+      expect(rows[1]).toEqual({ k: "multi", v: "line\nvalue|with|pipes" });
+    } finally {
+      try { fs.rmSync(dbPath, { force: true }); } catch { /* ignore */ }
+    }
+  });
+
+  it("returns [] for non-existent DB paths (both backends)", () => {
+    const rows = sqliteQuery("/nonexistent/path/to.db", "SELECT 1");
+    expect(rows).toEqual([]);
   });
 });
