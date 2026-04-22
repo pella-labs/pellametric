@@ -6,9 +6,9 @@ import { BrandMonolith } from "./_components/BrandMonolith";
 import { DashboardShot } from "./_components/DashboardShot";
 import { HeroGrid } from "./_components/HeroGrid";
 
-const HOME_TITLE = "Pellametric · Measure agentic engineering output";
+const HOME_TITLE = "Pellametric · Measure agentic engineering";
 const HOME_DESCRIPTION =
-  "Measure agentic engineering output. See the spend. See the work. Scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.";
+  "Measure agentic engineering. Meter the spend, map the work, scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.";
 
 export const metadata: Metadata = {
   title: HOME_TITLE,
@@ -22,6 +22,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@pellametric",
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
   },

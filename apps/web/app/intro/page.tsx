@@ -8,7 +8,7 @@ const FOUNDERS_CALENDAR = "https://calendar.app.google/VrY8s3Ho5Ldd4Wb66";
 
 const TITLE = "Build Pellametric with us · 30-minute intro with the founding team";
 const DESCRIPTION =
-  "Measure agentic engineering output. See the spend. See the work. Scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.";
+  "Measure agentic engineering. Meter the spend, map the work, scale what ships. Every token, every tool, every repo — finally counted.";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -23,6 +23,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@pellametric",
     title: TITLE,
     description: DESCRIPTION,
   },

@@ -54,22 +54,23 @@ export const metadata: Metadata = {
     template: "%s · Pellametric",
   },
   description:
-    "Measure agentic engineering output. See the spend. See the work. Scale what ships.",
+    "Measure agentic engineering. Meter the spend. Map the work. Scale what ships.",
   applicationName: "Pellametric",
   openGraph: {
     type: "website",
     siteName: "Pellametric",
     locale: "en_US",
     url: "/",
-    title: "Pellametric · Measure agentic engineering output",
+    title: "Pellametric · Measure agentic engineering",
     description:
-      "See the spend. See the work. Scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.",
+      "Every token, every tool, every repo — finally counted. Analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pellametric · Measure agentic engineering output",
+    site: "@pellametric",
+    title: "Pellametric · Measure agentic engineering",
     description:
-      "See the spend. See the work. Scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.",
+      "Every token, every tool, every repo — finally counted. Analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },
 };
 
