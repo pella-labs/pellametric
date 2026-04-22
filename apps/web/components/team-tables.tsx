@@ -14,6 +14,7 @@ export type TeamRow = {
   userId: string;
   name: string;
   login: string | null;
+  image: string | null;
   orgSlug: string;
   sessions: number;
   tokensIn: number;
@@ -78,10 +79,25 @@ function devHref(r: TeamRow, view?: string) {
 }
 
 function DevCell({ r }: { r: TeamRow }) {
+  const initial = (r.name?.[0] ?? r.login?.[0] ?? "?").toUpperCase();
   return (
-    <Link href={devHref(r)} className="block hover:text-primary transition">
-      <div className="font-medium">{r.name}</div>
-      <div className="text-[10px] text-muted-foreground font-mono">{r.login ?? "—"}</div>
+    <Link href={devHref(r)} className="flex items-center gap-2.5 hover:text-primary transition">
+      {r.image ? (
+        <img
+          src={r.image}
+          alt={r.name}
+          className="size-7 rounded-full border border-border object-cover shrink-0"
+          referrerPolicy="no-referrer"
+        />
+      ) : (
+        <div className="size-7 rounded-full border border-border bg-popover flex items-center justify-center text-[10px] text-muted-foreground font-semibold shrink-0">
+          {initial}
+        </div>
+      )}
+      <div className="min-w-0">
+        <div className="font-medium truncate">{r.name}</div>
+        <div className="text-[10px] text-muted-foreground font-mono truncate">{r.login ?? "—"}</div>
+      </div>
     </Link>
   );
 }

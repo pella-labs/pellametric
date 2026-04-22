@@ -136,6 +136,7 @@ export default async function OrgPage({
         userId: m.user.id,
         name: m.user.name,
         login: m.user.githubLogin,
+        image: m.user.image,
         orgSlug: row.org.slug,
         ...agg,
         cacheHitPct,

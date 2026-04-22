@@ -9,6 +9,11 @@ import WindowPicker from "@/components/window-picker";
 import { windowCutoff, parseWindow, type WindowKey } from "@/lib/window";
 import { prDetailsForMember } from "@/lib/gh-pr-details";
 import { costFor, money } from "@/lib/pricing";
+import {
+  FolderGit2, Sparkles, Plug, Wrench, Activity, MessageSquare, Zap, Database,
+  DatabaseZap, Clock, GitPullRequest, GitMerge, CircleDot, Plus, Minus,
+  type LucideIcon,
+} from "lucide-react";
 
 const fmt = (n: number) => {
   if (!n) return "—";
@@ -86,12 +91,12 @@ export default async function DevDetailPage({
 
       {/* Header KPIs always visible */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-        <Stat label="Sessions" value={sessions.length.toString()} />
-        <Stat label="Messages" value={totalMsgs.toLocaleString()} />
-        <Stat label="Output" value={fmt(totalOut)} sub={money(costOut)} />
-        <Stat label="Input (billable)" value={fmt(totalIn)} sub={money(costIn)} />
-        <Stat label="Cache hit" value={`${cacheHitPct}%`} />
-        <Stat label="Last active" value={sessions[0]?.startedAt ? new Date(sessions[0].startedAt).toISOString().slice(0, 10) : "—"} />
+        <Stat icon={Activity}        label="Sessions"          value={sessions.length.toString()} />
+        <Stat icon={MessageSquare}   label="Messages"          value={totalMsgs.toLocaleString()} />
+        <Stat icon={Zap}             label="Output"            value={fmt(totalOut)} sub={money(costOut)} />
+        <Stat icon={Database}        label="Input (billable)"  value={fmt(totalIn)}  sub={money(costIn)} />
+        <Stat icon={DatabaseZap}     label="Cache hit"         value={`${cacheHitPct}%`} />
+        <Stat icon={Clock}           label="Last active"       value={sessions[0]?.startedAt ? new Date(sessions[0].startedAt).toISOString().slice(0, 10) : "—"} />
       </div>
 
       {/* Focus tabs */}
@@ -126,13 +131,21 @@ export default async function DevDetailPage({
   );
 }
 
-function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "positive" | "destructive" }) {
+function Stat({ icon: Icon, label, value, sub, tone }: { icon?: LucideIcon; label: string; value: string; sub?: string; tone?: "positive" | "destructive" }) {
   const valueClass = tone === "positive" ? "text-positive" : tone === "destructive" ? "text-destructive" : "text-foreground";
+  const iconTint = tone === "positive" ? "bg-positive/15 text-positive" : tone === "destructive" ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary";
   return (
-    <div className="bg-card border border-border rounded-lg p-4">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</div>
-      <div className={`text-lg font-bold mt-1 ${valueClass}`}>{value}</div>
-      {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
+    <div className="bg-card border border-border rounded-lg p-4 flex items-start gap-3">
+      {Icon && (
+        <div className={`p-2 rounded-md shrink-0 ${iconTint}`}>
+          <Icon className="size-4" />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</div>
+        <div className={`text-lg font-bold mt-1 ${valueClass}`}>{value}</div>
+        {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
+      </div>
     </div>
   );
 }
@@ -154,20 +167,25 @@ function OverviewView({ sessions }: { sessions: any[] }) {
   const top = (m: Map<string, number>) => [...m.entries()].sort((a, b) => b[1] - a[1])[0];
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <MiniPanel title="Top repo" primary={top(repos)?.[0] ?? "—"} sub={top(repos) ? `${fmt(top(repos)![1])} tokens` : ""} />
-      <MiniPanel title="Top skill" primary={top(skills)?.[0] ?? "—"} sub={top(skills) ? `${top(skills)![1]} sessions` : ""} />
-      <MiniPanel title="Top MCP" primary={top(mcps)?.[0] ?? "—"} sub={top(mcps) ? `${top(mcps)![1]} sessions` : ""} />
-      <MiniPanel title="Top tool" primary={top(tools)?.[0] ?? "—"} sub={top(tools) ? `${top(tools)![1]} calls` : ""} />
+      <MiniPanel icon={FolderGit2} title="Top repo"  primary={top(repos)?.[0] ?? "—"}  sub={top(repos)  ? `${fmt(top(repos)![1])} tokens`   : ""} />
+      <MiniPanel icon={Sparkles}    title="Top skill" primary={top(skills)?.[0] ?? "—"} sub={top(skills) ? `${top(skills)![1]} sessions`   : ""} />
+      <MiniPanel icon={Plug}        title="Top MCP"   primary={top(mcps)?.[0] ?? "—"}   sub={top(mcps)   ? `${top(mcps)![1]} sessions`     : ""} />
+      <MiniPanel icon={Wrench}      title="Top tool"  primary={top(tools)?.[0] ?? "—"}  sub={top(tools)  ? `${top(tools)![1]} calls`       : ""} />
     </div>
   );
 }
 
-function MiniPanel({ title, primary, sub }: { title: string; primary: string; sub?: string }) {
+function MiniPanel({ icon: Icon, title, primary, sub }: { icon: LucideIcon; title: string; primary: string; sub?: string }) {
   return (
-    <div className="bg-card border border-border rounded-lg p-4">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">{title}</div>
-      <div className="text-base font-semibold text-foreground truncate">{primary}</div>
-      <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>
+    <div className="bg-card border border-border rounded-lg p-4 flex items-start gap-3">
+      <div className="p-2 rounded-md bg-primary/15 text-primary shrink-0">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">{title}</div>
+        <div className="text-base font-semibold text-foreground truncate">{primary}</div>
+        <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>
+      </div>
     </div>
   );
 }
@@ -332,7 +350,7 @@ function SessionsView({ sessions }: { sessions: any[] }) {
         { label: "Tokens", align: "right" },
         { label: "Files", align: "right" },
         { label: "Err", align: "right" },
-        { label: "Teacher", align: "right" },
+        { label: "Corrections", align: "right" },
       ]}
     >
       {sessions.slice(0, 200).map(s => (
@@ -395,11 +413,11 @@ async function PrsView({ orgSlug, login, viewerId, sessions, cutoff }: { orgSlug
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Stat label="PRs total" value={prs.length.toString()} />
-        <Stat label="Merged" value={merged.length.toString()} />
-        <Stat label="Open" value={open.length.toString()} />
-        <Stat label="+LOC" value={`+${totalAdd.toLocaleString()}`} tone="positive" />
-        <Stat label="−LOC" value={`−${totalDel.toLocaleString()}`} tone="destructive" />
+        <Stat icon={GitPullRequest} label="PRs total" value={prs.length.toString()} />
+        <Stat icon={GitMerge}       label="Merged"    value={merged.length.toString()} tone="positive" />
+        <Stat icon={CircleDot}      label="Open"      value={open.length.toString()} />
+        <Stat icon={Plus}           label="+LOC"      value={`+${totalAdd.toLocaleString()}`} tone="positive" />
+        <Stat icon={Minus}          label="−LOC"      value={`−${totalDel.toLocaleString()}`} tone="destructive" />
       </div>
 
       <SimpleTable

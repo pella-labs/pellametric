@@ -204,10 +204,29 @@ export default function OrgDashboard({ data }: { data: { claude: Data; codex: Da
         <Kpi k="cache hit" v={`${m.cacheHitPct}%`} />
         <Kpi k="repos" v={fmt(m.projects)} />
         {source === "codex" && <Kpi k="reasoning" v={fmt(m.tokensReasoning)} />}
-        <Kpi k="waste" v={`${fmt(m.wasteTokens ?? 0)}·${m.wastePct ?? 0}%`} tone="destructive" />
-        <Kpi k="teacher" v={fmt(m.teacherMoments ?? 0)} tone="warning" />
-        <Kpi k="frustration" v={fmt(m.frustrationSpikes ?? 0)} tone="warning" />
-        <Kpi k="prompt len" v={`${m.promptMedianAvg ?? 0}/${m.promptP95Max ?? 0}w`} />
+        <Kpi
+          k="waste"
+          v={`${fmt(m.wasteTokens ?? 0)}·${m.wastePct ?? 0}%`}
+          tone="destructive"
+          hint="Output tokens from sessions that went nowhere: high token use with zero files edited, or hours-long sessions with almost no back-and-forth."
+        />
+        <Kpi
+          k="corrections"
+          v={fmt(m.teacherMoments ?? 0)}
+          tone="warning"
+          hint="Short (<30 word) user prompts containing corrective language like 'no', 'wrong', 'undo', 'that's not right' — how often you steered the agent off course."
+        />
+        <Kpi
+          k="outbursts"
+          v={fmt(m.frustrationSpikes ?? 0)}
+          tone="warning"
+          hint="Prompts with swearing, multiple exclamation marks, or 4+ ALL-CAPS letters. A rough stress signal."
+        />
+        <Kpi
+          k="prompt size (med / p95)"
+          v={`${m.promptMedianAvg ?? 0} / ${m.promptP95Max ?? 0}w`}
+          hint="Prompt length in words. Left = median of each session's median (your typical prompt). Right = the max p95 across sessions (longest 5%, usually a paste or slash-command expansion)."
+        />
       </div>
 
       {!hasData ? (
@@ -369,12 +388,13 @@ function TabBtn({ active, label, count, onClick }: any) {
 }
 
 function Kpi({
-  k, v, accent, tone,
+  k, v, accent, tone, hint,
 }: {
   k: string;
   v: React.ReactNode;
   accent?: boolean;
   tone?: "destructive" | "warning";
+  hint?: string;
 }) {
   const valueCls = accent
     ? "text-accent"
@@ -385,7 +405,26 @@ function Kpi({
         : "text-foreground";
   return (
     <div className="px-4 py-4 border-r border-b border-border last:border-r-0 [&:nth-child(2n)]:border-r-0 md:[&:nth-child(2n)]:border-r md:[&:nth-child(4n)]:border-r-0 xl:[&:nth-child(4n)]:border-r xl:[&:nth-child(6n)]:border-r-0">
-      <div className="mk-label mb-1.5">{k}</div>
+      <div className="mk-label mb-1.5 flex items-center gap-1.5">
+        <span>{k}</span>
+        {hint && (
+          <span className="relative group inline-flex">
+            <span
+              aria-label={hint}
+              tabIndex={0}
+              className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-border text-[9px] text-muted-foreground cursor-help hover:text-foreground hover:border-[color:var(--border-hover)] transition"
+            >
+              ?
+            </span>
+            <span
+              role="tooltip"
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 z-50 px-3 py-2 bg-[color:var(--popover)] border border-border text-[11px] leading-snug text-foreground normal-case tracking-normal opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition"
+            >
+              {hint}
+            </span>
+          </span>
+        )}
+      </div>
       <div className={`mk-numeric text-lg ${valueCls}`}>{v}</div>
     </div>
   );
