@@ -47,11 +47,19 @@ const promptSchema = z.object({
   wordCount: z.number().int().nonnegative().default(0),
 });
 
+const responseSchema = z.object({
+  externalSessionId: z.string(),
+  tsResponse: z.string(),
+  text: z.string(),
+  wordCount: z.number().int().nonnegative().default(0),
+});
+
 const ingestSchema = z.object({
   source: z.enum(["claude", "codex"]),
   collectorVersion: z.string().optional(),
   sessions: z.array(sessionSchema),
   prompts: z.array(promptSchema).optional(),
+  responses: z.array(responseSchema).optional(),
 });
 
 export async function POST(req: Request) {
@@ -142,11 +150,13 @@ export async function POST(req: Request) {
     accepted.push(s.externalSessionId);
   }
 
-  // Encrypt + store prompts, but only for sessions we accepted (so the orgId is valid).
+  // Encrypt + store prompts and responses, but only for sessions we accepted.
   let promptsInserted = 0;
-  if (body.prompts && body.prompts.length > 0 && accepted.length > 0) {
+  let responsesInserted = 0;
+  const anyEncryptedPayload =
+    (body.prompts && body.prompts.length > 0) || (body.responses && body.responses.length > 0);
+  if (anyEncryptedPayload && accepted.length > 0) {
     const acceptedSet = new Set(accepted);
-    // Map externalSessionId -> orgId from the sessions we just inserted.
     const sidToOrg = new Map<string, string>();
     for (const s of body.sessions) {
       if (!acceptedSet.has(s.externalSessionId)) continue;
@@ -155,21 +165,41 @@ export async function POST(req: Request) {
       if (oid) sidToOrg.set(s.externalSessionId, oid);
     }
     const dek = await getOrCreateUserDek(userId);
-    for (const p of body.prompts) {
-      const orgId = sidToOrg.get(p.externalSessionId);
-      if (!orgId) continue;
-      const enc = encryptPrompt(dek, p.text);
-      try {
-        await db.insert(schema.promptEvent).values({
-          userId, orgId,
-          source: body.source,
-          externalSessionId: p.externalSessionId,
-          tsPrompt: new Date(p.tsPrompt),
-          wordCount: p.wordCount,
-          iv: enc.iv, tag: enc.tag, ciphertext: enc.ciphertext,
-        }).onConflictDoNothing();
-        promptsInserted++;
-      } catch { /* skip malformed */ }
+    if (body.prompts) {
+      for (const p of body.prompts) {
+        const orgId = sidToOrg.get(p.externalSessionId);
+        if (!orgId) continue;
+        const enc = encryptPrompt(dek, p.text);
+        try {
+          await db.insert(schema.promptEvent).values({
+            userId, orgId,
+            source: body.source,
+            externalSessionId: p.externalSessionId,
+            tsPrompt: new Date(p.tsPrompt),
+            wordCount: p.wordCount,
+            iv: enc.iv, tag: enc.tag, ciphertext: enc.ciphertext,
+          }).onConflictDoNothing();
+          promptsInserted++;
+        } catch { /* skip malformed */ }
+      }
+    }
+    if (body.responses) {
+      for (const r of body.responses) {
+        const orgId = sidToOrg.get(r.externalSessionId);
+        if (!orgId) continue;
+        const enc = encryptPrompt(dek, r.text);
+        try {
+          await db.insert(schema.responseEvent).values({
+            userId, orgId,
+            source: body.source,
+            externalSessionId: r.externalSessionId,
+            tsResponse: new Date(r.tsResponse),
+            wordCount: r.wordCount,
+            iv: enc.iv, tag: enc.tag, ciphertext: enc.ciphertext,
+          }).onConflictDoNothing();
+          responsesInserted++;
+        } catch { /* skip malformed */ }
+      }
     }
   }
 
@@ -184,5 +214,5 @@ export async function POST(req: Request) {
   }
   await db.update(schema.apiToken).set({ lastUsedAt: new Date() }).where(eq(schema.apiToken.id, tk.id));
 
-  return NextResponse.json({ inserted, accepted: accepted.length, rejected, promptsInserted });
+  return NextResponse.json({ inserted, accepted: accepted.length, rejected, promptsInserted, responsesInserted });
 }

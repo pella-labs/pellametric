@@ -73,7 +73,7 @@ export function startServeLoop(cfg: CollectorConfig): LoopHandle {
     );
 
     if (touchedClaude.size > 0) {
-      const { sessions, prompts } = finalizeSessions(claudeSessions, resolver, touchedClaude);
+      const { sessions, prompts, responses } = finalizeSessions(claudeSessions, resolver, touchedClaude);
       if (sessions.length > 0) {
         await uploadBatch({
           url: cfg.url,
@@ -81,11 +81,12 @@ export function startServeLoop(cfg: CollectorConfig): LoopHandle {
           source: "claude",
           sessions,
           prompts,
+          responses,
         });
       }
     }
     if (touchedCodex.size > 0) {
-      const { sessions, prompts } = finalizeSessions(codexSessions, resolver, touchedCodex);
+      const { sessions, prompts, responses } = finalizeSessions(codexSessions, resolver, touchedCodex);
       if (sessions.length > 0) {
         await uploadBatch({
           url: cfg.url,
@@ -93,6 +94,7 @@ export function startServeLoop(cfg: CollectorConfig): LoopHandle {
           source: "codex",
           sessions,
           prompts,
+          responses,
         });
       }
     }

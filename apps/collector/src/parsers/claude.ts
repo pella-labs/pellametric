@@ -50,8 +50,21 @@ export function foldClaudeLine(sessions: SessionMap, line: string, since: Date):
     // Count a "message" only when the assistant emits a text reply, to
     // match Codex semantics ("response_item.message"). Tool-only steps
     // are tracked via toolHist.
-    if (content.some((c: any) => c && typeof c === "object" && c.type === "text")) {
+    const textParts = content
+      .filter((c: any) => c && typeof c === "object" && c.type === "text" && typeof c.text === "string")
+      .map((c: any) => c.text as string);
+    if (textParts.length > 0) {
       s.messages++;
+      // Only capture the assistant reply in the encrypted response log if
+      // it's on the main chain — sub-agent replies belong to the sub-agent
+      // conversation, which the user never saw directly.
+      if (!d.isSidechain && ts) {
+        const joined = textParts.join("\n\n").trim();
+        if (joined) {
+          const wc = joined.split(/\s+/).filter(Boolean).length;
+          s.responses.push({ ts, text: joined, wordCount: wc });
+        }
+      }
     }
     for (const c of content) {
       if (!c || typeof c !== "object") continue;

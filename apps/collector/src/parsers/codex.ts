@@ -123,6 +123,19 @@ function foldCodexLine(
 
   if (t === "response_item" && p.type === "message" && p.role === "assistant") {
     s.messages++;
+    // Extract the assistant text reply (Codex stores it as
+    // content:[{type:"output_text", text}] — occasionally several items).
+    const content = Array.isArray(p.content) ? p.content : [];
+    const textParts = content
+      .filter((c: any) => c && typeof c === "object" && typeof c.text === "string")
+      .map((c: any) => c.text as string);
+    if (textParts.length > 0 && ts) {
+      const joined = textParts.join("\n\n").trim();
+      if (joined) {
+        const wc = joined.split(/\s+/).filter(Boolean).length;
+        s.responses.push({ ts, text: joined, wordCount: wc });
+      }
+    }
     return ctx.sid;
   }
 

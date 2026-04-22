@@ -202,6 +202,25 @@ export const promptEvent = pgTable("prompt_event", {
   uniq: uniqueIndex("prompt_uniq").on(t.userId, t.source, t.externalSessionId, t.tsPrompt),
 }));
 
+// One row per assistant text response. Same encryption + owner-only access
+// model as promptEvent. Managers/aggregates never touch these rows.
+export const responseEvent = pgTable("response_event", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  source: text("source").notNull(),
+  externalSessionId: text("external_session_id").notNull(),
+  tsResponse: timestamp("ts_response").notNull(),
+  wordCount: integer("word_count").notNull().default(0),
+  iv: text("iv").notNull(),
+  tag: text("tag").notNull(),
+  ciphertext: text("ciphertext").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t => ({
+  byUserSession: index("response_by_user_session").on(t.userId, t.externalSessionId, t.tsResponse),
+  uniq: uniqueIndex("response_uniq").on(t.userId, t.source, t.externalSessionId, t.tsResponse),
+}));
+
 // Ingest batch record for idempotency + audit
 export const uploadBatch = pgTable("upload_batch", {
   id: uuid("id").primaryKey().defaultRandom(),

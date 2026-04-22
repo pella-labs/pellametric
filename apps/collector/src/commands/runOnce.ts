@@ -37,7 +37,7 @@ export async function runOnce(opts: RunOnceOptions): Promise<void> {
   }
   const claudeFinal = finalizeSessions(claudeSessions, resolver);
   console.log(
-    `claude sessions in-scope: ${claudeFinal.sessions.length} (prompts: ${claudeFinal.prompts.length})`,
+    `claude sessions in-scope: ${claudeFinal.sessions.length} (prompts: ${claudeFinal.prompts.length}, responses: ${claudeFinal.responses.length})`,
   );
   await uploadBatch({
     url: opts.url,
@@ -45,6 +45,7 @@ export async function runOnce(opts: RunOnceOptions): Promise<void> {
     source: "claude",
     sessions: claudeFinal.sessions,
     prompts: claudeFinal.prompts,
+    responses: claudeFinal.responses,
   });
 
   // Codex
@@ -58,7 +59,7 @@ export async function runOnce(opts: RunOnceOptions): Promise<void> {
   }
   const codexFinal = finalizeSessions(codexSessions, resolver);
   console.log(
-    `codex sessions in-scope: ${codexFinal.sessions.length} (prompts: ${codexFinal.prompts.length})`,
+    `codex sessions in-scope: ${codexFinal.sessions.length} (prompts: ${codexFinal.prompts.length}, responses: ${codexFinal.responses.length})`,
   );
   await uploadBatch({
     url: opts.url,
@@ -66,5 +67,6 @@ export async function runOnce(opts: RunOnceOptions): Promise<void> {
     source: "codex",
     sessions: codexFinal.sessions,
     prompts: codexFinal.prompts,
+    responses: codexFinal.responses,
   });
 }

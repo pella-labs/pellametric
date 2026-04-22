@@ -8,6 +8,7 @@ import path3 from "node:path";
 function finalizeSessions(sessions, resolveRepoFn, only) {
   const out = [];
   const prompts = [];
+  const responses = [];
   for (const s of sessions.values()) {
     if (only && !only.has(s.sid))
       continue;
@@ -25,8 +26,16 @@ function finalizeSessions(sessions, resolveRepoFn, only) {
         wordCount: p.wordCount
       });
     }
+    for (const r of s.responses) {
+      responses.push({
+        externalSessionId: s.sid,
+        tsResponse: r.ts.toISOString(),
+        text: r.text,
+        wordCount: r.wordCount
+      });
+    }
   }
-  return { sessions: out, prompts };
+  return { sessions: out, prompts, responses };
 }
 function toWire(s, info) {
   const pw = s.promptWords.slice().sort((a, b) => a - b);
@@ -93,7 +102,8 @@ function newSessionState(sid, cwd, isSidechain = false, model) {
     teacherMoments: 0,
     frustrationSpikes: 0,
     promptWords: [],
-    prompts: []
+    prompts: [],
+    responses: []
   };
 }
 
@@ -200,8 +210,18 @@ function foldClaudeLine(sessions, line, since) {
     if (msg.model)
       s.model = msg.model;
     const content = Array.isArray(msg.content) ? msg.content : [];
-    if (content.some((c) => c && typeof c === "object" && c.type === "text")) {
+    const textParts = content.filter((c) => c && typeof c === "object" && c.type === "text" && typeof c.text === "string").map((c) => c.text);
+    if (textParts.length > 0) {
       s.messages++;
+      if (!d.isSidechain && ts) {
+        const joined = textParts.join(`
+
+`).trim();
+        if (joined) {
+          const wc = joined.split(/\s+/).filter(Boolean).length;
+          s.responses.push({ ts, text: joined, wordCount: wc });
+        }
+      }
     }
     for (const c of content) {
       if (!c || typeof c !== "object")
@@ -361,6 +381,17 @@ function foldCodexLine(sessions, line, ctx, since) {
   }
   if (t === "response_item" && p.type === "message" && p.role === "assistant") {
     s.messages++;
+    const content = Array.isArray(p.content) ? p.content : [];
+    const textParts = content.filter((c) => c && typeof c === "object" && typeof c.text === "string").map((c) => c.text);
+    if (textParts.length > 0 && ts) {
+      const joined = textParts.join(`
+
+`).trim();
+      if (joined) {
+        const wc = joined.split(/\s+/).filter(Boolean).length;
+        s.responses.push({ ts, text: joined, wordCount: wc });
+      }
+    }
     return ctx.sid;
   }
   if (t === "response_item" && (p.type === "function_call_output" || p.type === "custom_tool_call_output")) {
@@ -473,7 +504,7 @@ var BATCH = 200;
 async function uploadBatch(opts) {
   const log = opts.log ?? ((m) => console.log(m));
   const fetchImpl = opts.fetchImpl ?? fetch;
-  const result = { inserted: 0, promptsInserted: 0, rejected: 0, batches: 0, httpErrors: 0 };
+  const result = { inserted: 0, promptsInserted: 0, responsesInserted: 0, rejected: 0, batches: 0, httpErrors: 0 };
   if (opts.sessions.length === 0) {
     log(`[${opts.source}] no sessions`);
     return result;
@@ -486,19 +517,32 @@ async function uploadBatch(opts) {
     else
       promptsBySid.set(p.externalSessionId, [p]);
   }
+  const responsesBySid = new Map;
+  for (const r of opts.responses) {
+    const arr = responsesBySid.get(r.externalSessionId);
+    if (arr)
+      arr.push(r);
+    else
+      responsesBySid.set(r.externalSessionId, [r]);
+  }
   for (let i = 0;i < opts.sessions.length; i += BATCH) {
     const chunk = opts.sessions.slice(i, i + BATCH);
     const chunkPrompts = [];
+    const chunkResponses = [];
     for (const sess of chunk) {
-      const list = promptsBySid.get(sess.externalSessionId);
-      if (list)
-        chunkPrompts.push(...list);
+      const pl = promptsBySid.get(sess.externalSessionId);
+      if (pl)
+        chunkPrompts.push(...pl);
+      const rl = responsesBySid.get(sess.externalSessionId);
+      if (rl)
+        chunkResponses.push(...rl);
     }
     const payload = {
       source: opts.source,
       collectorVersion: COLLECTOR_VERSION,
       sessions: chunk,
-      prompts: chunkPrompts
+      prompts: chunkPrompts,
+      responses: chunkResponses
     };
     try {
       const r = await fetchImpl(`${opts.url}/api/ingest`, {
@@ -515,14 +559,15 @@ async function uploadBatch(opts) {
       }
       result.inserted += j.inserted || 0;
       result.promptsInserted += j.promptsInserted || 0;
+      result.responsesInserted += j.responsesInserted || 0;
       result.rejected += j.rejected?.length || 0;
-      log(`[${opts.source}] batch ${i}-${i + chunk.length}: inserted ${j.inserted}, prompts ${j.promptsInserted || 0}, rejected ${j.rejected?.length || 0}`);
+      log(`[${opts.source}] batch ${i}-${i + chunk.length}: inserted ${j.inserted}, prompts ${j.promptsInserted || 0}, responses ${j.responsesInserted || 0}, rejected ${j.rejected?.length || 0}`);
     } catch (e) {
       result.httpErrors++;
       log(`[${opts.source}] batch ${i}: fetch failed — ${e.message}`);
     }
   }
-  log(`[${opts.source}] total inserted ${result.inserted}, prompts ${result.promptsInserted}, rejected ${result.rejected}`);
+  log(`[${opts.source}] total inserted ${result.inserted}, prompts ${result.promptsInserted}, responses ${result.responsesInserted}, rejected ${result.rejected}`);
   return result;
 }
 
@@ -540,13 +585,14 @@ async function runOnce(opts) {
     ingestClaudeFileSlice(claudeSessions, file, 0, since);
   }
   const claudeFinal = finalizeSessions(claudeSessions, resolver);
-  console.log(`claude sessions in-scope: ${claudeFinal.sessions.length} (prompts: ${claudeFinal.prompts.length})`);
+  console.log(`claude sessions in-scope: ${claudeFinal.sessions.length} (prompts: ${claudeFinal.prompts.length}, responses: ${claudeFinal.responses.length})`);
   await uploadBatch({
     url: opts.url,
     token: opts.token,
     source: "claude",
     sessions: claudeFinal.sessions,
-    prompts: claudeFinal.prompts
+    prompts: claudeFinal.prompts,
+    responses: claudeFinal.responses
   });
   const codexSessions = new Map;
   const codexCtx = new Map;
@@ -557,13 +603,14 @@ async function runOnce(opts) {
     }
   }
   const codexFinal = finalizeSessions(codexSessions, resolver);
-  console.log(`codex sessions in-scope: ${codexFinal.sessions.length} (prompts: ${codexFinal.prompts.length})`);
+  console.log(`codex sessions in-scope: ${codexFinal.sessions.length} (prompts: ${codexFinal.prompts.length}, responses: ${codexFinal.responses.length})`);
   await uploadBatch({
     url: opts.url,
     token: opts.token,
     source: "codex",
     sessions: codexFinal.sessions,
-    prompts: codexFinal.prompts
+    prompts: codexFinal.prompts,
+    responses: codexFinal.responses
   });
 }
 

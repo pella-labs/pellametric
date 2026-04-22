@@ -27,6 +27,7 @@ export interface SessionState {
   frustrationSpikes: number;
   promptWords: number[];
   prompts: Array<{ ts: Date; text: string; wordCount: number }>;
+  responses: Array<{ ts: Date; text: string; wordCount: number }>;
 }
 
 export type SessionMap = Map<string, SessionState>;
@@ -58,8 +59,8 @@ export function newSessionState(
     intents: {},
     model,
     teacherMoments: 0,
-    frustrationSpikes: 0,
-    promptWords: [],
+    frustrationSpikes: 0,    promptWords: [],
     prompts: [],
+    responses: [],
   };
 }
