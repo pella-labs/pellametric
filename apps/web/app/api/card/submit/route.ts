@@ -206,12 +206,15 @@ export async function POST(req: Request) {
   const avatarUrl = `https://github.com/${login}.png`;
 
   // Upsert so re-submitting (after minting a fresh token) replaces the card.
-  // postgres-js auto-serializes object params into jsonb — do not JSON.stringify.
+  // Pass the payload as a text param cast to jsonb server-side. `sql.json()`
+  // routes through postgres-js's jsonb-param encoder, which crashes under
+  // Bun's net.Socket with `TypeError: Received an instance of Object` in
+  // readableAddChunkPushByteMode. Casting in SQL keeps the param text-typed.
   await sql`
     INSERT INTO cards
       (card_id, owner_user_id, github_username, display_name, avatar_url, stats, created_at)
     VALUES
-      (${cardId}, ${null}, ${row.github_username}, ${displayName}, ${avatarUrl}, ${sql.json(parse.data)}, now())
+      (${cardId}, ${null}, ${row.github_username}, ${displayName}, ${avatarUrl}, ${JSON.stringify(parse.data)}::jsonb, now())
     ON CONFLICT (card_id) DO UPDATE SET
       owner_user_id   = EXCLUDED.owner_user_id,
       github_username = EXCLUDED.github_username,
