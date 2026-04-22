@@ -105,7 +105,7 @@ export function startServeLoop(cfg: CollectorConfig): LoopHandle {
       }
     }
     if (touchedCursor.size > 0) {
-      const { sessions, prompts } = finalizeSessions(cursorSessions, resolver, touchedCursor);
+      const { sessions, prompts, responses } = finalizeSessions(cursorSessions, resolver, touchedCursor);
       if (sessions.length > 0) {
         await uploadBatch({
           url: cfg.url,
@@ -113,6 +113,7 @@ export function startServeLoop(cfg: CollectorConfig): LoopHandle {
           source: "cursor",
           sessions,
           prompts,
+          responses,
         });
       }
     }

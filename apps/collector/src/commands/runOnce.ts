@@ -76,7 +76,7 @@ export async function runOnce(opts: RunOnceOptions): Promise<void> {
   sweepCursor(cursorSessions, newCursorSweepState(), since);
   const cursorFinal = finalizeSessions(cursorSessions, resolver);
   console.log(
-    `cursor sessions in-scope: ${cursorFinal.sessions.length} (prompts: ${cursorFinal.prompts.length})`,
+    `cursor sessions in-scope: ${cursorFinal.sessions.length} (prompts: ${cursorFinal.prompts.length}, responses: ${cursorFinal.responses.length})`,
   );
   await uploadBatch({
     url: opts.url,
@@ -84,5 +84,6 @@ export async function runOnce(opts: RunOnceOptions): Promise<void> {
     source: "cursor",
     sessions: cursorFinal.sessions,
     prompts: cursorFinal.prompts,
+    responses: cursorFinal.responses,
   });
 }

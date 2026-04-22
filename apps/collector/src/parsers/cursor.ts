@@ -231,10 +231,15 @@ export interface CursorComposer {
   fullConversationHeadersOnly?: Array<{ bubbleId: string; type?: number }>;
   originalFileStates?: Record<string, unknown>;
   newlyCreatedFiles?: string[];
+  modelConfig?: { modelName?: string; maxMode?: boolean };
   _v?: number;
 }
 
 export function pickModel(cd: CursorComposer, ai: CursorAiSettings): string | undefined {
+  // Prefer the per-composer modelConfig.modelName — it's the actual model used
+  // for this session, not Cursor's currently-selected global setting. Falling
+  // back to aiSettings keeps older schemas working.
+  if (cd.modelConfig?.modelName) return cd.modelConfig.modelName;
   const mode = cd.unifiedMode || cd.forceMode;
   if (mode === "chat") return ai.regularChatModel || ai.composerModel;
   return ai.composerModel || ai.regularChatModel;
@@ -289,7 +294,14 @@ export function buildCursorSessionState(
     const tfd = b.toolFormerData;
     if (tfd?.name) {
       s.toolHist[tfd.name] = (s.toolHist[tfd.name] || 0) + 1;
-      if (tfd.status === "error" || tfd.status === "cancelled") s.errors++;
+      // Only real system errors — user-pressed-cancel is intent, not a failure.
+      if (tfd.status === "error") s.errors++;
+      // Cursor's MCP tools follow an `mcp_<server>_<tool>` naming pattern.
+      // Mirror Claude's mcpsUsed treatment.
+      if (tfd.name.startsWith("mcp_")) {
+        const server = tfd.name.split("_")[1];
+        if (server) s.mcpsUsed.add(server);
+      }
     } else if (b.type === 2 && (b.text || "").length > 0) {
       s.messages++;
     }
@@ -302,19 +314,27 @@ export function buildCursorSessionState(
   }
   for (const f of cd.newlyCreatedFiles || []) s.filesEdited.add(f);
 
-  // User-turn / prompt metrics — only from the visible conversation.
-  const userBubbles = bubblesOrdered.filter(b => b.type === 1 && (b.text || "").length > 0);
-  for (let i = 0; i < userBubbles.length; i++) {
-    const text = userBubbles[i].text || "";
-    s.userTurns++;
-    const intent = classifyIntent(text);
-    s.intents[intent] = (s.intents[intent] || 0) + 1;
+  // Walk the ordered conversation once and emit prompts + responses sharing
+  // the same interpolated timeline so they interleave correctly in the drawer.
+  // Orphan bubbles are intentionally excluded from prompts/responses — they
+  // represent regenerated/cancelled turns the user never saw as a reply.
+  const convo = bubblesOrdered.filter(b => (b.type === 1 || b.type === 2) && (b.text || "").length > 0);
+  for (let i = 0; i < convo.length; i++) {
+    const b = convo[i];
+    const text = b.text || "";
     const wc = text.split(/\s+/).filter(Boolean).length;
-    s.promptWords.push(wc);
-    if (wc < 30 && TEACHER_RE.test(text)) s.teacherMoments++;
-    if (FRUSTRATION_RE.test(text)) s.frustrationSpikes++;
-    const ts = interpolateTurnTs(s.start.getTime(), s.end.getTime(), i, userBubbles.length);
-    s.prompts.push({ ts, text, wordCount: wc });
+    const ts = interpolateTurnTs(s.start.getTime(), s.end.getTime(), i, convo.length);
+    if (b.type === 1) {
+      s.userTurns++;
+      const intent = classifyIntent(text);
+      s.intents[intent] = (s.intents[intent] || 0) + 1;
+      s.promptWords.push(wc);
+      if (wc < 30 && TEACHER_RE.test(text)) s.teacherMoments++;
+      if (FRUSTRATION_RE.test(text)) s.frustrationSpikes++;
+      s.prompts.push({ ts, text, wordCount: wc });
+    } else {
+      s.responses.push({ ts, text, wordCount: wc });
+    }
   }
 
   return s;
