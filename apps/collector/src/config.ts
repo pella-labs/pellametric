@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-export const COLLECTOR_VERSION = "0.0.3";
+export const COLLECTOR_VERSION = "0.0.4";
 export const DEFAULT_URL = "https://pellametric.com";
 export const DEFAULT_POLL_INTERVAL_MS = 10_000;
 
