@@ -57,26 +57,37 @@ export function aggregate(rows: Row[], source: "claude" | "codex") {
     { sessions: 0, messages: 0, tokensIn: 0, tokensOut: 0, tokensCacheRead: 0, tokensCacheWrite: 0, tokensReasoning: 0 },
   );
 
-  // Cache hit %
-  const cacheDenom = totals.tokensCacheRead + totals.tokensIn + totals.tokensCacheWrite;
+  // Cache hit % — hit rate among reads (cacheWrite is a separate cost dimension, not an input read)
+  const cacheDenom = totals.tokensCacheRead + totals.tokensIn;
   const cacheHitPct = cacheDenom > 0 ? (100 * totals.tokensCacheRead) / cacheDenom : 0;
 
-  // Active hours per day — merged timeline, idle gap >10min collapsed
-  const tsByDay = new Map<string, number[]>();
+  // Active hours per day — each session capped at a plausible working block
+  // (sessions left open overnight shouldn't count as 12h of work). Overlapping
+  // intervals are merged per day so parallel sessions don't double-count.
+  const SESSION_CAP = 2 * 3600; // per-session cap in seconds
+  const intervalsByDay = new Map<string, [number, number][]>();
   for (const r of src) {
     const day = r.startedAt.toISOString().slice(0, 10);
-    if (!tsByDay.has(day)) tsByDay.set(day, []);
-    tsByDay.get(day)!.push(r.startedAt.getTime() / 1000, r.endedAt.getTime() / 1000);
+    const start = r.startedAt.getTime() / 1000;
+    const end = Math.min(r.endedAt.getTime() / 1000, start + SESSION_CAP);
+    if (!intervalsByDay.has(day)) intervalsByDay.set(day, []);
+    intervalsByDay.get(day)!.push([start, end]);
   }
   const hoursEntries: [string, number][] = [];
-  for (const [day, ts] of tsByDay) {
-    ts.sort((a, b) => a - b);
-    let active = 0, prev = ts[0];
-    for (let i = 1; i < ts.length; i++) {
-      const gap = ts[i] - prev;
-      if (gap > 0 && gap < 600) active += gap;
-      prev = ts[i];
+  for (const [day, intervals] of intervalsByDay) {
+    intervals.sort((a, b) => a[0] - b[0]);
+    let active = 0;
+    let [curStart, curEnd] = intervals[0];
+    for (let i = 1; i < intervals.length; i++) {
+      const [s, e] = intervals[i];
+      if (s <= curEnd) {
+        curEnd = Math.max(curEnd, e);
+      } else {
+        active += curEnd - curStart;
+        curStart = s; curEnd = e;
+      }
     }
+    active += curEnd - curStart;
     hoursEntries.push([day, Math.min(active / 3600, 24)]);
   }
   hoursEntries.sort();
@@ -144,10 +155,12 @@ export function aggregate(rows: Row[], source: "claude" | "codex") {
   }
   const ctxEntries = [...ctxByDay.entries()].map(([d, s]) => [d, s.size] as [string, number]).sort();
 
-  // Session velocity (tokens/hour bucket)
+  // Session velocity (tokens/hour bucket) — cap duration at 2h so burst-then-idle
+  // sessions classify by active throughput, not wall-clock-with-idle.
   const velocity = new Map<string, number>();
   for (const r of src) {
-    const dur = (r.endedAt.getTime() - r.startedAt.getTime()) / 3600000;
+    const rawDur = (r.endedAt.getTime() - r.startedAt.getTime()) / 3600000;
+    const dur = Math.min(rawDur, 2);
     if (dur < 0.1 || r.tokensOut < 1000) continue;
     const tph = Number(r.tokensOut) / dur;
     const k = tph < 2000 ? "<2K/h grinding" : tph < 10000 ? "2-10K/h steady" : tph < 30000 ? "10-30K/h flowing" : "30K+/h burst";

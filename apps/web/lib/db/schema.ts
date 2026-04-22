@@ -173,6 +173,35 @@ export const sessionPrLink = pgTable("session_pr_link", {
   byPr: index("link_by_pr").on(t.prId),
 }));
 
+// ---------- encrypted prompts ----------
+// Per-user data-encryption-key, wrapped with the server master key.
+// Wrapped form = iv(12B base64) | "." | tag(16B base64) | "." | ciphertext(base64).
+export const userPromptKey = pgTable("user_prompt_key", {
+  userId: text("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  keyEnc: text("key_enc").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// One row per individual user prompt. Encrypted with the owner's DEK (AES-256-GCM).
+// Only the owning user can ever decrypt via the API; managers see only aggregates.
+export const promptEvent = pgTable("prompt_event", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  source: text("source").notNull(),                 // "claude" | "codex"
+  externalSessionId: text("external_session_id").notNull(),
+  tsPrompt: timestamp("ts_prompt").notNull(),
+  wordCount: integer("word_count").notNull().default(0),
+  iv: text("iv").notNull(),
+  tag: text("tag").notNull(),
+  ciphertext: text("ciphertext").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t => ({
+  byUserSession: index("prompt_by_user_session").on(t.userId, t.externalSessionId, t.tsPrompt),
+  // Dedup the same prompt on re-ingest: (user,source,external,timestamp) is unique.
+  uniq: uniqueIndex("prompt_uniq").on(t.userId, t.source, t.externalSessionId, t.tsPrompt),
+}));
+
 // Ingest batch record for idempotency + audit
 export const uploadBatch = pgTable("upload_batch", {
   id: uuid("id").primaryKey().defaultRandom(),

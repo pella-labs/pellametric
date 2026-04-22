@@ -70,7 +70,7 @@ export default async function OrgPage({
     ]);
 
     const byUser = new Map<string, any>();
-    const userTimestamps = new Map<string, number[]>();       // user -> [ts,...] for active-hours calc
+    const userIntervals = new Map<string, [number, number][]>(); // user -> [[start,end],...] for active-hours calc
     for (const s of allOrgSessions) {
       const key = s.userId;
       const v = byUser.get(key) ?? {
@@ -100,20 +100,28 @@ export default async function OrgPage({
       v.errors += s.errors;
       if (!v.lastActive || s.endedAt > v.lastActive) v.lastActive = s.endedAt;
       byUser.set(key, v);
-      if (!userTimestamps.has(key)) userTimestamps.set(key, []);
-      userTimestamps.get(key)!.push(s.startedAt.getTime() / 1000, s.endedAt.getTime() / 1000);
+      if (!userIntervals.has(key)) userIntervals.set(key, []);
+      const st = s.startedAt.getTime() / 1000;
+      const en = Math.min(s.endedAt.getTime() / 1000, st + 2 * 3600); // cap each session at 2h
+      userIntervals.get(key)!.push([st, en]);
     }
 
-    // Active hours per user via merged-timeline idle-gap collapse
+    // Active hours per user — merge overlapping capped intervals (no double-count for parallel sessions).
     const userHours = new Map<string, number>();
-    for (const [uid, ts] of userTimestamps) {
-      ts.sort((a, b) => a - b);
-      let active = 0, prev = ts[0];
-      for (let i = 1; i < ts.length; i++) {
-        const gap = ts[i] - prev;
-        if (gap > 0 && gap < 600) active += gap;
-        prev = ts[i];
+    for (const [uid, intervals] of userIntervals) {
+      intervals.sort((a, b) => a[0] - b[0]);
+      let active = 0;
+      let [curStart, curEnd] = intervals[0];
+      for (let i = 1; i < intervals.length; i++) {
+        const [st, en] = intervals[i];
+        if (st <= curEnd) {
+          curEnd = Math.max(curEnd, en);
+        } else {
+          active += curEnd - curStart;
+          curStart = st; curEnd = en;
+        }
       }
+      active += curEnd - curStart;
       userHours.set(uid, Math.min(active / 3600, 24 * 30));
     }
 
@@ -129,7 +137,7 @@ export default async function OrgPage({
       if (ghToken && m.user.githubLogin) {
         try { pr = await prAggForMember(row.org.slug, m.user.githubLogin, ghToken, cutoff); } catch {}
       }
-      const cacheDenom = agg.tokensCacheRead + agg.tokensIn + agg.tokensCacheWrite;
+      const cacheDenom = agg.tokensCacheRead + agg.tokensIn;
       const cacheHitPct = cacheDenom > 0 ? +((100 * agg.tokensCacheRead) / cacheDenom).toFixed(1) : 0;
       const wastePct = agg.tokensOut > 0 ? +((100 * agg.wasteTokens) / agg.tokensOut).toFixed(1) : 0;
       return {
@@ -180,6 +188,20 @@ export default async function OrgPage({
       <OrgViewSwitcher
         isManager={isManager}
         myData={myData}
+        mySessions={(mySessions as any[]).map((s: any) => ({
+          id: s.id,
+          source: s.source as "claude" | "codex",
+          externalSessionId: s.externalSessionId,
+          repo: s.repo,
+          startedAt: s.startedAt.toISOString(),
+          intentTop: s.intentTop,
+          messages: s.messages,
+          tokensOut: Number(s.tokensOut),
+          filesEdited: Array.isArray(s.filesEdited) ? s.filesEdited : [],
+          errors: s.errors,
+          teacherMoments: s.teacherMoments ?? 0,
+          userTurns: s.userTurns,
+        }))}
         teamRows={teamRows}
         myName={session.user.name ?? "you"}
       />
