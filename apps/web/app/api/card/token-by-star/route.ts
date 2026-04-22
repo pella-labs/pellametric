@@ -2,50 +2,9 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-backend";
 import { hasStarred } from "@/lib/github-stars";
+import { mintCardToken } from "@/lib/card-token-mint";
 
 export const dynamic = "force-dynamic";
-
-const ADJECTIVES = [
-  "obsidian", "velvet", "liminal", "gossamer", "cerulean", "tungsten", "feral",
-  "luminous", "brackish", "vermilion", "halcyon", "ember", "tectonic", "ferrous",
-  "mercurial", "spectral", "crystalline", "sable", "ardent", "sylvan", "abyssal",
-  "gilded", "cobalt", "indigo", "glacial", "wrought", "tidal", "viridian", "russet",
-  "ochre", "cinnabar", "auric", "pewter", "briny", "vesper", "saturnine", "opaline",
-  "moonlit", "alloyed", "tempered", "nacreous", "argent", "pearlescent", "verdigris",
-  "patinated", "charred", "ashen", "silken", "flaxen", "basalt", "granite", "slate",
-  "marble", "onyx", "flint", "beryl", "topaz", "agate", "garnet", "lapis", "celadon",
-  "alabaster", "ebony", "mahogany", "heather", "smoldering", "flickering", "coiled",
-  "braided", "knotted", "humming", "fluted", "striated", "beveled", "hexagonal",
-  "hermetic", "runic", "arcane", "hewn", "chiseled", "sea-worn", "sun-bleached",
-  "storm-cut", "wind-carved", "littoral", "pelagic", "cryptic", "vestigial",
-  "ancestral", "primordial", "telluric", "plutonic", "chthonic", "vitreous",
-  "adamantine", "seraphic", "empyrean", "umbral", "penumbral", "iridescent",
-  "limpid", "ink-dark",
-];
-
-const NOUNS = [
-  "monolith", "cirrus", "reliquary", "cypress", "halyard", "meridian", "solstice",
-  "thorn", "reverie", "cinder", "fjord", "quasar", "nebula", "penumbra", "cipher",
-  "tessera", "obelisk", "cairn", "dolmen", "belvedere", "rotunda", "apse", "pylon",
-  "atrium", "cloister", "scriptorium", "cenotaph", "stupa", "pagoda", "minaret",
-  "ziggurat", "aqueduct", "cenote", "caldera", "fumarole", "geyser", "tarn",
-  "moraine", "mesa", "butte", "serac", "massif", "schist", "gneiss", "gabbro",
-  "rhyolite", "melange", "foreland", "antefix", "volute", "cartouche", "scarab",
-  "kithara", "krater", "amphora", "kylix", "hydria", "kantharos", "phiale", "rhyton",
-  "thurible", "ciborium", "crosier", "chalice", "myrrh", "frankincense", "copal",
-  "spikenard", "ambergris", "horizon", "meadow", "tundra", "taiga", "savanna",
-  "lagoon", "atoll", "estuary", "causeway", "gantry", "lantern", "sextant",
-  "astrolabe", "armillary", "gnomon", "codex", "palimpsest", "colophon", "paragon",
-  "parallax", "aurora", "vesper",
-];
-
-function mintStarToken(): string {
-  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-  const num = Math.floor(Math.random() * 900) + 100;
-  // `bm_` prefix required by the collector's token guard — do not change.
-  return `bm_${adj}-${noun}-${num}`;
-}
 
 /**
  * POST /api/card/token-by-star — star-gated token issuance. If the supplied
@@ -73,7 +32,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const token = mintStarToken();
+    const token = mintCardToken();
     const tokenHash = hashCardToken(token);
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 

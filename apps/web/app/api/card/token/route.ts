@@ -1,31 +1,12 @@
-import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db, schema, sql } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
 import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-backend";
+import { mintCardToken } from "@/lib/card-token-mint";
 
 export const dynamic = "force-dynamic";
-
-const adjectives = [
-  "swift", "cosmic", "neon", "lunar", "pixel", "turbo", "hyper", "cyber",
-  "nova", "quantum", "stellar", "arcane", "blazing", "shadow", "golden",
-  "iron", "chrome", "electric", "frozen", "silent",
-];
-const nouns = [
-  "falcon", "phoenix", "coder", "spark", "orbit", "pulse", "forge", "nexus",
-  "cipher", "vortex", "prism", "atlas", "titan", "raven", "storm", "byte",
-  "flux", "drift", "echo", "blade",
-];
-
-function mintPlainToken(): string {
-  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-  const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  const num = Math.floor(Math.random() * 900) + 100;
-  const hex = randomBytes(8).toString("hex");
-  return `bm_${adj}-${noun}-${num}-${hex}`;
-}
 
 /**
  * POST /api/card/token — mint a one-shot, 1h-TTL bearer token for the
@@ -72,7 +53,7 @@ export async function POST() {
       );
     }
 
-    const token = mintPlainToken();
+    const token = mintCardToken();
     const tokenHash = hashCardToken(token);
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 

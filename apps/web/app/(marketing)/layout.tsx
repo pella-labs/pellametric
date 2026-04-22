@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import "./marketing.css";
 
-const TWITTER_URL = "https://x.com/pella_labs";
+const TWITTER_URL = "https://x.com/pellametric";
 const GITHUB_URL = "https://github.com/pella-labs/pellametric";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
