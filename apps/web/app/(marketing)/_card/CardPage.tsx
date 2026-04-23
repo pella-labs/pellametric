@@ -640,12 +640,12 @@ export function CardPage({
   }, [handleNextPage, handlePrevPage]);
 
   const shareOnTwitter = () => {
-    // Hook → product namecheck → CTA. @pella_labs threads the tweet
+    // Hook → product namecheck → CTA. @pellametric threads the tweet
     // under the profile; the URL carries the sharer's card so viewers
     // see the stats in the card preview, then click through to mint
     // their own.
     const text = encodeURIComponent(
-      `Where did my tokens go? @pella_labs knows. Grab your card \u2192`,
+      `Where did my tokens go? @pellametric knows. Grab your card \u2192`,
     );
     const url = encodeURIComponent(window.location.href);
     window.open(
@@ -2015,7 +2015,7 @@ export function CardPage({
                 try {
                   await navigator.share({
                     title: `${userName}'s Pellametric Card`,
-                    text: "Where did my tokens go? @pella_labs knows. Grab your card →",
+                    text: "Where did my tokens go? @pellametric knows. Grab your card →",
                     url: window.location.href,
                   });
                 } catch {
