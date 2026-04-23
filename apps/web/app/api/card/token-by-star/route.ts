@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-backend";
 import { hasStarred } from "@/lib/github-stars";
 import { mintCardToken } from "@/lib/card-token-mint";
+import { apiError } from "@/lib/api/error";
 
 export const dynamic = "force-dynamic";
 
@@ -17,19 +18,16 @@ export async function POST(req: Request) {
     const username = body?.username?.trim();
 
     if (!username || !/^[a-zA-Z0-9][a-zA-Z0-9-]{0,38}$/.test(username)) {
-      return NextResponse.json({ error: "invalid username" }, { status: 400 });
+      return apiError("invalid username");
     }
 
     const check = await hasStarred(username);
-    if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status });
-    if (!check.starred) return NextResponse.json({ error: "not_starred" }, { status: 400 });
+    if (!check.ok) return apiError(check.error, undefined, check.status);
+    if (!check.starred) return apiError("not_starred");
 
     const slug = toCardSlug(username);
     if (isReservedCardSlug(slug)) {
-      return NextResponse.json(
-        { error: `GitHub username '${username}' collides with a reserved path.` },
-        { status: 400 },
-      );
+      return apiError(`GitHub username '${username}' collides with a reserved path.`);
     }
 
     const token = mintCardToken();
@@ -41,9 +39,6 @@ export async function POST(req: Request) {
       VALUES (${tokenHash}, 'github_star', ${slug}, ${username}, ${expiresAt}::timestamptz)`;
     return NextResponse.json({ token });
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Internal error" },
-      { status: 500 },
-    );
+    return apiError(e instanceof Error ? e.message : "Internal error", undefined, 500);
   }
 }

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
 import { REPO } from "@/lib/github-stars";
+import { apiError } from "@/lib/api/error";
+import { withAuth } from "@/lib/api/with-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,18 +12,15 @@ export const dynamic = "force-dynamic";
  * signed-in user using their stored GitHub access_token. Requires the
  * `public_repo` (or `repo`) OAuth scope.
  */
-export async function POST() {
+export const POST = withAuth(async (_req, { userId }) => {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-
     const [acc] = await db
       .select()
       .from(schema.account)
-      .where(and(eq(schema.account.userId, session.user.id), eq(schema.account.providerId, "github")))
+      .where(and(eq(schema.account.userId, userId), eq(schema.account.providerId, "github")))
       .limit(1);
     const accessToken = acc?.accessToken;
-    if (!accessToken) return NextResponse.json({ error: "GitHub token unavailable" }, { status: 400 });
+    if (!accessToken) return apiError("GitHub token unavailable");
 
     const ghRes = await fetch(`https://api.github.com/user/starred/${REPO.owner}/${REPO.name}`, {
       method: "PUT",
@@ -42,9 +39,6 @@ export async function POST() {
       { status: ghRes.status === 404 ? 403 : 502 },
     );
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Internal error" },
-      { status: 500 },
-    );
+    return apiError(e instanceof Error ? e.message : "Internal error", undefined, 500);
   }
-}
+});

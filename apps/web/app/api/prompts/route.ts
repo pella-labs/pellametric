@@ -3,12 +3,12 @@
 // responses interleaved by timestamp). Only the owning user can fetch —
 // managers and anyone else get 401 even for sessions in their org.
 
-import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { and, asc, eq } from "drizzle-orm";
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { decryptPrompt, getOrCreateUserDek } from "@/lib/crypto/prompts";
+import { apiError } from "@/lib/api/error";
+import { withAuth } from "@/lib/api/with-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,27 +16,24 @@ type Turn =
   | { kind: "prompt"; id: string; ts: string; wordCount: number; text: string }
   | { kind: "response"; id: string; ts: string; wordCount: number; text: string };
 
-export async function GET(req: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
+export const GET = withAuth(async (req, { userId }) => {
   const url = new URL(req.url);
   const source = url.searchParams.get("source");
   const sid = url.searchParams.get("externalSessionId");
-  if (!source || !sid) return NextResponse.json({ error: "missing source or externalSessionId" }, { status: 400 });
-  if (source !== "claude" && source !== "codex") return NextResponse.json({ error: "bad source" }, { status: 400 });
+  if (!source || !sid) return apiError("missing source or externalSessionId");
+  if (source !== "claude" && source !== "codex") return apiError("bad source");
 
   const [promptRows, responseRows] = await Promise.all([
     db.select().from(schema.promptEvent)
       .where(and(
-        eq(schema.promptEvent.userId, session.user.id),
+        eq(schema.promptEvent.userId, userId),
         eq(schema.promptEvent.source, source),
         eq(schema.promptEvent.externalSessionId, sid),
       ))
       .orderBy(asc(schema.promptEvent.tsPrompt)),
     db.select().from(schema.responseEvent)
       .where(and(
-        eq(schema.responseEvent.userId, session.user.id),
+        eq(schema.responseEvent.userId, userId),
         eq(schema.responseEvent.source, source),
         eq(schema.responseEvent.externalSessionId, sid),
       ))
@@ -47,7 +44,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ turns: [], prompts: [], responses: [] });
   }
 
-  const dek = await getOrCreateUserDek(session.user.id);
+  const dek = await getOrCreateUserDek(userId);
   const decrypt = (r: { iv: string; tag: string; ciphertext: string }) => {
     try { return decryptPrompt(dek, r); } catch { return "(decryption failed)"; }
   };
@@ -74,4 +71,4 @@ export async function GET(req: Request) {
     prompts: turns.filter(t => t.kind === "prompt").map(t => ({ id: t.id, tsPrompt: t.ts, wordCount: t.wordCount, text: t.text })),
     responses: turns.filter(t => t.kind === "response").map(t => ({ id: t.id, tsResponse: t.ts, wordCount: t.wordCount, text: t.text })),
   });
-}
+});
