@@ -12,8 +12,7 @@ apps/collector/bin/
 .codex/
 
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 
 .DS_Store
