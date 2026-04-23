@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { hashCardToken } from "@/lib/card-backend";
+import { hashCardToken } from "@/lib/card-tokens";
 import { sql } from "@/lib/db";
 import { fetchGithubName } from "@/lib/github-profile";
+import { apiError } from "@/lib/api/error";
 
 export const dynamic = "force-dynamic";
 
@@ -168,11 +169,11 @@ const statsSchema = z
 export async function POST(req: Request) {
   const header = req.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
+    return apiError("Missing or invalid Authorization header", undefined, 401);
   }
   // Trim trailing \r/\n from clipboard paste on Windows / PowerShell stdin.
   const token = header.split("Bearer ")[1]?.trim();
-  if (!token) return NextResponse.json({ error: "Missing or invalid Authorization header" }, { status: 401 });
+  if (!token) return apiError("Missing or invalid Authorization header", undefined, 401);
   const tokenHash = hashCardToken(token);
 
   const body = await req.json().catch(() => null);
@@ -185,7 +186,7 @@ export async function POST(req: Request) {
   }
   const serialized = JSON.stringify(parse.data);
   if (serialized.length > 500 * 1024) {
-    return NextResponse.json({ error: "Stats payload too large (max 500KB)" }, { status: 400 });
+    return apiError("Stats payload too large (max 500KB)");
   }
 
   // Atomic single-use claim. 0-row return = unknown / used / expired; we
@@ -198,7 +199,7 @@ export async function POST(req: Request) {
        AND expires_at > now()
     RETURNING subject_id, subject_kind, github_username`;
   const row = claimed[0];
-  if (!row) return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+  if (!row) return apiError("Invalid or expired token", undefined, 401);
 
   const cardId = row.subject_id;
   const login = row.github_username ?? row.subject_id;

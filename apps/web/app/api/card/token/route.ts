@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
 import { db, schema, sql } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
-import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-backend";
+import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-tokens";
 import { mintCardToken } from "@/lib/card-token-mint";
+import { apiError } from "@/lib/api/error";
+import { withAuth } from "@/lib/api/with-auth";
+import { githubHeaders } from "@/lib/github-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -12,25 +13,23 @@ export const dynamic = "force-dynamic";
  * POST /api/card/token — mint a one-shot, 1h-TTL bearer token for the
  * signed-in user. The collector/CLI trades it at `/api/card/submit`.
  */
-export async function POST() {
+export const POST = withAuth(async (_req, { userId }) => {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-
     // Prefer stashed user.githubLogin; fall back to account.accountId
     // (numeric GitHub user id) → /user/{id} → login.
-    let githubUsername = (session.user.githubLogin as string | null | undefined) ?? null;
+    const [userRow] = await db.select().from(schema.user).where(eq(schema.user.id, userId)).limit(1);
+    let githubUsername = (userRow?.githubLogin as string | null | undefined) ?? null;
     if (!githubUsername) {
       const [acc] = await db
         .select()
         .from(schema.account)
-        .where(and(eq(schema.account.userId, session.user.id), eq(schema.account.providerId, "github")))
+        .where(and(eq(schema.account.userId, userId), eq(schema.account.providerId, "github")))
         .limit(1);
       const accountId = acc?.accountId;
       if (accountId) {
         try {
           const r = await fetch(`https://api.github.com/user/${accountId}`, {
-            headers: { Accept: "application/vnd.github+json", "User-Agent": "pellametric-card-flow" },
+            headers: githubHeaders(),
           });
           if (r.ok) {
             const j = (await r.json()) as { login?: string };
@@ -40,17 +39,11 @@ export async function POST() {
       }
     }
     if (!githubUsername) {
-      return NextResponse.json(
-        { error: "Could not resolve your GitHub username. Try signing out and back in." },
-        { status: 400 },
-      );
+      return apiError("Could not resolve your GitHub username. Try signing out and back in.");
     }
     const slug = toCardSlug(githubUsername);
     if (isReservedCardSlug(slug)) {
-      return NextResponse.json(
-        { error: `GitHub username '${githubUsername}' collides with a reserved path.` },
-        { status: 400 },
-      );
+      return apiError(`GitHub username '${githubUsername}' collides with a reserved path.`);
     }
 
     const token = mintCardToken();
@@ -62,10 +55,6 @@ export async function POST() {
       VALUES (${tokenHash}, 'better_auth_user', ${slug}, ${githubUsername}, ${expiresAt}::timestamptz)`;
     return NextResponse.json({ token });
   } catch (e) {
-    console.error("[/api/card/token] failed:", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Internal error" },
-      { status: 500 },
-    );
+    return apiError(e instanceof Error ? e.message : "Internal error", undefined, 500);
   }
-}
+});

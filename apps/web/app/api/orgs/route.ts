@@ -1,12 +1,12 @@
 // GET  /api/orgs           -> list GitHub orgs the user belongs to (from their access token)
 // POST /api/orgs           -> claim an org (becomes manager); body: { githubOrgId, slug, name }
 
-import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { apiError } from "@/lib/api/error";
+import { withAuth } from "@/lib/api/with-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -19,19 +19,16 @@ async function getGithubAccessToken(userId: string): Promise<string | null> {
   return acc?.accessToken ?? null;
 }
 
-export async function GET() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
-  const token = await getGithubAccessToken(session.user.id);
-  if (!token) return NextResponse.json({ error: "no github token" }, { status: 400 });
+export const GET = withAuth(async (_req, { userId }) => {
+  const token = await getGithubAccessToken(userId);
+  if (!token) return apiError("no github token");
 
   // /user/memberships/orgs covers private memberships where /user/orgs may miss rows.
   const r = await fetch("https://api.github.com/user/memberships/orgs?state=active&per_page=100", {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
     cache: "no-store",
   });
-  if (!r.ok) return NextResponse.json({ error: "github api error", detail: await r.text() }, { status: 502 });
+  if (!r.ok) return apiError("github api error", await r.text(), 502);
   const memberships = await r.json();
   const orgs = (memberships as any[]).map(m => ({ ...m.organization, role: m.role }));
 
@@ -40,7 +37,7 @@ export async function GET() {
     .select({ org: schema.org })
     .from(schema.membership)
     .innerJoin(schema.org, eq(schema.membership.orgId, schema.org.id))
-    .where(eq(schema.membership.userId, session.user.id));
+    .where(eq(schema.membership.userId, userId));
   const mySlugs = new Set(mine.map(m => m.org.slug.toLowerCase()));
 
   return NextResponse.json({
@@ -52,7 +49,7 @@ export async function GET() {
       connected: mySlugs.has((o.login as string).toLowerCase()),
     })),
   });
-}
+});
 
 const claimSchema = z.object({
   githubOrgId: z.string(),
@@ -60,10 +57,7 @@ const claimSchema = z.object({
   name: z.string().min(1),
 });
 
-export async function POST(req: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
+export const POST = withAuth(async (req, { userId }) => {
   const body = claimSchema.parse(await req.json());
 
   // Upsert org, add caller as manager
@@ -78,10 +72,10 @@ export async function POST(req: Request) {
   }
 
   await db.insert(schema.membership).values({
-    userId: session.user.id,
+    userId,
     orgId: orgRow.id,
     role: "manager",
   }).onConflictDoNothing();
 
   return NextResponse.json({ org: orgRow });
-}
+});

@@ -2,11 +2,11 @@
 // Dev claims pending invitations matching their GitHub login AFTER confirming
 // they're an actual member of the target GitHub org.
 
-import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api/error";
+import { withAuth } from "@/lib/api/with-auth";
 
 async function isGithubOrgMember(org: string, login: string, token: string): Promise<boolean> {
   // 204 = member, 302 = requires auth, 404 = not a member
@@ -18,17 +18,14 @@ async function isGithubOrgMember(org: string, login: string, token: string): Pro
   return r.status === 204;
 }
 
-export async function POST() {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
-  const [u] = await db.select().from(schema.user).where(eq(schema.user.id, session.user.id)).limit(1);
-  if (!u?.githubLogin) return NextResponse.json({ error: "no github login on account" }, { status: 400 });
+export const POST = withAuth(async (_req, { userId }) => {
+  const [u] = await db.select().from(schema.user).where(eq(schema.user.id, userId)).limit(1);
+  if (!u?.githubLogin) return apiError("no github login on account");
 
   const [acc] = await db.select().from(schema.account)
-    .where(and(eq(schema.account.userId, session.user.id), eq(schema.account.providerId, "github")))
+    .where(and(eq(schema.account.userId, userId), eq(schema.account.providerId, "github")))
     .limit(1);
-  if (!acc?.accessToken) return NextResponse.json({ error: "no github token" }, { status: 400 });
+  if (!acc?.accessToken) return apiError("no github token");
 
   const login = u.githubLogin.toLowerCase();
   const pending = await db
@@ -46,7 +43,7 @@ export async function POST() {
       continue;
     }
     await db.insert(schema.membership).values({
-      userId: session.user.id, orgId: row.inv.orgId, role: "dev",
+      userId, orgId: row.inv.orgId, role: "dev",
     }).onConflictDoNothing();
     await db.update(schema.invitation)
       .set({ status: "accepted", acceptedAt: new Date() })
@@ -54,4 +51,4 @@ export async function POST() {
     accepted.push({ org: row.org.slug });
   }
   return NextResponse.json({ accepted, rejected });
-}
+});

@@ -2,6 +2,7 @@
   "name": "@pella/collector",
   "version": "0.0.7",
   "private": true,
+  "license": "MIT",
   "bin": {
     "pella": "./bin/pella"
   },

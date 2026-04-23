@@ -6,6 +6,8 @@
  * quota (60/hr/IP) unless GITHUB_TOKEN is set.
  */
 
+import { githubHeaders } from "@/lib/github-fetch";
+
 const REPO_OWNER = "pella-labs";
 const REPO_NAME = "pellametric";
 const PER_PAGE = 100;
@@ -15,11 +17,10 @@ type Result = { ok: true; starred: boolean } | { ok: false; error: string; statu
 
 export async function hasStarred(username: string): Promise<Result> {
   const needle = username.toLowerCase();
-  const headers: Record<string, string> = {
-    Accept: "application/vnd.github+json",
+  const headers: HeadersInit = {
+    ...githubHeaders(process.env.GITHUB_TOKEN),
     "X-GitHub-Api-Version": "2022-11-28",
   };
-  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
 
   for (let page = 1; page <= MAX_PAGES; page++) {
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/stargazers?per_page=${PER_PAGE}&page=${page}`;
