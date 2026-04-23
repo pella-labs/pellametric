@@ -14,8 +14,6 @@ function finalizeSessions(sessions, resolveRepoFn, only) {
       continue;
     if (!s.start || !s.end || !s.cwd)
       continue;
-    if (s.userTurns === 0)
-      continue;
     const info = resolveRepoFn(s.cwd);
     if (!info)
       continue;

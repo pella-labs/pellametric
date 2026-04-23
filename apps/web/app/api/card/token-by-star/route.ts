@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-backend";
+import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-tokens";
 import { hasStarred } from "@/lib/github-stars";
 import { mintCardToken } from "@/lib/card-token-mint";
 import { apiError } from "@/lib/api/error";

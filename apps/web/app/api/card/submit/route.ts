@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { hashCardToken } from "@/lib/card-backend";
+import { hashCardToken } from "@/lib/card-tokens";
 import { sql } from "@/lib/db";
 import { fetchGithubName } from "@/lib/github-profile";
 import { apiError } from "@/lib/api/error";

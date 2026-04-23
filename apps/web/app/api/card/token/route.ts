@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, schema, sql } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
-import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-backend";
+import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-tokens";
 import { mintCardToken } from "@/lib/card-token-mint";
 import { apiError } from "@/lib/api/error";
 import { withAuth } from "@/lib/api/with-auth";
