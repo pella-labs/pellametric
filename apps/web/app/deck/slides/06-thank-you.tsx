@@ -62,7 +62,7 @@ const TEAM: TeamMember[] = [
     linkedin: "https://www.linkedin.com/in/pathaksandesh/",
     linkedinLabel: "in/pathaksandesh",
     x: "https://x.com/pathak_san99836",
-    xHandle: "pathak_san99836",
+    xHandle: "sandes_pathak",
   },
 ];
 
