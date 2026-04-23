@@ -101,7 +101,7 @@ export function Slide06ThankYou(_props: { totalPages: number }) {
             alt="Pellametric"
           />
         </div>
-        <div className="chrome-right">06 / THANK YOU</div>
+        <div className="chrome-right">05 / THANK YOU</div>
       </div>
 
       <div

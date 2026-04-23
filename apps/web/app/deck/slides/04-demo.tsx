@@ -2,7 +2,7 @@ import { SlideShell } from "../components/slide-shell";
 
 export function Slide04Demo({ totalPages }: { totalPages: number }) {
   return (
-    <SlideShell sectionLabel="04 / DEMO" pageNumber={4} totalPages={totalPages}>
+    <SlideShell sectionLabel="03 / DEMO" pageNumber={3} totalPages={totalPages}>
       <h2 className="title" style={{ fontSize: 72 }}>
         A single view — outcomes and <em>efficiency</em>.
       </h2>
@@ -19,7 +19,10 @@ export function Slide04Demo({ totalPages }: { totalPages: number }) {
             ["/ Teams", false],
             ["/ Me", false],
           ].map(([label, active]) => (
-            <div key={String(label)} className={`dashmock-side-item${active ? " active" : ""}`}>
+            <div
+              key={String(label)}
+              className={`dashmock-side-item${active ? " active" : ""}`}
+            >
               {label}
             </div>
           ))}
@@ -45,9 +48,11 @@ export function Slide04Demo({ totalPages }: { totalPages: number }) {
             <Kpi label="$ / merged PR" value="$26.15" delta="−8.3% MoM" warm />
           </div>
           <div className="dashmock-chart">
-            {[34, 48, 42, 62, 54, 70, 58, 76, 68, 82, 74, 88, 80, 94].map((h, i) => (
-              <div key={i} className="b" style={{ height: `${h}%` }} />
-            ))}
+            {[34, 48, 42, 62, 54, 70, 58, 76, 68, 82, 74, 88, 80, 94].map(
+              (h, i) => (
+                <div key={i} className="b" style={{ height: `${h}%` }} />
+              ),
+            )}
           </div>
         </div>
       </div>
@@ -70,7 +75,10 @@ function Kpi({
     <div className="dashmock-kpi">
       <div className="dashmock-kpi-label">{label}</div>
       <div className="dashmock-kpi-value">{value}</div>
-      <div className="dashmock-kpi-delta" style={warm ? { color: "var(--warm)" } : undefined}>
+      <div
+        className="dashmock-kpi-delta"
+        style={warm ? { color: "var(--warm)" } : undefined}
+      >
         {delta}
       </div>
     </div>

@@ -37,7 +37,7 @@ export function Slide05ClosingCta(_props: { totalPages: number }) {
             alt="Pellametric"
           />
         </div>
-        <div className="chrome-right">05 / VERDICT</div>
+        <div className="chrome-right">04 / VERDICT</div>
       </div>
 
       <div
