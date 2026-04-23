@@ -758,10 +758,15 @@
   object-fit: contain;
 }
 
+.pellametric-marketing footer.mk-footer .mk-footer-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
 .pellametric-marketing footer.mk-footer a {
   color: var(--mk-ink-muted);
   text-decoration: none;
-  margin-left: 18px;
   cursor: pointer;
 }
 
@@ -1867,9 +1872,9 @@
     justify-content: center;
     flex-wrap: wrap;
   }
-  .pellametric-marketing footer.mk-footer a {
-    margin-left: 10px;
-    margin-right: 10px;
+  .pellametric-marketing footer.mk-footer .mk-footer-links {
+    justify-content: center;
+    gap: 16px;
   }
 }
 

@@ -58,7 +58,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
               The instrument for agentic engineering output.
             </span>
           </div>
-          <div>
+          <div className="mk-footer-links">
             <a href={TWITTER_URL} rel="noreferrer" target="_blank">
               Follow on X
             </a>
