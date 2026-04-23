@@ -5,6 +5,7 @@ import { hashCardToken, isReservedCardSlug, toCardSlug } from "@/lib/card-backen
 import { mintCardToken } from "@/lib/card-token-mint";
 import { apiError } from "@/lib/api/error";
 import { withAuth } from "@/lib/api/with-auth";
+import { githubHeaders } from "@/lib/github-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export const POST = withAuth(async (_req, { userId }) => {
       if (accountId) {
         try {
           const r = await fetch(`https://api.github.com/user/${accountId}`, {
-            headers: { Accept: "application/vnd.github+json", "User-Agent": "pellametric-card-flow" },
+            headers: githubHeaders(),
           });
           if (r.ok) {
             const j = (await r.json()) as { login?: string };
