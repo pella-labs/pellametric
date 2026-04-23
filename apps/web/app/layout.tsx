@@ -11,8 +11,16 @@ import {
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pellametric.com";
 
-const fontSans = Geist({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
+const fontSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const fontMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 const fontHeading = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -53,6 +61,9 @@ export const metadata: Metadata = {
   description:
     "Measure agentic engineering. Meter the spend. Map the work. Scale what ships.",
   applicationName: "Pellametric",
+  // Matches globals.css --background; mobile browser chrome paints dark
+  // immediately on first paint instead of flashing white.
+  themeColor: "#0a0b0d",
   openGraph: {
     type: "website",
     siteName: "Pellametric",
@@ -71,14 +82,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"
       className={`dark antialiased ${fontSans.variable} ${fontMono.variable} ${fontHeading.variable} ${mkSans.variable} ${mkMono.variable} ${mkSys.variable} ${fontNumeric.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen bg-background text-foreground">{children}</body>
+      <body className="min-h-screen bg-background text-foreground">
+        {children}
+      </body>
     </html>
   );
 }

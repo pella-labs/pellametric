@@ -3,6 +3,22 @@
 @tailwind utilities;
 
 /*
+ * Paint html/body with the dark palette literal — before Tailwind has
+ * parsed, before the body class takes effect. Without this the browser
+ * default (white) flashes for one frame on first paint. color-scheme
+ * also makes native chrome (scrollbars, form controls) render dark so
+ * there's no white scrollbar track on initial load.
+ */
+html {
+  background-color: #0a0b0d;
+  color-scheme: dark;
+}
+body {
+  background-color: #0a0b0d;
+  color: #ede8de;
+}
+
+/*
  * pellametric — bematist-inspired dark palette.
  * Warm paper-white ink on near-black, sage accent, warm amber for secondary.
  * Hex values exposed as plain #rgba so Tailwind opacity modifiers keep working.
@@ -70,7 +86,15 @@
     border-color: var(--border);
   }
   html {
-    font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif);
+    font-family: var(
+      --font-sans,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Inter",
+      "Segoe UI",
+      Roboto,
+      sans-serif
+    );
   }
   body {
     background-color: var(--background);
@@ -138,7 +162,15 @@
       linear-gradient(var(--border) 1px, transparent 1px),
       linear-gradient(90deg, var(--border) 1px, transparent 1px);
     background-size: 48px 48px;
-    mask-image: radial-gradient(ellipse 60% 50% at 30% 30%, black 0%, transparent 75%);
-    -webkit-mask-image: radial-gradient(ellipse 60% 50% at 30% 30%, black 0%, transparent 75%);
+    mask-image: radial-gradient(
+      ellipse 60% 50% at 30% 30%,
+      black 0%,
+      transparent 75%
+    );
+    -webkit-mask-image: radial-gradient(
+      ellipse 60% 50% at 30% 30%,
+      black 0%,
+      transparent 75%
+    );
   }
 }
