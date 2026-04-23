@@ -7,7 +7,6 @@
     "dev": "next dev --webpack -p ${PORT:-3000}",
     "build": "next build --webpack",
     "start": "next start -p ${PORT:-3000}",
-    "lint": "next lint",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
