@@ -490,7 +490,7 @@
 
 .pellametric-marketing .mk-ring {
   position: absolute;
-  inset: 8%;
+  inset: 0;
   z-index: 1;
   pointer-events: none;
   transform-origin: 50% 50%;
@@ -501,7 +501,6 @@
   animation-direction: reverse;
   animation-duration: 180s;
   opacity: 0.35;
-  inset: 0;
 }
 
 @keyframes mk-ring-spin {
@@ -2070,4 +2069,109 @@
   .pellametric-marketing .mk-sheet-panel {
     animation: none;
   }
+}
+
+.pellametric-marketing .mk-carousel {
+  position: relative;
+}
+
+.pellametric-marketing .mk-carousel-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: var(--mk-bg);
+  overflow: hidden;
+}
+
+.pellametric-marketing .mk-carousel-slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: top;
+  opacity: 0;
+  transition: opacity 350ms ease;
+  pointer-events: none;
+}
+
+.pellametric-marketing .mk-carousel-slide.is-active {
+  opacity: 1;
+}
+
+.pellametric-marketing .mk-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--mk-border);
+  background: rgba(13, 15, 18, 0.7);
+  color: var(--mk-ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.pellametric-marketing .mk-carousel-arrow:hover {
+  background: rgba(13, 15, 18, 0.95);
+  border-color: var(--mk-ink-muted);
+}
+
+.pellametric-marketing .mk-carousel-arrow-prev {
+  left: 12px;
+}
+
+.pellametric-marketing .mk-carousel-arrow-next {
+  right: 12px;
+}
+
+.pellametric-marketing .mk-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 0 18px;
+  border-top: 1px solid var(--mk-border);
+  background: #0d0f12;
+}
+
+.pellametric-marketing .mk-carousel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(237, 232, 222, 0.18);
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+  padding: 0;
+}
+
+.pellametric-marketing .mk-carousel-dot.is-active {
+  background: var(--mk-accent);
+  transform: scale(1.2);
+}
+
+.pellametric-marketing .mk-video {
+  padding: var(--mk-grid-size);
+  border-bottom: 1px solid var(--mk-border);
+  background: var(--mk-bg);
+}
+
+.pellametric-marketing .mk-video video {
+  display: block;
+  width: 70%;
+  max-width: 70%;
+  margin: 0 auto;
+  max-height: 49vh;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--mk-bg-terminal);
+  border: 1px solid var(--mk-border);
+  border-radius: 4px;
 }

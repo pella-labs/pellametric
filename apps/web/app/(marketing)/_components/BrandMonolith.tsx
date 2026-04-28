@@ -14,6 +14,7 @@ export function BrandMonolith() {
           fontSize={24}
           fill="rgba(110,138,111,0.85)"
           letterSpacing={8}
+          pathRadius={320}
         />
         <Ring
           className="mk-ring mk-ring-outer"
@@ -21,6 +22,7 @@ export function BrandMonolith() {
           fontSize={14}
           fill="rgba(176,123,62,0.7)"
           letterSpacing={5}
+          pathRadius={440}
         />
         <div className="mk-monogram-frame">
           <PMonogram />
@@ -36,27 +38,29 @@ function Ring({
   fill,
   letterSpacing,
   className,
+  pathRadius,
 }: {
   text: string;
   fontSize: number;
   fill: string;
   letterSpacing: number;
   className: string;
+  pathRadius: number;
 }) {
-  const pathId = `mk-ring-${fontSize}`;
+  // Stable id per radius so inner + outer rings reference distinct paths.
+  const pathId = `mk-ring-${pathRadius}`;
+  const r = pathRadius;
+  const d = `M 500,500 m -${r},0 a ${r},${r} 0 1,1 ${r * 2},0 a ${r},${r} 0 1,1 -${r * 2},0`;
   return (
     <svg
       className={className}
       viewBox="0 0 1000 1000"
+      preserveAspectRatio="xMidYMid meet"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
       <defs>
-        <path
-          id={pathId}
-          d="M 500, 500 m -420, 0 a 420,420 0 1,1 840,0 a 420,420 0 1,1 -840,0"
-          fill="none"
-        />
+        <path id={pathId} d={d} fill="none" />
       </defs>
       <text
         fontFamily="'Space Mono', monospace"

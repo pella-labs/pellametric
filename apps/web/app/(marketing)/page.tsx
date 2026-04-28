@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CardMount } from "./_card/CardMount";
 import { DEMO_CARD } from "./_card/demo-data";
 import { BrandMonolith } from "./_components/BrandMonolith";
-import { DashboardShot } from "./_components/DashboardShot";
+import { DashboardCarousel } from "./_components/DashboardCarousel";
 import { HeroGrid } from "./_components/HeroGrid";
 
 const HOME_TITLE = "Pellametric · Measure agentic engineering";
@@ -148,7 +148,17 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      <DashboardShot />
+      <section className="mk-video" aria-label="Product demo">
+        <video
+          src="/pellametric-demo.mp4"
+          loop
+          playsInline
+          controls
+          preload="metadata"
+        />
+      </section>
+
+      <DashboardCarousel />
       <BrandMonolith />
 
       <section aria-label="What it does">
