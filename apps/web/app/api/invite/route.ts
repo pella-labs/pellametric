@@ -35,6 +35,7 @@ export async function GET(req: Request) {
 const inviteSchema = z.object({
   orgSlug: z.string(),
   githubLogin: z.string().min(1),
+  role: z.enum(["manager", "dev"]).default("dev"),
 });
 
 export async function POST(req: Request) {
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
     orgId: org.id,
     githubLogin: login,
     invitedByUserId: session.user.id,
+    role: body.role,
   }).onConflictDoNothing().returning();
 
   return NextResponse.json({ invitation: inv ?? null });

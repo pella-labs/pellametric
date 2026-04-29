@@ -178,9 +178,14 @@ export default async function OrgPage({
         <div className="flex items-start gap-3">
           <WindowPicker current={windowKey} />
           {isManager && (
-            <Link href={`/org/${row.org.slug}/invite`} className="mk-label bg-accent text-accent-foreground px-3 py-2 hover:opacity-90 transition">
-              Invite →
-            </Link>
+            <>
+              <Link href={`/org/${row.org.slug}/members`} className="mk-label border border-border px-3 py-2 hover:border-accent transition">
+                Members →
+              </Link>
+              <Link href={`/org/${row.org.slug}/invite`} className="mk-label bg-accent text-accent-foreground px-3 py-2 hover:opacity-90 transition">
+                Invite →
+              </Link>
+            </>
           )}
         </div>
       </header>

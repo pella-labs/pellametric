@@ -66,16 +66,26 @@ export async function POST(req: Request) {
 
   const body = claimSchema.parse(await req.json());
 
-  // Upsert org, add caller as manager
+  // First-claim-wins: only create a manager membership if the org has never been
+  // connected here before. If it already exists, the caller must be invited by
+  // an existing manager — no self-promotion via /setup/org.
   const [existing] = await db
     .select().from(schema.org).where(eq(schema.org.githubOrgId, body.githubOrgId)).limit(1);
 
-  let orgRow = existing;
-  if (!orgRow) {
-    [orgRow] = await db.insert(schema.org).values({
-      githubOrgId: body.githubOrgId, slug: body.slug, name: body.name,
-    }).returning();
+  if (existing) {
+    const [mine] = await db.select().from(schema.membership)
+      .where(and(eq(schema.membership.userId, session.user.id), eq(schema.membership.orgId, existing.id)))
+      .limit(1);
+    if (mine) return NextResponse.json({ org: existing });
+    return NextResponse.json(
+      { error: "This org is already connected. Ask a manager for an invite." },
+      { status: 403 },
+    );
   }
+
+  const [orgRow] = await db.insert(schema.org).values({
+    githubOrgId: body.githubOrgId, slug: body.slug, name: body.name,
+  }).returning();
 
   await db.insert(schema.membership).values({
     userId: session.user.id,

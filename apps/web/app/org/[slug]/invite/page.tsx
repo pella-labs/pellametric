@@ -7,6 +7,7 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
   const { slug } = use(params);
   const [invites, setInvites] = useState<any[]>([]);
   const [login, setLogin] = useState("");
+  const [role, setRole] = useState<"manager" | "dev">("dev");
   const [msg, setMsg] = useState("");
 
   async function load() {
@@ -23,7 +24,7 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
     const r = await fetch("/api/invite", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ orgSlug: slug, githubLogin: login.trim() }),
+      body: JSON.stringify({ orgSlug: slug, githubLogin: login.trim(), role }),
     });
     const j = await r.json();
     if (r.ok) { setMsg("Invited"); setLogin(""); load(); }
@@ -47,6 +48,14 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
           placeholder="github login (e.g. alice)"
           className="flex-1 h-10 px-3 rounded-md bg-card border border-border text-sm leading-none focus:outline-none focus:border-accent transition"
         />
+        <select
+          value={role}
+          onChange={e => setRole(e.target.value as "manager" | "dev")}
+          className="h-10 px-3 rounded-md bg-card border border-border text-sm leading-none focus:outline-none focus:border-accent transition"
+        >
+          <option value="dev">Dev</option>
+          <option value="manager">Manager</option>
+        </select>
         <button className="h-10 px-4 rounded-md bg-accent text-accent-foreground mk-label leading-none hover:opacity-90 transition">Invite</button>
       </form>
       {msg && <p className="text-xs text-muted-foreground mb-4">{msg}</p>}
@@ -56,7 +65,10 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
         {invites.length === 0 && <li className="text-muted-foreground text-xs">No invites yet.</li>}
         {invites.map(i => (
           <li key={i.id} className="flex justify-between bg-card border border-border rounded-md px-3 py-2">
-            <span>{i.githubLogin}</span>
+            <span className="flex items-center gap-2">
+              {i.githubLogin}
+              <span className="text-xs text-muted-foreground">· {i.role ?? "dev"}</span>
+            </span>
             <span className={"text-xs " + (i.status === "accepted" ? "text-positive" : "text-warning")}>{i.status}</span>
           </li>
         ))}

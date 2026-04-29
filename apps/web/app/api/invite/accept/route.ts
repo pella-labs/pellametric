@@ -46,7 +46,7 @@ export async function POST() {
       continue;
     }
     await db.insert(schema.membership).values({
-      userId: session.user.id, orgId: row.inv.orgId, role: "dev",
+      userId: session.user.id, orgId: row.inv.orgId, role: row.inv.role ?? "dev",
     }).onConflictDoNothing();
     await db.update(schema.invitation)
       .set({ status: "accepted", acceptedAt: new Date() })
