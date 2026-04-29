@@ -93,7 +93,7 @@ NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
 PELLA_TOKEN, PELLA_URL, PELLA_POLL_INTERVAL_MS, PELLA_SINCE, PELLA_SKIP_CURSOR
 ```
 
-GitHub OAuth scopes: `read:org`, `repo`, `read:user`, `user:email`.
+GitHub OAuth scopes: `write:org`, `repo`, `read:user`, `user:email`. `write:org` is needed by `app/api/invite/route.ts` to invite users to the GitHub org via `PUT /orgs/{org}/memberships/{login}`; it implies `read:org` so older code paths still work.
 
 ## Conventions worth knowing
 

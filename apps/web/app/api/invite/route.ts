@@ -53,20 +53,53 @@ export async function POST(req: Request) {
   if (!acc?.accessToken) return NextResponse.json({ error: "no github token" }, { status: 400 });
 
   const login = body.githubLogin.trim().toLowerCase();
-  // Try public member check first; returns 204 if they're a public member of the org.
+
+  // Public member check (204 = member). If they're already in, skip the GitHub invite.
   const pub = await fetch(`https://api.github.com/orgs/${org.slug}/members/${login}`, {
     headers: { Authorization: `Bearer ${acc.accessToken}`, Accept: "application/vnd.github+json" },
     redirect: "manual",
   });
-  // If not publicly visible, verify the login is a valid GitHub user (we'll re-verify on accept).
-  if (pub.status !== 204) {
+  const alreadyMember = pub.status === 204;
+
+  if (!alreadyMember) {
     const u = await fetch(`https://api.github.com/users/${login}`, {
       headers: { Authorization: `Bearer ${acc.accessToken}`, Accept: "application/vnd.github+json" },
     });
     if (!u.ok) {
       return NextResponse.json({ error: `${login} is not a valid GitHub user` }, { status: 400 });
     }
-    // Allow the invite; accept will still require real org membership verified via /user/orgs
+  }
+
+  // Try to invite them to the GitHub org so they don't have to be added manually first.
+  // Requires write:org scope and the caller to be a GitHub org admin/owner. We don't fail
+  // the pellametric invite when this fails — the manager can still hand-invite on GitHub
+  // and the receiver can accept here once they're in the org.
+  let github: { ok: true; status: "already_member" | "invited" | "active" } | { ok: false; error: string } | null = null;
+  if (alreadyMember) {
+    github = { ok: true, status: "already_member" };
+  } else {
+    const inviteRes = await fetch(`https://api.github.com/orgs/${org.slug}/memberships/${login}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${acc.accessToken}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ role: "member" }),
+    });
+    if (inviteRes.ok) {
+      const data = await inviteRes.json().catch(() => ({} as any));
+      // GitHub returns state="pending" until the user accepts, "active" if they're already a member
+      github = { ok: true, status: data?.state === "active" ? "active" : "invited" };
+    } else {
+      const data = await inviteRes.json().catch(() => ({} as any));
+      const scopes = inviteRes.headers.get("x-oauth-scopes") ?? "";
+      const hasWriteOrg = /\b(write|admin):org\b/.test(scopes);
+      let msg = data?.message ?? `GitHub invite failed (${inviteRes.status})`;
+      if (!hasWriteOrg) msg = "Sign out and back in to refresh GitHub permissions, then retry.";
+      else if (inviteRes.status === 403) msg = "You don't have permission to invite to this GitHub org. Ask an org admin/owner.";
+      github = { ok: false, error: msg };
+    }
   }
 
   const [inv] = await db.insert(schema.invitation).values({
@@ -76,5 +109,5 @@ export async function POST(req: Request) {
     role: body.role,
   }).onConflictDoNothing().returning();
 
-  return NextResponse.json({ invitation: inv ?? null });
+  return NextResponse.json({ invitation: inv ?? null, github });
 }

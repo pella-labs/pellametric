@@ -19,7 +19,7 @@ export const auth = betterAuth({
     github: {
       clientId: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-      scope: ["read:org", "repo", "read:user", "user:email"],
+      scope: ["write:org", "repo", "read:user", "user:email"],
       // Stash GitHub login + id on our user row
       mapProfileToUser: (profile: any) => ({
         githubLogin: profile.login,

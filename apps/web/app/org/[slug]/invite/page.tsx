@@ -27,8 +27,20 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
       body: JSON.stringify({ orgSlug: slug, githubLogin: login.trim(), role }),
     });
     const j = await r.json();
-    if (r.ok) { setMsg("Invited"); setLogin(""); load(); }
-    else setMsg(j.error ?? "failed");
+    if (!r.ok) { setMsg(j.error ?? "failed"); return; }
+    setLogin("");
+    if (j.github?.ok) {
+      const note =
+        j.github.status === "already_member" ? "already in the GitHub org" :
+        j.github.status === "active" ? "added to the GitHub org" :
+        "GitHub invite sent";
+      setMsg(`Invited · ${note}`);
+    } else if (j.github && !j.github.ok) {
+      setMsg(`Invited (pellametric only) · GitHub: ${j.github.error}`);
+    } else {
+      setMsg("Invited");
+    }
+    load();
   }
 
   return (
