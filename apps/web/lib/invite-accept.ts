@@ -1,5 +1,5 @@
 import { db, schema } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 async function userOrgSlugs(token: string): Promise<Set<string>> {
   const r = await fetch("https://api.github.com/user/orgs?per_page=100", {
@@ -27,12 +27,17 @@ export async function acceptPendingInvites(userId: string): Promise<{ accepted: 
     .limit(1);
   if (!acc?.accessToken) return out;
 
-  const login = u.githubLogin.toLowerCase();
+  // Match invitations case-insensitively — newer rows store the canonical
+  // GitHub case, but legacy rows are lowercased. user.githubLogin is canonical.
+  const login = u.githubLogin;
   const pending = await db
     .select({ inv: schema.invitation, org: schema.org })
     .from(schema.invitation)
     .innerJoin(schema.org, eq(schema.invitation.orgId, schema.org.id))
-    .where(and(eq(schema.invitation.githubLogin, login), eq(schema.invitation.status, "pending")));
+    .where(and(
+      sql`LOWER(${schema.invitation.githubLogin}) = LOWER(${login})`,
+      eq(schema.invitation.status, "pending"),
+    ));
 
   if (pending.length === 0) return out;
 

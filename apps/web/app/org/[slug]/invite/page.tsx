@@ -9,6 +9,7 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
   const [login, setLogin] = useState("");
   const [role, setRole] = useState<"manager" | "dev">("dev");
   const [msg, setMsg] = useState("");
+  const [installUrl, setInstallUrl] = useState<string | null>(null);
 
   async function load() {
     const r = await fetch(`/api/invite?orgSlug=${slug}`);
@@ -29,6 +30,7 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
     const j = await r.json();
     if (!r.ok) { setMsg(j.error ?? "failed"); return; }
     setLogin("");
+    setInstallUrl(j.github?.install_url ?? null);
     if (j.github?.ok) {
       const note =
         j.github.status === "already_member" ? "already in the GitHub org" :
@@ -70,7 +72,15 @@ export default function InvitePage({ params }: { params: Promise<{ slug: string 
         </select>
         <button className="h-10 px-4 rounded-md bg-accent text-accent-foreground mk-label leading-none hover:opacity-90 transition">Invite</button>
       </form>
-      {msg && <p className="text-xs text-muted-foreground mb-4">{msg}</p>}
+      {msg && <p className="text-xs text-muted-foreground mb-2">{msg}</p>}
+      {installUrl && (
+        <a
+          href={installUrl}
+          className="inline-block mb-4 text-xs h-8 px-3 leading-8 rounded-md bg-accent text-accent-foreground hover:opacity-90 transition"
+        >
+          Install Pellametric on GitHub →
+        </a>
+      )}
 
       <h2 className="mk-eyebrow mb-3">Pending + accepted</h2>
       <ul className="space-y-1 text-sm">

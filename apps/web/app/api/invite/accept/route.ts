@@ -4,7 +4,7 @@
 
 import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -30,12 +30,15 @@ export async function POST() {
     .limit(1);
   if (!acc?.accessToken) return NextResponse.json({ error: "no github token" }, { status: 400 });
 
-  const login = u.githubLogin.toLowerCase();
+  const login = u.githubLogin;
   const pending = await db
     .select({ inv: schema.invitation, org: schema.org })
     .from(schema.invitation)
     .innerJoin(schema.org, eq(schema.invitation.orgId, schema.org.id))
-    .where(and(eq(schema.invitation.githubLogin, login), eq(schema.invitation.status, "pending")));
+    .where(and(
+      sql`LOWER(${schema.invitation.githubLogin}) = LOWER(${login})`,
+      eq(schema.invitation.status, "pending"),
+    ));
 
   const accepted: any[] = [];
   const rejected: any[] = [];

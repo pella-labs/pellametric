@@ -7,6 +7,7 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { appFetch, appConfigured, installUrl } from "@/lib/github-app";
 
 async function requireManager(userId: string, orgSlug: string) {
   const [row] = await db
@@ -52,54 +53,68 @@ export async function POST(req: Request) {
     .limit(1);
   if (!acc?.accessToken) return NextResponse.json({ error: "no github token" }, { status: 400 });
 
-  const login = body.githubLogin.trim().toLowerCase();
+  const useApp = appConfigured() && org.githubAppInstallationId != null;
+  const installationId = org.githubAppInstallationId as number | null;
+  const typedInput = body.githubLogin.trim();
 
-  // Public member check (204 = member). If they're already in, skip the GitHub invite.
-  const pub = await fetch(`https://api.github.com/orgs/${org.slug}/members/${login}`, {
-    headers: { Authorization: `Bearer ${acc.accessToken}`, Accept: "application/vnd.github+json" },
-    redirect: "manual",
-  });
+  // First, look up the user on GitHub to (a) confirm they exist and (b) get the
+  // canonical login spelling. GitHub usernames are case-insensitive at lookup, so
+  // any typo that resolves to a different real account would silently invite the
+  // wrong person — using the canonical login from /users/{name} catches that and
+  // gives us a consistent value to store/display.
+  const userRes = useApp
+    ? await appFetch(installationId!, `/users/${typedInput}`)
+    : await fetch(`https://api.github.com/users/${typedInput}`, {
+        headers: { Authorization: `Bearer ${acc.accessToken}`, Accept: "application/vnd.github+json" },
+      });
+  if (!userRes.ok) {
+    return NextResponse.json({ error: `${typedInput} is not a valid GitHub user` }, { status: 400 });
+  }
+  const ghUser = await userRes.json() as { login: string; id: number; type?: string };
+  const login = ghUser.login;
+
+  // Public member check (204 = member). Prefer the App's installation token when
+  // available — it's not user-rate-limited and doesn't require admin:org scope on
+  // any single user. Fall back to the caller's user OAuth token.
+  const pub = useApp
+    ? await appFetch(installationId!, `/orgs/${org.slug}/members/${login}`, { redirect: "manual" })
+    : await fetch(`https://api.github.com/orgs/${org.slug}/members/${login}`, {
+        headers: { Authorization: `Bearer ${acc.accessToken}`, Accept: "application/vnd.github+json" },
+        redirect: "manual",
+      });
   const alreadyMember = pub.status === 204;
 
-  if (!alreadyMember) {
-    const u = await fetch(`https://api.github.com/users/${login}`, {
-      headers: { Authorization: `Bearer ${acc.accessToken}`, Accept: "application/vnd.github+json" },
-    });
-    if (!u.ok) {
-      return NextResponse.json({ error: `${login} is not a valid GitHub user` }, { status: 400 });
-    }
-  }
-
   // Try to invite them to the GitHub org so they don't have to be added manually first.
-  // Requires write:org scope and the caller to be a GitHub org admin/owner. We don't fail
-  // the pellametric invite when this fails — the manager can still hand-invite on GitHub
-  // and the receiver can accept here once they're in the org.
-  let github: { ok: true; status: "already_member" | "invited" | "active" } | { ok: false; error: string } | null = null;
+  let github:
+    | { ok: true; status: "already_member" | "invited" | "active"; via: "app" | "user" }
+    | { ok: false; error: string; install_url?: string }
+    | null = null;
+
   if (alreadyMember) {
-    github = { ok: true, status: "already_member" };
-  } else {
-    const inviteRes = await fetch(`https://api.github.com/orgs/${org.slug}/memberships/${login}`, {
+    github = { ok: true, status: "already_member", via: useApp ? "app" : "user" };
+  } else if (useApp) {
+    const inviteRes = await appFetch(installationId!, `/orgs/${org.slug}/memberships/${login}`, {
       method: "PUT",
-      headers: {
-        Authorization: `Bearer ${acc.accessToken}`,
-        Accept: "application/vnd.github+json",
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role: "member" }),
     });
     if (inviteRes.ok) {
       const data = await inviteRes.json().catch(() => ({} as any));
-      // GitHub returns state="pending" until the user accepts, "active" if they're already a member
-      github = { ok: true, status: data?.state === "active" ? "active" : "invited" };
+      github = { ok: true, status: data?.state === "active" ? "active" : "invited", via: "app" };
     } else {
       const data = await inviteRes.json().catch(() => ({} as any));
-      const scopes = inviteRes.headers.get("x-oauth-scopes") ?? "";
-      const hasWriteOrg = /\b(write|admin):org\b/.test(scopes);
-      let msg = data?.message ?? `GitHub invite failed (${inviteRes.status})`;
-      if (!hasWriteOrg) msg = "Sign out and back in to refresh GitHub permissions, then retry.";
-      else if (inviteRes.status === 403) msg = "You don't have permission to invite to this GitHub org. Ask an org admin/owner.";
-      github = { ok: false, error: msg };
+      github = { ok: false, error: data?.message ?? `GitHub invite failed (${inviteRes.status})` };
     }
+  } else {
+    // No App installed — surface a CTA to install it instead of relying on user OAuth scopes.
+    const url = installUrl(org.slug);
+    github = {
+      ok: false,
+      error: url
+        ? "Install Pellametric on this GitHub org to enable invites."
+        : "GitHub invites are not configured on this server.",
+      ...(url ? { install_url: url } : {}),
+    };
   }
 
   const [inv] = await db.insert(schema.invitation).values({

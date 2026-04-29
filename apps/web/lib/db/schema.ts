@@ -63,6 +63,10 @@ export const org = pgTable("org", {
   slug: text("slug").notNull().unique(),         // e.g. "pella-labs"
   name: text("name").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Pellametric GitHub App install — present once an org owner installs the app on this org.
+  // Server-to-server calls (invite, PR fetch) use this installation's tokens instead of a user OAuth token.
+  githubAppInstallationId: bigint("github_app_installation_id", { mode: "number" }),
+  githubAppInstalledAt: timestamp("github_app_installed_at"),
 });
 
 // role: "manager" can invite + view all; "dev" sees own + shared org rollups

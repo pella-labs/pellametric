@@ -12,6 +12,7 @@ import { windowCutoff, parseWindow, type WindowKey } from "@/lib/window";
 import { aggregateBoth } from "@/lib/aggregate";
 import { costFor } from "@/lib/pricing";
 import { prAggForMember } from "@/lib/gh";
+import { appConfigured, installUrl } from "@/lib/github-app";
 
 export default async function OrgPage({
   params, searchParams,
@@ -189,6 +190,21 @@ export default async function OrgPage({
           )}
         </div>
       </header>
+
+      {isManager && appConfigured() && row.org.githubAppInstallationId == null && installUrl(row.org.slug) && (
+        <div className="mb-8 flex items-center justify-between bg-card border border-warning/40 rounded-md px-4 py-3">
+          <div className="text-sm">
+            <span className="font-medium">Install Pellametric on GitHub.</span>
+            <span className="text-muted-foreground ml-2">Enables one-click invites and reliable PR data on the team page.</span>
+          </div>
+          <a
+            href={installUrl(row.org.slug)}
+            className="text-xs h-8 px-3 leading-8 rounded-md bg-accent text-accent-foreground hover:opacity-90 transition shrink-0"
+          >
+            Install →
+          </a>
+        </div>
+      )}
 
       <OrgViewSwitcher
         isManager={isManager}

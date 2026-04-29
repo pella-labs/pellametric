@@ -22,8 +22,15 @@ export default function SetupOrgPage() {
       body: JSON.stringify({ githubOrgId: o.id, slug: o.login, name: o.name }),
     });
     const j = await r.json();
-    if (r.ok) window.location.href = `/org/${j.org.slug}`;
-    else setMsg(j.error ?? "failed");
+    if (r.ok) {
+      // After claim, redirect to install the GitHub App on the same org so PR data
+      // and invites are wired in one go. The install callback sends the user back
+      // to /org/[slug]?installed=1 once GitHub finishes the install.
+      const installRes = await fetch(`/api/github-app/install-url?orgSlug=${j.org.slug}`);
+      const inst = await installRes.json().catch(() => ({} as any));
+      if (inst?.url) window.location.href = inst.url;
+      else window.location.href = `/org/${j.org.slug}`;
+    } else setMsg(j.error ?? "failed");
   }
 
   return (
