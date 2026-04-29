@@ -76,6 +76,19 @@ export const membership = pgTable("membership", {
   byOrg: index("membership_by_org").on(t.orgId),
 }));
 
+// Append-only audit log for role changes. Insert one row per promote/demote.
+export const membershipAudit = pgTable("membership_audit", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  targetUserId: text("target_user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  actorUserId: text("actor_user_id").notNull().references(() => user.id),
+  fromRole: text("from_role").notNull(),
+  toRole: text("to_role").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t => ({
+  byOrg: index("membership_audit_by_org").on(t.orgId, t.createdAt),
+}));
+
 export const invitation = pgTable("invitation", {
   id: uuid("id").primaryKey().defaultRandom(),
   orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
