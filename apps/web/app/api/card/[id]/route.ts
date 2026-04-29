@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { apiError } from "@/lib/api/error";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
      WHERE card_id = ${slug}
      LIMIT 1`;
   const r = rows[0];
-  if (!r) return NextResponse.json({ error: "Card not found" }, { status: 404 });
+  if (!r) return apiError("Card not found", undefined, 404);
 
   const hasUser = Boolean(r.display_name || r.avatar_url || r.github_username);
   return NextResponse.json({

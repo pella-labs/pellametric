@@ -20,11 +20,22 @@ COPY . .
 # NEXT_PUBLIC_* vars are inlined into the client bundle at build time, so this
 # must be the real public URL. Overridable via --build-arg for staging/previews.
 ARG NEXT_PUBLIC_BETTER_AUTH_URL=https://pellametric.com
-ENV DATABASE_URL=postgresql://user:pass@localhost:5432/db \
-    BETTER_AUTH_SECRET=build_placeholder_secret \
-    BETTER_AUTH_URL=http://localhost:3000 \
-    GITHUB_CLIENT_ID=build_client_id \
-    GITHUB_CLIENT_SECRET=build_client_secret \
+# Build-stage-only placeholders. Next.js prerendering imports modules that
+# reference these, but nothing actually contacts the DB / GitHub / issues
+# sessions during the build. They are intentionally NOT forwarded to the
+# runtime stage — Railway / Docker host MUST inject real values at runtime.
+# `apps/web/lib/auth.ts` has a fail-fast guard that refuses to boot the
+# server when BETTER_AUTH_SECRET is missing or still the placeholder.
+ARG BETTER_AUTH_SECRET=build_placeholder_secret
+ARG DATABASE_URL=postgresql://user:pass@localhost:5432/db
+ARG BETTER_AUTH_URL=http://localhost:3000
+ARG GITHUB_CLIENT_ID=build_client_id
+ARG GITHUB_CLIENT_SECRET=build_client_secret
+ENV DATABASE_URL=$DATABASE_URL \
+    BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET \
+    BETTER_AUTH_URL=$BETTER_AUTH_URL \
+    GITHUB_CLIENT_ID=$GITHUB_CLIENT_ID \
+    GITHUB_CLIENT_SECRET=$GITHUB_CLIENT_SECRET \
     NEXT_PUBLIC_BETTER_AUTH_URL=$NEXT_PUBLIC_BETTER_AUTH_URL
 RUN bun run build
 

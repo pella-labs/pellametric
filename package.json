@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "description": "Per-dev productivity metrics from Claude Code + Codex sessions, org-scoped via GitHub",
+  "license": "MIT",
   "packageManager": "bun@1.3.9",
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {

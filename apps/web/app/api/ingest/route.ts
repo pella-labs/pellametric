@@ -7,11 +7,12 @@
 // resolve each session's repo -> org (must have membership), then upsert session rows.
 
 import { db, schema } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { encryptPrompt, getOrCreateUserDek } from "@/lib/crypto/prompts";
+import { apiError } from "@/lib/api/error";
 
 const sessionSchema = z.object({
   externalSessionId: z.string(),
@@ -65,11 +66,11 @@ const ingestSchema = z.object({
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!token) return NextResponse.json({ error: "missing bearer token" }, { status: 401 });
+  if (!token) return apiError("missing bearer token", undefined, 401);
 
   const hash = crypto.createHash("sha256").update(token).digest("hex");
   const [tk] = await db.select().from(schema.apiToken).where(eq(schema.apiToken.tokenHash, hash)).limit(1);
-  if (!tk || tk.revokedAt) return NextResponse.json({ error: "invalid token" }, { status: 401 });
+  if (!tk || tk.revokedAt) return apiError("invalid token", undefined, 401);
 
   const userId = tk.userId;
   const parsed = ingestSchema.safeParse(await req.json());
