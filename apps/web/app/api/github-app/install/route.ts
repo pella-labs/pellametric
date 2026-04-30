@@ -22,7 +22,11 @@ function deriveSlug(login: string): string {
 export const dynamic = "force-dynamic";
 
 function redirectWith(req: Request, path: string, qs?: Record<string, string>) {
-  const u = new URL(path, req.url);
+  // Behind Railway's proxy, req.url reports the internal :8080 hostname which
+  // makes browser-following redirects unreachable. Prefer BETTER_AUTH_URL
+  // (the canonical public origin) and fall back to req.url for local dev.
+  const base = process.env.BETTER_AUTH_URL || new URL(req.url).origin;
+  const u = new URL(path, base);
   if (qs) for (const [k, v] of Object.entries(qs)) u.searchParams.set(k, v);
   return NextResponse.redirect(u);
 }
