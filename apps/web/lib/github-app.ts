@@ -101,10 +101,13 @@ function privateKeyOk(): boolean {
   try { privateKeyPem(); return true; } catch { return false; }
 }
 
-export function installUrl(orgSlug: string): string {
+export function installUrl(orgSlug?: string): string {
   const slug = process.env.GITHUB_APP_SLUG;
   if (!slug) return "";
   // `state` is echoed back by GitHub in the post-install redirect; we use it to
-  // route the user back to the right org page after install completes.
-  return `https://github.com/apps/${slug}/installations/new?state=${encodeURIComponent(orgSlug)}`;
+  // route the user back to the right org page after install completes. Omit it
+  // for the new-customer flow where there isn't a slug yet — the callback will
+  // create the org from the install's account info and bounce the user there.
+  const base = `https://github.com/apps/${slug}/installations/new`;
+  return orgSlug ? `${base}?state=${encodeURIComponent(orgSlug)}` : base;
 }

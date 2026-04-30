@@ -13,6 +13,12 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { getInstallation, appConfigured } from "@/lib/github-app";
 
+function deriveSlug(login: string): string {
+  // GitHub login is already URL-safe (alphanumerics + hyphens); use as-is so the
+  // pellametric URL matches the GitHub URL.
+  return login;
+}
+
 export const dynamic = "force-dynamic";
 
 function redirectWith(req: Request, path: string, qs?: Record<string, string>) {
@@ -45,25 +51,27 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "installation not found" }, { status: 404 });
   }
 
-  // Match the install's GitHub account to one of our `org` rows.
+  // Whoever installs the App on a GitHub org is, by GitHub's rules, an admin
+  // of that org — so we treat the install as the canonical "claim". If the
+  // org row doesn't exist yet, create it now and make the installer the
+  // first manager. This avoids the OAuth "grant access to org" footgun where
+  // users skip the grant step and /user/orgs returns nothing.
   const githubOrgId = String(install.account.id);
-  const [org] = await db.select().from(schema.org).where(eq(schema.org.githubOrgId, githubOrgId)).limit(1);
+  let [org] = await db.select().from(schema.org).where(eq(schema.org.githubOrgId, githubOrgId)).limit(1);
 
   if (!org) {
-    // The installer connected pellametric and GitHub in different orders.
-    // Send them back to /setup/org with a hint; they need to claim the org first.
-    return redirectWith(req, "/setup/org", { installError: `Connect "${install.account.login}" first.` });
+    [org] = await db.insert(schema.org).values({
+      githubOrgId,
+      slug: deriveSlug(install.account.login),
+      name: install.account.login,
+    }).returning();
   }
 
-  // Caller must be a member of this org in pellametric. (Anyone who can install on
-  // GitHub is the org owner there, but that doesn't automatically grant pellametric
-  // access — we still gate on membership.)
-  const [mem] = await db.select().from(schema.membership)
-    .where(and(eq(schema.membership.userId, session.user.id), eq(schema.membership.orgId, org.id)))
-    .limit(1);
-  if (!mem) {
-    return NextResponse.json({ error: "you are not a member of this org in pellametric" }, { status: 403 });
-  }
+  await db.insert(schema.membership).values({
+    userId: session.user.id,
+    orgId: org.id,
+    role: "manager",
+  }).onConflictDoNothing();
 
   await db.update(schema.org)
     .set({ githubAppInstallationId: installationId, githubAppInstalledAt: new Date() })

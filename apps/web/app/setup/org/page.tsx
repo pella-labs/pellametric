@@ -1,74 +1,59 @@
-"use client";
-import { useEffect, useState } from "react";
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 import BackButton from "@/components/back-button";
+import { installUrl, appConfigured } from "@/lib/github-app";
 
-export default function SetupOrgPage() {
-  const [orgs, setOrgs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState("");
+export const dynamic = "force-dynamic";
 
-  useEffect(() => {
-    fetch("/api/orgs", { cache: "no-store" }).then(r => r.json()).then(d => {
-      setOrgs(d.orgs ?? []);
-      setLoading(false);
-    });
-  }, []);
+// Onboarding is now a single step: install the Pellametric GitHub App on a
+// GitHub org. The install callback creates the org row, makes the installer
+// the first manager, and bounces them to /org/[slug]. This avoids the OAuth
+// "grant access to org" footgun where /user/orgs returns empty if the user
+// didn't grant per-org access during sign-in.
+export default async function SetupOrgPage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) redirect("/");
 
-  async function claim(o: any) {
-    setMsg("Connecting…");
-    const r = await fetch("/api/orgs", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ githubOrgId: o.id, slug: o.login, name: o.name }),
-    });
-    const j = await r.json();
-    if (r.ok) {
-      // After claim, redirect to install the GitHub App on the same org so PR data
-      // and invites are wired in one go. The install callback sends the user back
-      // to /org/[slug]?installed=1 once GitHub finishes the install.
-      const installRes = await fetch(`/api/github-app/install-url?orgSlug=${j.org.slug}`);
-      const inst = await installRes.json().catch(() => ({} as any));
-      if (inst?.url) window.location.href = inst.url;
-      else window.location.href = `/org/${j.org.slug}`;
-    } else setMsg(j.error ?? "failed");
-  }
+  const url = appConfigured() ? installUrl() : "";
 
   return (
     <main className="max-w-xl mx-auto min-h-[80vh] px-6 pt-12 pb-16 flex flex-col">
-      <header className="flex items-start gap-4 mb-6">
+      <header className="flex items-start gap-4 mb-8">
         <BackButton href="/dashboard" />
         <div>
           <h1 className="text-xl font-bold">Connect a GitHub org</h1>
-          <p className="text-sm text-muted-foreground mt-1">You'll become the manager of this org's workspace. You can invite teammates next.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Install Pellametric on your GitHub org. You'll pick which org on the next screen, and become the manager of its workspace once it's installed.
+          </p>
         </div>
       </header>
-      {loading ? <p className="text-sm text-muted-foreground">Loading orgs…</p> :
-        orgs.length === 0 ? <p className="text-sm text-muted-foreground">No orgs found on your GitHub account.</p> :
-        <div className="space-y-2">
-          {orgs.map(o => (
-            <button
-              key={o.id}
-              onClick={() => !o.connected && claim(o)}
-              disabled={o.connected}
-              className={`w-full text-left bg-card border border-border rounded-md p-3 flex items-center gap-3 transition ${o.connected ? "opacity-60 cursor-default" : "hover:border-primary"}`}
-            >
-              {o.avatar ? (
-                <img src={o.avatar} alt={o.login} className="size-8 rounded-full border border-border object-cover shrink-0" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="size-8 rounded-full border border-border bg-popover shrink-0" />
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{o.login}</div>
-                <div className="text-xs text-muted-foreground">id: {o.id}</div>
-              </div>
-              {o.connected
-                ? <span className="text-[10px] uppercase tracking-wider text-positive font-semibold">connected</span>
-                : <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">+ connect</span>}
-            </button>
-          ))}
-        </div>
-      }
-      {msg && <p className="text-xs mt-4 text-muted-foreground">{msg}</p>}
+
+      {url ? (
+        <a
+          href={url}
+          className="bg-card border border-border rounded-md p-4 hover:border-accent transition flex items-center gap-3"
+        >
+          <div className="size-10 rounded-md bg-accent/10 flex items-center justify-center text-accent text-lg shrink-0">
+            ⌘
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium">Install Pellametric on GitHub</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Opens GitHub's install screen. Pick the org you manage, and we'll set everything up automatically.
+            </div>
+          </div>
+          <span className="text-xs uppercase tracking-wider text-accent shrink-0">Install →</span>
+        </a>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Pellametric isn't configured for GitHub App installs on this server. Ask the operator to set the <code className="text-xs">GITHUB_APP_*</code> env vars.
+        </p>
+      )}
+
+      <p className="text-xs text-muted-foreground mt-6">
+        Already installed Pellametric on your GitHub org from another account? Ask the person who installed it to invite you in pellametric.
+      </p>
     </main>
   );
 }
