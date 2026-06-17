@@ -3,7 +3,7 @@ import { useState } from "react";
 import BackButton from "@/components/back-button";
 import CopyButton from "@/components/copy-button";
 
-const WEB_URL = "https://pellametric.com";
+const WEB_URL = process.env.NEXT_PUBLIC_BETTER_AUTH_URL || "https://pellametric.com";
 
 export default function SetupCollector() {
   const [token, setToken] = useState<string | null>(null);
@@ -18,13 +18,13 @@ export default function SetupCollector() {
   }
 
   const shCmd = token
-    ? `curl -fsSL ${WEB_URL}/install.sh | sh -s -- --token ${token}`
+    ? `curl -fsSL ${WEB_URL}/install.sh | sh -s -- --token ${token} --url ${WEB_URL}`
     : "";
   const ps1Cmd = token
-    ? `$env:PELLA_TOKEN="${token}"; irm ${WEB_URL}/install.ps1 | iex`
+    ? `$env:PELLA_TOKEN="${token}"; $env:PELLA_URL="${WEB_URL}"; irm ${WEB_URL}/install.ps1 | iex`
     : "";
   const mjsCmd = token
-    ? `curl -fsSL ${WEB_URL}/collector.mjs | node - --token ${token}`
+    ? `curl -fsSL ${WEB_URL}/collector.mjs | node - --token ${token} --url ${WEB_URL}`
     : "";
 
   return (
@@ -102,6 +102,7 @@ export default function SetupCollector() {
                 <>
                   <span className="text-ink">curl -fsSL {WEB_URL}/install.sh | sh -s -- --token </span>
                   <span className="text-accent">{token}</span>
+                  <span className="text-ink"> --url {WEB_URL}</span>
                 </>
               ) : (
                 <span className="text-[color:var(--ink-faint)]">issue a token first</span>
@@ -121,7 +122,7 @@ export default function SetupCollector() {
                 <>
                   <span className="text-ink">$env:PELLA_TOKEN=</span>
                   <span className="text-accent">"{token}"</span>
-                  <span className="text-ink">; irm {WEB_URL}/install.ps1 | iex</span>
+                  <span className="text-ink">; $env:PELLA_URL="{WEB_URL}"; irm {WEB_URL}/install.ps1 | iex</span>
                 </>
               ) : (
                 <span className="text-[color:var(--ink-faint)]">issue a token first</span>
@@ -162,6 +163,7 @@ export default function SetupCollector() {
                 <>
                   <span className="text-ink">curl -fsSL {WEB_URL}/collector.mjs | node - --token </span>
                   <span className="text-accent">{token}</span>
+                  <span className="text-ink"> --url {WEB_URL}</span>
                 </>
               ) : (
                 <span className="text-[color:var(--ink-faint)]">issue a token first</span>
