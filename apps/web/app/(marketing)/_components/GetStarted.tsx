@@ -139,7 +139,7 @@ export function GetStarted() {
 
   const cliCommand = useMemo(() => {
     if (!cardToken) return "";
-    return `npx pellametric ${cardToken}`;
+    return `npx pellametric ${cardToken} --api-url https://telemetryc.com/api`;
   }, [cardToken]);
 
   const handleCopy = () => {
