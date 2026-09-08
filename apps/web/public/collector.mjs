@@ -4,6 +4,104 @@
 import os2 from "node:os";
 import path4 from "node:path";
 
+// src/parsers/repo.ts
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+function makeRepoCache() {
+  return new Map;
+}
+function gitlabHosts() {
+  const set = new Set(["gitlab.com"]);
+  const extra = process.env.PELLA_GITLAB_HOSTS;
+  if (extra)
+    for (const h of extra.split(",").map((s) => s.trim()).filter(Boolean))
+      set.add(h);
+  return set;
+}
+function parseRemote(url) {
+  const stripped = url.replace(/\.git$/, "").replace(/\/+$/, "");
+  let host = null;
+  let p = null;
+  let m = stripped.match(/^git@([^:]+):(.+)$/);
+  if (m) {
+    host = m[1];
+    p = m[2];
+  }
+  if (!host) {
+    m = stripped.match(/^(?:ssh|https?):\/\/(?:[^@/]+@)?([^/]+)\/(.+)$/);
+    if (m) {
+      host = m[1];
+      p = m[2];
+    }
+  }
+  if (!host || !p)
+    return null;
+  const segments = p.split("/").filter(Boolean);
+  if (segments.length < 2)
+    return null;
+  const gitlabSet = gitlabHosts();
+  const isGithub = host === "github.com";
+  const isGitlab = gitlabSet.has(host);
+  if (!isGithub && !isGitlab)
+    return null;
+  const repo = segments[segments.length - 1];
+  const owner = segments.slice(0, -1).join("/");
+  if (!owner || !repo)
+    return null;
+  return { provider: isGithub ? "github" : "gitlab", owner, repo };
+}
+function resolveRepo(cwd, cache) {
+  if (!cwd)
+    return null;
+  if (cache.has(cwd))
+    return cache.get(cwd) ?? null;
+  const trimmed = cwd.replace(/\/\.claude\/worktrees\/agent-[^/]+.*$/, "");
+  let cur = trimmed;
+  let root = null;
+  for (let i = 0;i < 8; i++) {
+    if (fs.existsSync(path.join(cur, ".git"))) {
+      root = cur;
+      break;
+    }
+    const parent = path.dirname(cur);
+    if (parent === cur)
+      break;
+    cur = parent;
+  }
+  if (!root) {
+    cache.set(cwd, null);
+    return null;
+  }
+  try {
+    const url = execFileSync("git", ["-C", root, "remote", "get-url", "origin"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+    const info = parseRemote(url);
+    cache.set(cwd, info);
+    return info;
+  } catch {
+    cache.set(cwd, null);
+    return null;
+  }
+}
+function resolveBranch(cwd) {
+  if (!cwd)
+    return null;
+  try {
+    const out = execFileSync("git", ["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+    if (!out || out === "HEAD")
+      return null;
+    return out;
+  } catch {
+    return null;
+  }
+}
+
 // src/accumulator.ts
 function finalizeSessions(sessions, resolveRepoFn, only) {
   const out = [];
@@ -13,8 +111,6 @@ function finalizeSessions(sessions, resolveRepoFn, only) {
     if (only && !only.has(s.sid))
       continue;
     if (!s.start || !s.end || !s.cwd)
-      continue;
-    if (s.userTurns === 0)
       continue;
     const info = resolveRepoFn(s.cwd);
     if (!info)
@@ -43,10 +139,15 @@ function toWire(s, info) {
   const pw = s.promptWords.slice().sort((a, b) => a - b);
   const median = pw.length ? pw[Math.floor(pw.length / 2)] : 0;
   const p95 = pw.length ? pw[Math.min(pw.length - 1, Math.floor(pw.length * 0.95))] : 0;
+  const branch = s.cwd ? resolveBranch(s.cwd) ?? undefined : undefined;
+  const cwdResolvedRepo = `${info.owner}/${info.repo}`;
   return {
     externalSessionId: s.sid,
-    repo: `${info.owner}/${info.repo}`,
+    repo: cwdResolvedRepo,
+    provider: info.provider,
     cwd: s.cwd,
+    branch,
+    cwdResolvedRepo,
     startedAt: s.start.toISOString(),
     endedAt: s.end.toISOString(),
     model: s.model,
@@ -128,11 +229,11 @@ var TEACHER_RE = /\b(no|wrong|that'?s not|actually|instead|don'?t|undo|revert|no
 var FRUSTRATION_RE = /\b(fuck|shit|wtf|damn|ugh)\b|!{2,}|\b[A-Z]{4,}\b/;
 
 // src/parsers/slice.ts
-import fs from "node:fs";
+import fs2 from "node:fs";
 function readNewLines(absPath, startOffset) {
   let stat;
   try {
-    stat = fs.statSync(absPath);
+    stat = fs2.statSync(absPath);
   } catch {
     return { lines: [], bytesConsumed: startOffset, fileSize: 0 };
   }
@@ -143,19 +244,19 @@ function readNewLines(absPath, startOffset) {
   const buf = Buffer.alloc(len);
   let fd = null;
   try {
-    fd = fs.openSync(absPath, "r");
+    fd = fs2.openSync(absPath, "r");
     let total = 0;
     while (total < len) {
-      const read = fs.readSync(fd, buf, total, len - total, startOffset + total);
+      const read = fs2.readSync(fd, buf, total, len - total, startOffset + total);
       if (read <= 0)
         break;
       total += read;
     }
-    fd = (fs.closeSync(fd), null);
+    fd = (fs2.closeSync(fd), null);
   } catch {
     if (fd !== null)
       try {
-        fs.closeSync(fd);
+        fs2.closeSync(fd);
       } catch {}
     return { lines: [], bytesConsumed: startOffset, fileSize: size };
   }
@@ -437,11 +538,11 @@ function ingestCodexFileSlice(sessions, absPath, startOffset, ctxMap, since) {
 }
 
 // src/parsers/cursor.ts
-import fs2 from "node:fs";
+import fs3 from "node:fs";
 import os from "node:os";
-import path from "node:path";
+import path2 from "node:path";
 import { fileURLToPath } from "node:url";
-import { execFileSync } from "node:child_process";
+import { execFileSync as execFileSync2 } from "node:child_process";
 import { createRequire } from "node:module";
 function fileUriToPath(raw) {
   if (!raw)
@@ -456,20 +557,20 @@ function fileUriToPath(raw) {
 }
 function cursorDataRoot() {
   if (process.platform === "darwin") {
-    return path.join(os.homedir(), "Library", "Application Support", "Cursor");
+    return path2.join(os.homedir(), "Library", "Application Support", "Cursor");
   }
   if (process.platform === "win32") {
-    const appdata = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
-    return path.join(appdata, "Cursor");
+    const appdata = process.env.APPDATA || path2.join(os.homedir(), "AppData", "Roaming");
+    return path2.join(appdata, "Cursor");
   }
-  const xdg = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
-  return path.join(xdg, "Cursor");
+  const xdg = process.env.XDG_CONFIG_HOME || path2.join(os.homedir(), ".config");
+  return path2.join(xdg, "Cursor");
 }
 function globalDb(root) {
-  return path.join(root, "User", "globalStorage", "state.vscdb");
+  return path2.join(root, "User", "globalStorage", "state.vscdb");
 }
 function workspaceStorageDir(root) {
-  return path.join(root, "User", "workspaceStorage");
+  return path2.join(root, "User", "workspaceStorage");
 }
 function tryBunBackend() {
   const bunGlobal = globalThis.Bun;
@@ -482,7 +583,7 @@ function tryBunBackend() {
     return {
       name: "bun",
       query(dbPath, sql) {
-        if (!fs2.existsSync(dbPath))
+        if (!fs3.existsSync(dbPath))
           return [];
         let db = null;
         try {
@@ -506,10 +607,10 @@ function makeCliBackend() {
   return {
     name: "cli",
     query(dbPath, sql) {
-      if (!fs2.existsSync(dbPath))
+      if (!fs3.existsSync(dbPath))
         return [];
       try {
-        const out = execFileSync("sqlite3", ["-readonly", "-bail", "-cmd", ".timeout 2000", "-cmd", ".mode json", dbPath, sql], { encoding: "utf8", maxBuffer: 512 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] });
+        const out = execFileSync2("sqlite3", ["-readonly", "-bail", "-cmd", ".timeout 2000", "-cmd", ".mode json", dbPath, sql], { encoding: "utf8", maxBuffer: 512 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] });
         if (!out.trim())
           return [];
         return JSON.parse(out);
@@ -608,7 +709,7 @@ function newCursorSweepState() {
 function sweepCursor(sessions, state, since, root = cursorDataRoot()) {
   const touched = new Set;
   const gdb = globalDb(root);
-  if (!fs2.existsSync(gdb))
+  if (!fs3.existsSync(gdb))
     return touched;
   const dv = sqliteDataVersion(gdb);
   if (dv > 0 && dv === state.dataVersion)
@@ -686,25 +787,25 @@ function sweepCursor(sessions, state, since, root = cursorDataRoot()) {
 function buildComposerIdToCwd(root) {
   const out = new Map;
   const wsRoot = workspaceStorageDir(root);
-  if (!fs2.existsSync(wsRoot))
+  if (!fs3.existsSync(wsRoot))
     return out;
   let entries;
   try {
-    entries = fs2.readdirSync(wsRoot, { withFileTypes: true });
+    entries = fs3.readdirSync(wsRoot, { withFileTypes: true });
   } catch {
     return out;
   }
   for (const entry of entries) {
     if (!entry.isDirectory())
       continue;
-    const dir = path.join(wsRoot, entry.name);
-    const wj = path.join(dir, "workspace.json");
-    const sdb = path.join(dir, "state.vscdb");
-    if (!fs2.existsSync(wj) || !fs2.existsSync(sdb))
+    const dir = path2.join(wsRoot, entry.name);
+    const wj = path2.join(dir, "workspace.json");
+    const sdb = path2.join(dir, "state.vscdb");
+    if (!fs3.existsSync(wj) || !fs3.existsSync(sdb))
       continue;
     let folder = null;
     try {
-      const j = JSON.parse(fs2.readFileSync(wj, "utf8"));
+      const j = JSON.parse(fs3.readFileSync(wj, "utf8"));
       folder = fileUriToPath(j.folder || "");
     } catch {
       continue;
@@ -728,55 +829,6 @@ function buildComposerIdToCwd(root) {
   return out;
 }
 
-// src/parsers/repo.ts
-import fs3 from "node:fs";
-import path2 from "node:path";
-import { execSync } from "node:child_process";
-function makeRepoCache() {
-  return new Map;
-}
-function parseGithubRemote(url) {
-  const m = url.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
-  if (!m)
-    return null;
-  return { owner: m[1], repo: m[2] };
-}
-function resolveRepo(cwd, cache) {
-  if (!cwd)
-    return null;
-  if (cache.has(cwd))
-    return cache.get(cwd) ?? null;
-  const trimmed = cwd.replace(/\/\.claude\/worktrees\/agent-[^/]+.*$/, "");
-  let cur = trimmed;
-  let root = null;
-  for (let i = 0;i < 8; i++) {
-    if (fs3.existsSync(path2.join(cur, ".git"))) {
-      root = cur;
-      break;
-    }
-    const parent = path2.dirname(cur);
-    if (parent === cur)
-      break;
-    cur = parent;
-  }
-  if (!root) {
-    cache.set(cwd, null);
-    return null;
-  }
-  try {
-    const url = execSync(`git -C "${root}" remote get-url origin`, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
-    }).trim();
-    const info = parseGithubRemote(url);
-    cache.set(cwd, info);
-    return info;
-  } catch {
-    cache.set(cwd, null);
-    return null;
-  }
-}
-
 // src/parsers/walk.ts
 import fs4 from "node:fs";
 import path3 from "node:path";
@@ -793,7 +845,7 @@ function* walkJsonl(dir, pattern) {
 }
 
 // src/config.ts
-var COLLECTOR_VERSION = "0.0.7";
+var COLLECTOR_VERSION = "0.0.8";
 
 // src/upload.ts
 var BATCH = 200;

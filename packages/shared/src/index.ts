@@ -7,6 +7,10 @@ export interface IngestSession {
   /** Provider hosting the repo. Defaults to 'github' on the server when unset (back-compat). */
   provider?: ProviderName;
   cwd?: string;
+  /** Git branch captured at session start (`git rev-parse --abbrev-ref HEAD`). Insights revamp P9. */
+  branch?: string;
+  /** Collector's resolved repo from cwd walk-up (owner/name). Insights revamp P14. */
+  cwdResolvedRepo?: string;
   startedAt: string;                     // ISO
   endedAt: string;
   model?: string;

@@ -23,3 +23,6 @@ apps/collector/bin/
 
 # Local-only brand social asset exports (manual upload to X/GitHub)
 apps/web/public/social/
+
+# Local-only dev-auth bypass route — must never ship to prod
+apps/web/app/api/dev/

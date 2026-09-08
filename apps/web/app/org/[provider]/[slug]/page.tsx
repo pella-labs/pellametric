@@ -5,6 +5,9 @@ import { headers } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import BackButton from "@/components/back-button";
+import { insightsRevampEnabled } from "@/lib/feature-flags";
+import { getManagerOverviewData } from "@/lib/insights/manager-overview-data";
+import { ManagerOverview } from "@/components/insights/manager-overview";
 import { type TeamRow } from "@/components/team-tables";
 import OrgViewSwitcher from "@/components/org-view-switcher";
 import WindowPicker from "@/components/window-picker";
@@ -48,6 +51,24 @@ export default async function OrgPage({
     .limit(1);
   if (!row) notFound();
   const isManager = row.role === "manager";
+
+  // F3.20 — when the revamp flag is on, render the new design-council overview
+  // and stop. The legacy view below stays untouched for flag-off rollouts.
+  if (insightsRevampEnabled()) {
+    const data = await getManagerOverviewData(row.org.id, 30);
+    return (
+      <ManagerOverview
+        base={`/org/${providerName}/${slug}`}
+        windowLabel={data.windowLabel}
+        kpi={data.kpi}
+        scatter={data.scatter}
+        attribution={data.attribution}
+        topPrs={data.topPrs}
+        topDevs={data.topDevs}
+        backfill={data.backfill}
+      />
+    );
+  }
   const providerCfg = providers[providerName];
 
   // For GitLab orgs, check whether the stored GAT has write scope. If not, we

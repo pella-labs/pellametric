@@ -1,0 +1,155 @@
+name: review-insights-revamp
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'dev-docs/build/**'
+      - 'dev-docs/scripts/**'
+      - '.github/workflows/review-insights-revamp.yml'
+  push:
+    branches:
+      - 'feat/insights-revamp'
+      - 'feat/insights-revamp-*'
+
+jobs:
+  static-review:
+    name: Static review (no DB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need main for diff comparisons
+
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.9
+
+      - run: bun install --frozen-lockfile
+
+      - name: Run static review
+        env:
+          # Placeholders so Next.js build evaluates without crashing
+          BETTER_AUTH_SECRET: ci-placeholder-32-bytes-long-xxxxxxxxxxxxxxxxxxx
+          BETTER_AUTH_URL: http://localhost:3000
+          NEXT_PUBLIC_BETTER_AUTH_URL: http://localhost:3000
+          GITHUB_CLIENT_ID: ci-placeholder
+          GITHUB_CLIENT_SECRET: ci-placeholder
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost/placeholder
+          PROMPT_MASTER_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+        run: bash dev-docs/scripts/review.sh static
+
+      - name: Upload review report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-review-report
+          path: /tmp/pellametric-review-*.md
+
+  db-review:
+    name: DB review (ephemeral Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pellametric_review
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pellametric_review
+      BETTER_AUTH_SECRET: ci-placeholder-32-bytes-long-xxxxxxxxxxxxxxxxxxx
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_BETTER_AUTH_URL: http://localhost:3000
+      GITHUB_CLIENT_ID: ci-placeholder
+      GITHUB_CLIENT_SECRET: ci-placeholder
+      PROMPT_MASTER_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.9
+
+      - name: Install postgres client
+        run: sudo apt-get install -y postgresql-client
+
+      - run: bun install --frozen-lockfile
+
+      # Seed the ephemeral DB with current main's schema so we can
+      # measure the diff the way production would experience it.
+      - name: Apply current main schema to ephemeral DB
+        run: |
+          git fetch origin main
+          git checkout origin/main -- apps/web/lib/db/schema.ts
+          bun run db:push
+          # Insert dummy rows so the row-count diff has something to protect
+          psql "$DATABASE_URL" <<SQL
+            INSERT INTO "user" (id, name, email) VALUES
+              ('u1', 'test1', 'a@example.com'),
+              ('u2', 'test2', 'b@example.com');
+            INSERT INTO org (provider, slug, name) VALUES ('github', 'test-org', 'Test Org');
+          SQL
+          # Restore feature-branch schema
+          git checkout HEAD -- apps/web/lib/db/schema.ts
+
+      - name: Run db review
+        run: bash dev-docs/scripts/review.sh db
+
+      - name: Upload review report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-review-report
+          path: /tmp/pellametric-review-*.md
+
+  # Optional runtime job — only runs on demand to keep CI fast.
+  runtime-review:
+    name: Runtime review (server + curl smoke)
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'runtime-review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: db-review
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pellametric_review
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pellametric_review
+      BETTER_AUTH_SECRET: ci-placeholder-32-bytes-long-xxxxxxxxxxxxxxxxxxx
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_BETTER_AUTH_URL: http://localhost:3000
+      GITHUB_CLIENT_ID: ci-placeholder
+      GITHUB_CLIENT_SECRET: ci-placeholder
+      PROMPT_MASTER_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      INTERNAL_API_SECRET: ci-internal-secret
+      PELLAMETRIC_INSIGHTS_REVAMP_UI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.3.9
+      - run: bun install --frozen-lockfile
+      - run: bun run db:push
+      - run: bash dev-docs/scripts/review.sh runtime
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runtime-review-report
+          path: /tmp/pellametric-review-*.md

@@ -52,6 +52,18 @@ body {
   --ink-faint: rgba(237, 232, 222, 0.3);
   --border-hover: rgba(237, 232, 222, 0.3);
   --radius: 0.375rem;
+  /* Insights revamp — AI-source brand tokens (non-negotiable per locked design) */
+  --source-claude: #c08a4f;
+  --source-codex: #6fa3b8;
+  --source-cursor: #b07ec0;
+  --source-human: #8a8a82;
+  /* Confidence pip colors — color reinforces; pip count is a11y carrier */
+  --conf-high: var(--positive);
+  --conf-med: var(--warning);
+  --conf-low: #6c6c66;
+  /* Chart grid / axis tokens */
+  --chart-grid: rgba(237, 232, 222, 0.06);
+  --chart-axis: rgba(237, 232, 222, 0.24);
 }
 
 /* The app is dark-only. Keep .dark for class-based gate, values match. */
@@ -79,6 +91,16 @@ body {
   --positive-foreground: #0a0b0d;
   --warning: #b07b3e;
   --warning-foreground: #0a0b0d;
+  /* Insights revamp tokens — dark theme */
+  --source-claude: #c08a4f;
+  --source-codex: #6fa3b8;
+  --source-cursor: #b07ec0;
+  --source-human: #8a8a82;
+  --conf-high: var(--positive);
+  --conf-med: var(--warning);
+  --conf-low: #6c6c66;
+  --chart-grid: rgba(237, 232, 222, 0.06);
+  --chart-axis: rgba(237, 232, 222, 0.24);
 }
 
 @layer base {
@@ -183,4 +205,23 @@ body {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Insights revamp typographic utilities — used by stat tiles + data tables. */
+.mk-stat-numeric {
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(32px, 3.6vw, 48px);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.mk-table-cell {
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+.mk-panel {
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 1rem;
 }

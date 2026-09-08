@@ -12,10 +12,22 @@
     "db:generate": "drizzle-kit generate",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "retention:cleanup": "bun run ./scripts/cleanup-retention.ts"
+    "retention:cleanup": "bun run ./scripts/cleanup-retention.ts",
+    "seed:demo": "bun run ./scripts/seed-demo.ts"
   },
   "dependencies": {
     "@pella/shared": "workspace:*",
+    "@visx/axis": "^3.12.0",
+    "@visx/group": "^3.12.0",
+    "@visx/heatmap": "^3.12.0",
+    "@visx/hierarchy": "^3.12.0",
+    "@visx/responsive": "^3.12.0",
+    "@visx/sankey": "^3.12.0",
+    "@visx/scale": "^3.12.0",
+    "@visx/shape": "^3.12.0",
+    "@visx/text": "^3.12.0",
+    "@visx/tooltip": "^3.12.0",
+    "@visx/xychart": "^3.12.0",
     "better-auth": "^1.6.6",
     "chart.js": "^4.4.6",
     "class-variance-authority": "^0.7.1",

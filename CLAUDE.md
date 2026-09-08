@@ -100,3 +100,49 @@ GitHub OAuth scopes: `write:org`, `repo`, `read:user`, `user:email`. `write:org`
 - Commit style is conventional commits (`feat(web): …`, `fix(collector): …`, `chore: …`). PR titles are validated by `.github/workflows/pr-title.yml`.
 - Bun is the package manager and runtime — don't introduce `npm`/`pnpm`/`yarn` lockfiles, and don't add Node-specific shebangs to the compiled-binary code path (`bin.ts`); that one runs under the embedded Bun runtime.
 - The collector intentionally has no persisted cursor; do not add one without also adding a story for migrating users who restart mid-session. Server-side idempotency is what makes restarts safe.
+
+## Insights revamp (Phase F0–F6)
+
+A second-generation UI ships behind `PELLAMETRIC_INSIGHTS_REVAMP_UI=1`. When
+the flag is off, the legacy `/org/[provider]/[slug]/page.tsx` renders exactly
+as before; when on, the same route returns the new design-council overview.
+
+### New routes
+- `/org/[p]/[slug]` — KPI strip + Spend×Throughput scatter + attribution mix + top PRs + top devs (server-rendered)
+- `/org/[p]/[slug]/insights` — PostHog-style builder (8 modes, URL state via `?q=<base64>`)
+- `/org/[p]/[slug]/devs` — leaderboard; `/devs/[login]` redirects to legacy `/dev/[login]`
+- `/org/[p]/[slug]/waste` — stuck + abandoned sessions
+- `/org/[p]/[slug]/intent` — calendar heatmap + intent frequency table
+- `/org/[p]/[slug]/benchmark` — within-org P50/P10 vs your org (k≥5 floor)
+- `/me/[p]/[slug]` — Sankey hero session→PR + KPI strip + heatmap
+- `/me/[p]/[slug]/sessions` — paginated personal session list (filterable)
+- `/me/[p]/[slug]/prs` — caller's authored PRs
+- `/me/[p]/[slug]/sessions/[id]` — H1 fix: prompts decrypt only on click, via `/api/me/sessions/[id]/prompts` (rate-limited, owner-only, `Cache-Control: no-store`)
+- `/dev/components` (DEV_AUTH_BYPASS=1 or non-prod) — chart + data primitive showcase
+
+### Key invariants
+- `lib/pricing.ts` is client-safe (no DB imports). Server-only DB pricing in `lib/pricing-db.ts`.
+- `lib/insights/query-types.ts` is client-safe (types + URL codec). Server-only compiler in `lib/insights/query.ts`.
+- `lib/crypto/prompts.ts` and `lib/aggregate.ts` must remain byte-identical to main (CI gates).
+- No `/api/me/prompt-key` route — ever. The P18 boundary keeps the DEK server-side.
+- `apps/web/app/api/dev/` is gitignored (mint-session is local-only).
+- Tailwind v4 canonical only: `bg-(--token)`, `bg-linear-to-r`. Never `bg-[var(...)]` or `bg-gradient-to-r`.
+
+### New tables (applied to Railway)
+- `pr.previous_filenames jsonb` (P10 rename-aware Jaccard)
+- `saved_insight (id, orgId, userId, scope, name, queryJson)` — org-scope visible to all org managers; user-scope visible to owner only
+- `saved_dashboard` + `dashboard_pinned_insight` (skeleton — UI lives in future iterations)
+
+### Demo data
+`bun --filter='./apps/web' run seed:demo` seeds a believable org. Script
+refuses to run unless `DATABASE_URL` is local or `DEMO=1` is set.
+
+### Cohort guard
+External scheduler hits `POST /api/internal/cohort-guard` hourly (bearer
+`INTERNAL_API_SECRET`). Scans `cohort_query_log` for the same manager making
+multiple distinct-cohort queries that overlap by ≥ k-1 (= 4) members; posts
+to `LINEAGE_ALERT_WEBHOOK`.
+
+### Keyboard chords (manager layout)
+`g o` (Overview) · `g i` (Insights) · `g p` (PRs) · `g d` (Devs) · `g w` (Waste) · `g n` (Intent) · `g b` (Benchmark) · `?` (help) · `Esc` (close).
+

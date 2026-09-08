@@ -1,4 +1,5 @@
 // Published per-1M pricing (USD). Used for dollar display only.
+// Client-safe — no DB imports. DB-driven pricing (P7) lives in lib/pricing-db.ts.
 export const PRICING: Record<string, { in: number; out: number; cr: number; cw: number }> = {
   "claude-opus-4-7":          { in: 15, out: 75, cr: 1.50, cw: 18.75 },
   "claude-opus-4-5-20251101": { in: 15, out: 75, cr: 1.50, cw: 18.75 },

@@ -1,5 +1,6 @@
 import type { IngestPrompt, IngestResponse, IngestSession } from "@pella/shared";
 import type { RepoInfo } from "./parsers/repo";
+import { resolveBranch } from "./parsers/repo";
 import type { SessionMap, SessionState } from "./types";
 
 /**
@@ -49,11 +50,16 @@ function toWire(s: SessionState, info: RepoInfo): IngestSession {
   const pw = s.promptWords.slice().sort((a, b) => a - b);
   const median = pw.length ? pw[Math.floor(pw.length / 2)] : 0;
   const p95 = pw.length ? pw[Math.min(pw.length - 1, Math.floor(pw.length * 0.95))] : 0;
+  // Insights revamp (P9, P14): capture branch + canonical cwd-resolved repo.
+  const branch = s.cwd ? resolveBranch(s.cwd) ?? undefined : undefined;
+  const cwdResolvedRepo = `${info.owner}/${info.repo}`;
   return {
     externalSessionId: s.sid,
-    repo: `${info.owner}/${info.repo}`,
+    repo: cwdResolvedRepo,
     provider: info.provider,
     cwd: s.cwd,
+    branch,
+    cwdResolvedRepo,
     startedAt: s.start!.toISOString(),
     endedAt: s.end!.toISOString(),
     model: s.model,

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 export type ProviderName = "github" | "gitlab";
 
@@ -102,7 +102,10 @@ export function resolveRepo(cwd: string, cache: RepoCache): RepoInfo | null {
     return null;
   }
   try {
-    const url = execSync(`git -C "${root}" remote get-url origin`, {
+    // H8 fix: execFileSync to keep `root` out of the shell. The previous
+    // template-string into a shell allowed a hostile cwd containing $(…),
+    // backticks, or quoting to inject commands.
+    const url = execFileSync("git", ["-C", root, "remote", "get-url", "origin"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
@@ -113,4 +116,31 @@ export function resolveRepo(cwd: string, cache: RepoCache): RepoInfo | null {
     cache.set(cwd, null);
     return null;
   }
+}
+
+/**
+ * Resolve current git branch for cwd. Returns null if outside a repo or in a
+ * detached HEAD. Insights revamp P9.
+ */
+export function resolveBranch(cwd: string): string | null {
+  if (!cwd) return null;
+  try {
+    // H8 fix: execFileSync — cwd is untrusted.
+    const out = execFileSync("git", ["-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (!out || out === "HEAD") return null;
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Convert a RepoInfo into the canonical `owner/name` form used by `session_event.cwdResolvedRepo`.
+ */
+export function repoToCwdResolved(info: RepoInfo | null): string | null {
+  if (!info) return null;
+  return `${info.owner}/${info.repo}`;
 }

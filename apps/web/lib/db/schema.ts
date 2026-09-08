@@ -77,6 +77,10 @@ export const org = pgTable("org", {
   // GitHub App install — present once an org owner installs the app on this org.
   githubAppInstallationId: bigint("github_app_installation_id", { mode: "number" }),
   githubAppInstalledAt: timestamp("github_app_installed_at"),
+  // Insights revamp: Phase 7 hygiene metric (P31/C6). 'required'|'forbidden'|'optional'.
+  aiFooterPolicy: text("ai_footer_policy").notNull().default("optional"),
+  // Insights revamp: Cursor opt-in flag for session-join attribution inference (P31).
+  useCursor: boolean("use_cursor").notNull().default(false),
 }, t => ({
   // Same slug across different providers is allowed.
   providerSlugUniq: uniqueIndex("org_provider_slug_uniq").on(t.provider, t.slug),
@@ -193,6 +197,10 @@ export const sessionEvent = pgTable("session_event", {
   externalSessionId: text("external_session_id").notNull(),
   repo: text("repo").notNull(),                  // ownerPath/name (slashes allowed in ownerPath for gitlab subgroups)
   cwd: text("cwd"),
+  // Insights revamp (P9): branch from `git rev-parse --abbrev-ref HEAD` at session start.
+  branch: text("branch"),
+  // Insights revamp (P14): collector's resolved repo from cwd walk-up (owner/name).
+  cwdResolvedRepo: text("cwd_resolved_repo"),
   startedAt: timestamp("started_at").notNull(),
   endedAt: timestamp("ended_at").notNull(),
   model: text("model"),
@@ -241,9 +249,26 @@ export const pr = pgTable("pr", {
   url: text("url"),
   fileList: jsonb("file_list").notNull().default([]), // string[]
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  // Insights revamp additions (P5, P11)
+  mergeCommitSha: text("merge_commit_sha"),
+  baseBranch: text("base_branch"),
+  headBranch: text("head_branch"),
+  lastSyncedAt: timestamp("last_synced_at").notNull().defaultNow(),
+  linkComputedAt: timestamp("link_computed_at"),
+  kind: text("kind").notNull().default("standard"),   // 'standard' | 'revert'
+  revertsPrId: uuid("reverts_pr_id"),
+  stackedOn: uuid("stacked_on"),
+  // C5 fix (P10): renamed-away filenames captured from /pulls/N/files
+  // `previous_filename` field. Threaded into scoreLineage so sessions that
+  // edited a file before it was renamed still get a Jaccard hit.
+  previousFilenames: jsonb("previous_filenames").notNull().default([]),
 }, t => ({
   byOrg: index("pr_by_org").on(t.orgId, t.createdAt),
   uniqPr: uniqueIndex("pr_uniq").on(t.orgId, t.repo, t.number),
+  byMergedAt: index("pr_by_merged_at")
+    .on(t.orgId, t.mergedAt)
+    .where(sql`${t.state} = 'merged'`),
+  byHeadBranch: index("pr_by_head_branch").on(t.orgId, t.repo, t.headBranch),
 }));
 
 export const sessionPrLink = pgTable("session_pr_link", {
@@ -252,9 +277,19 @@ export const sessionPrLink = pgTable("session_pr_link", {
   fileOverlap: integer("file_overlap").notNull().default(0),
   confidence: text("confidence").notNull().default("medium"),  // "high" | "medium" | "low"
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Insights revamp enrichment (P10)
+  fileJaccard: integer("file_jaccard").notNull().default(0),                // 0..100
+  timeOverlap: text("time_overlap").notNull().default("none"),              // 'within_pr_window'|'pre_pr'|'post_pr'|'none'
+  cwdMatch: boolean("cwd_match").notNull().default(false),
+  branchMatch: boolean("branch_match").notNull().default(false),
+  confidenceScore: integer("confidence_score").notNull().default(0),        // 0..100
+  confidenceReason: jsonb("confidence_reason").notNull().default({}),       // {signals,weights,formula}
+  linkSource: text("link_source").notNull().default("auto"),                // 'auto'|'manual_dev'|'manual_manager'
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, t => ({
   pk: primaryKey({ columns: [t.sessionEventId, t.prId] }),
   byPr: index("link_by_pr").on(t.prId),
+  byConfidence: index("link_by_confidence").on(t.prId, t.confidence),
 }));
 
 // ---------- encrypted prompts ----------
@@ -344,4 +379,202 @@ export const cards = pgTable("cards", {
   avatarUrl: text("avatar_url"),
   stats: jsonb("stats").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ---------- Insights revamp (Phase 1) ----------
+
+// Token pricing source of truth (P7). Cost computed at read time via priceFor().
+export const modelPricing = pgTable("model_pricing", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  model: text("model").notNull(),
+  effectiveFrom: timestamp("effective_from").notNull(),
+  effectiveTo: timestamp("effective_to"),
+  inputCentiPerMtok: integer("input_centi_per_mtok").notNull(),
+  outputCentiPerMtok: integer("output_centi_per_mtok").notNull(),
+  cacheReadCentiPerMtok: integer("cache_read_centi_per_mtok").notNull().default(0),
+  cacheWriteCentiPerMtok: integer("cache_write_centi_per_mtok").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t => ({
+  uniq: uniqueIndex("model_pricing_model_from_uniq").on(t.model, t.effectiveFrom),
+  byModel: index("model_pricing_by_model").on(t.model, t.effectiveFrom),
+}));
+
+// Per-commit AI source attribution + redacted message (P2, P4, P6, P20).
+export const prCommit = pgTable("pr_commit", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  prId: uuid("pr_id").notNull().references(() => pr.id, { onDelete: "cascade" }),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  sha: text("sha").notNull(),
+  authorLogin: text("author_login"),
+  authorEmail: text("author_email"),
+  authorName: text("author_name"),
+  committerEmail: text("committer_email"),
+  message: text("message").notNull().default(""),
+  messageRedacted: boolean("message_redacted").notNull().default(false),
+  additions: integer("additions").notNull().default(0),
+  deletions: integer("deletions").notNull().default(0),
+  fileList: jsonb("file_list").notNull().default([]),
+  authoredAt: timestamp("authored_at").notNull(),
+  kind: text("kind").notNull().default("commit"),    // 'commit'|'squash_merge'|'merge_commit'
+  aiSources: text("ai_sources").array().notNull().default(sql`'{}'::text[]`),
+  aiSignals: jsonb("ai_signals").notNull().default({}),
+  aiConfidence: integer("ai_confidence").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, t => ({
+  uniq: uniqueIndex("pr_commit_uniq").on(t.prId, t.sha),
+  byOrgAuthor: index("pr_commit_by_org_author").on(t.orgId, t.authorLogin, t.authoredAt),
+  byOrgAi: index("pr_commit_by_org_ai").on(t.orgId, t.authoredAt),
+}));
+
+// Lineage worker queue (P15). Lower priority int = higher priority.
+export const lineageJob = pgTable("lineage_job", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  prId: uuid("pr_id").notNull().references(() => pr.id, { onDelete: "cascade" }),
+  reason: text("reason").notNull(),
+  priority: integer("priority").notNull().default(5),
+  scheduledFor: timestamp("scheduled_for").notNull().defaultNow(),
+  status: text("status").notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, t => ({
+  byStatusSched: index("lineage_job_by_status_sched").on(t.status, t.scheduledFor),
+  byPr: index("lineage_job_by_pr").on(t.prId),
+}));
+
+// Worker heartbeat (P16). Upserted on every run; /api/health/lineage reads it.
+export const systemHealth = pgTable("system_health", {
+  component: text("component").primaryKey(),
+  lastRunAt: timestamp("last_run_at").notNull().defaultNow(),
+  lastRunStatus: text("last_run_status").notNull(),
+  payload: jsonb("payload").notNull().default({}),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Persisted rollups — tokens only; cost computed at read time.
+export const dailyUserStats = pgTable("daily_user_stats", {
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  day: text("day").notNull(),
+  source: text("source").notNull(),
+  sessions: integer("sessions").notNull().default(0),
+  activeHoursCenti: integer("active_hours_centi").notNull().default(0),
+  tokensIn: bigint("tokens_in", { mode: "number" }).notNull().default(0),
+  tokensOut: bigint("tokens_out", { mode: "number" }).notNull().default(0),
+  tokensCacheRead: bigint("tokens_cache_read", { mode: "number" }).notNull().default(0),
+  tokensCacheWrite: bigint("tokens_cache_write", { mode: "number" }).notNull().default(0),
+  messages: integer("messages").notNull().default(0),
+  errors: integer("errors").notNull().default(0),
+  teacherMoments: integer("teacher_moments").notNull().default(0),
+  frustrationSpikes: integer("frustration_spikes").notNull().default(0),
+  computedAt: timestamp("computed_at").notNull().defaultNow(),
+}, t => ({
+  pk: primaryKey({ columns: [t.userId, t.orgId, t.day, t.source] }),
+  byOrgDay: index("daily_user_stats_by_org_day").on(t.orgId, t.day),
+}));
+
+export const dailyOrgStats = pgTable("daily_org_stats", {
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  day: text("day").notNull(),
+  source: text("source").notNull(),
+  sessions: integer("sessions").notNull().default(0),
+  activeHoursCenti: integer("active_hours_centi").notNull().default(0),
+  tokensIn: bigint("tokens_in", { mode: "number" }).notNull().default(0),
+  tokensOut: bigint("tokens_out", { mode: "number" }).notNull().default(0),
+  tokensCacheRead: bigint("tokens_cache_read", { mode: "number" }).notNull().default(0),
+  tokensCacheWrite: bigint("tokens_cache_write", { mode: "number" }).notNull().default(0),
+  prsMerged: integer("prs_merged").notNull().default(0),
+  prsMergedAiAssisted: integer("prs_merged_ai_assisted").notNull().default(0),
+  prsMergedBot: integer("prs_merged_bot").notNull().default(0),
+  prsReverted: integer("prs_reverted").notNull().default(0),
+  computedAt: timestamp("computed_at").notNull().defaultNow(),
+}, t => ({
+  pk: primaryKey({ columns: [t.orgId, t.day, t.source] }),
+}));
+
+export const costPerPr = pgTable("cost_per_pr", {
+  prId: uuid("pr_id").primaryKey().references(() => pr.id, { onDelete: "cascade" }),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  linkedSessions: integer("linked_sessions").notNull().default(0),
+  linkedUsers: integer("linked_users").notNull().default(0),
+  tokensIn: bigint("tokens_in", { mode: "number" }).notNull().default(0),
+  tokensOut: bigint("tokens_out", { mode: "number" }).notNull().default(0),
+  tokensCacheRead: bigint("tokens_cache_read", { mode: "number" }).notNull().default(0),
+  tokensCacheWrite: bigint("tokens_cache_write", { mode: "number" }).notNull().default(0),
+  totalSessionWallSec: integer("total_session_wall_sec").notNull().default(0),
+  highConfLinks: integer("high_conf_links").notNull().default(0),
+  mediumConfLinks: integer("medium_conf_links").notNull().default(0),
+  pctClaude: integer("pct_claude").notNull().default(0),
+  pctCodex: integer("pct_codex").notNull().default(0),
+  pctCursor: integer("pct_cursor").notNull().default(0),
+  pctHuman: integer("pct_human").notNull().default(0),
+  pctBot: integer("pct_bot").notNull().default(0),
+  priceVersion: integer("price_version").notNull().default(0),
+  computedAt: timestamp("computed_at").notNull().defaultNow(),
+}, t => ({
+  byOrg: index("cost_per_pr_by_org").on(t.orgId, t.computedAt),
+}));
+
+// Cohort audit log (P19) — manager queries with hashed cohort membership.
+export const cohortQueryLog = pgTable("cohort_query_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  managerId: text("manager_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  metric: text("metric").notNull(),
+  cohortHash: text("cohort_hash").notNull(),
+  memberIds: text("member_ids").array().notNull(),
+  queriedAt: timestamp("queried_at").notNull().defaultNow(),
+}, t => ({
+  byMgr: index("cohort_query_log_by_mgr").on(t.managerId, t.queriedAt),
+  byOrgMetric: index("cohort_query_log_by_org_metric").on(t.orgId, t.metric, t.queriedAt),
+}));
+
+// F2.11 — saved insights (PostHog-style builder). Per locked decision §7.3:
+// scope='org' rows are visible+editable by every manager in the org; scope='user'
+// rows are visible only to their owning user. Dev rows are always scope='user'.
+export const savedInsight = pgTable("saved_insight", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  scope: text("scope").notNull(),  // 'org' | 'user'
+  name: text("name").notNull(),
+  description: text("description"),
+  queryJson: jsonb("query_json").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, t => ({
+  byOrg: index("saved_insight_by_org").on(t.orgId, t.scope),
+  byUser: index("saved_insight_by_user").on(t.userId, t.createdAt),
+}));
+
+export const savedDashboard = pgTable("saved_dashboard", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => org.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  scope: text("scope").notNull(),  // 'org' | 'user'
+  name: text("name").notNull(),
+  layoutJson: jsonb("layout_json").notNull().default({}),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, t => ({
+  byOrg: index("saved_dashboard_by_org").on(t.orgId, t.scope),
+}));
+
+export const dashboardPinnedInsight = pgTable("dashboard_pinned_insight", {
+  dashboardId: uuid("dashboard_id").notNull().references(() => savedDashboard.id, { onDelete: "cascade" }),
+  insightId: uuid("insight_id").notNull().references(() => savedInsight.id, { onDelete: "cascade" }),
+  position: integer("position").notNull().default(0),
+}, t => ({
+  pk: primaryKey({ columns: [t.dashboardId, t.insightId] }),
+  byDashboard: index("dashboard_pinned_by_dash").on(t.dashboardId, t.position),
+}));
+
+// Resumable backfill cursor (P23).
+export const backfillState = pgTable("backfill_state", {
+  orgId: uuid("org_id").primaryKey().references(() => org.id, { onDelete: "cascade" }),
+  lastDay: text("last_day"),
+  lastPrId: uuid("last_pr_id"),
+  status: text("status").notNull().default("pending"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

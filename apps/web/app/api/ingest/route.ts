@@ -8,16 +8,19 @@
 
 import { db, schema } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { encryptPrompt, getOrCreateUserDek } from "@/lib/crypto/prompts";
+import { refreshDailyUserStats } from "@/lib/insights/refresh-daily-user-stats";
 
 const sessionSchema = z.object({
   externalSessionId: z.string(),
   repo: z.string(),                           // "ownerPath/name" — ownerPath may contain '/' for gitlab subgroups
   provider: z.enum(["github", "gitlab"]).optional(),  // defaults to 'github' for back-compat
   cwd: z.string().optional(),
+  branch: z.string().optional(),                       // P9
+  cwdResolvedRepo: z.string().optional(),              // P14
   startedAt: z.string(),                      // ISO
   endedAt: z.string(),                        // ISO
   model: z.string().optional(),
@@ -151,6 +154,8 @@ export async function POST(req: Request) {
       externalSessionId: s.externalSessionId,
       repo: s.repo,
       cwd: s.cwd ?? null,
+      branch: s.branch ?? null,
+      cwdResolvedRepo: s.cwdResolvedRepo ?? null,
       startedAt: new Date(s.startedAt),
       endedAt: new Date(s.endedAt),
       model: s.model ?? null,
@@ -192,6 +197,8 @@ export async function POST(req: Request) {
           frustrationSpikes: row.frustrationSpikes,
           promptWordsMedian: row.promptWordsMedian,
           promptWordsP95: row.promptWordsP95,
+          branch: row.branch,
+          cwdResolvedRepo: row.cwdResolvedRepo,
         },
       });
     inserted++;
@@ -267,6 +274,35 @@ export async function POST(req: Request) {
     });
   }
   await db.update(schema.apiToken).set({ lastUsedAt: new Date() }).where(eq(schema.apiToken.id, tk.id));
+
+  // Phase 3 T3.6 (H9 fix): rollup refresh after the response is flushed.
+  // Previously this was a fire-and-forget `void promise` which can be cut off
+  // when the runtime ends the request. `after()` keeps work alive past the
+  // response on serverless and on the long-running Node server alike.
+  const touched = new Map<string, Set<string>>();
+  const acceptedSet = new Set(accepted);
+  for (const s of body.sessions) {
+    if (!acceptedSet.has(s.externalSessionId)) continue;
+    const orgIdForSession = resolveOrgId(s.provider ?? "github", s.repo);
+    if (!orgIdForSession) continue;
+    const k = `${userId}|${orgIdForSession}`;
+    if (!touched.has(k)) touched.set(k, new Set());
+    const days = touched.get(k)!;
+    days.add(new Date(s.startedAt).toISOString().slice(0, 10));
+    days.add(new Date(s.endedAt).toISOString().slice(0, 10));
+  }
+  if (touched.size > 0) {
+    after(async () => {
+      for (const [k, daysSet] of touched) {
+        const [uid, oid] = k.split("|");
+        try {
+          await refreshDailyUserStats(uid, oid, Array.from(daysSet));
+        } catch (err) {
+          console.error("refresh-daily-user-stats failed", err);
+        }
+      }
+    });
+  }
 
   return NextResponse.json({ inserted, accepted: accepted.length, rejected, promptsInserted, responsesInserted });
 }
