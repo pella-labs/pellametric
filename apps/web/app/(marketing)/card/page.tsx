@@ -3,7 +3,7 @@ import { CardMount } from "../_card/CardMount";
 import { DEMO_CARD } from "../_card/demo-data";
 import { GetStarted } from "../_components/GetStarted";
 
-const CARD_TITLE = "Pellametric · Get your card";
+const CARD_TITLE = "Telemetryc · Get your card";
 const CARD_DESCRIPTION =
   "Plug in your Claude Code and Codex history. Parsed on your device — totals only, no prompts, no code. Get your shareable card.";
 

@@ -112,7 +112,7 @@ export function Slide05VendorGap({ totalPages }: { totalPages: number }) {
             </div>
           ))}
 
-          {/* Pellametric row — emphasized */}
+          {/* Telemetryc row — emphasized */}
           <div
             style={{
               display: "grid",
@@ -139,7 +139,7 @@ export function Slide05VendorGap({ totalPages }: { totalPages: number }) {
                   fontWeight: 500,
                 }}
               >
-                Pellametric
+                Telemetryc
               </span>
             </div>
             {COLS.map((c) => (

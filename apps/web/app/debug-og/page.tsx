@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 
 export const metadata: Metadata = {
-  title: "Pellametric · debug OG",
+  title: "Telemetryc · debug OG",
   robots: { index: false, follow: false },
 };
 

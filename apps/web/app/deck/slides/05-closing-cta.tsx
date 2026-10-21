@@ -3,11 +3,11 @@
 import { CardMount } from "../../(marketing)/_card/CardMount";
 import { DEMO_CARD } from "../../(marketing)/_card/demo-data";
 
-// `pellametric.com/intro` is a 302 to the founders' Google Calendar booking
+// `telemetryc.com/intro` is a 302 to the founders' Google Calendar booking
 // page. Going through our own domain keeps the slide URL short + memorable
 // and lets us swap the destination later without re-printing anything.
-const SCHEDULE_LINK = "https://pellametric.com/intro";
-const CARD_LINK = "https://pellametric.com/card";
+const SCHEDULE_LINK = "https://telemetryc.com/intro";
+const CARD_LINK = "https://telemetryc.com/card";
 
 /**
  * Closing slide — unified "let's build this together" pitch.
@@ -34,7 +34,7 @@ export function Slide05ClosingCta(_props: { totalPages: number }) {
           <img
             className="wordmark-dot"
             src="/primary-logo.svg"
-            alt="Pellametric"
+            alt="Telemetryc"
           />
         </div>
         <div className="chrome-right">04 / VERDICT</div>
@@ -94,13 +94,13 @@ export function Slide05ClosingCta(_props: { totalPages: number }) {
           >
             <CtaButton
               href={CARD_LINK}
-              label="pellametric.com/card →"
+              label="telemetryc.com/card →"
               description="For Claude Code and Codex users: claim your card today."
               tone="warm"
             />
             <CtaButton
               href={SCHEDULE_LINK}
-              label="pellametric.com/intro →"
+              label="telemetryc.com/intro →"
               description="For engineering leaders: map bottlenecks, workflows, and AI spend."
               tone="ghost"
             />

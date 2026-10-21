@@ -38,7 +38,7 @@ export function ManagerNavRail({
   return (
     <aside className="hidden md:flex md:flex-col w-60 shrink-0 border-r border-(--border) p-4 space-y-6">
       <div>
-        <p className="mk-eyebrow">Pellametric</p>
+        <p className="mk-eyebrow">Telemetryc</p>
         <p className="mk-heading text-(--foreground) text-base">{orgName}</p>
         <p className="mk-table-cell text-(--muted-foreground)">
           {role === "manager" ? "Manager view" : "Dev view"}

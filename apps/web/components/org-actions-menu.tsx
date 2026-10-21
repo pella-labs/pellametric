@@ -191,7 +191,7 @@ export default function OrgActionsMenu({
                 </h2>
                 <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
                   This removes the {provider === "gitlab" ? "GitLab" : "GitHub"} credentials, all
-                  members, invitations, and ingested session data for this org from Pellametric.
+                  members, invitations, and ingested session data for this org from Telemetryc.
                   You can reconnect at any time — historical sessions will be re-uploaded by your
                   collector on the next run.
                 </p>
@@ -220,7 +220,7 @@ export default function OrgActionsMenu({
                   Disconnected
                 </h2>
                 <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                  {orgName} is no longer connected to Pellametric. Reconnect to set it back up
+                  {orgName} is no longer connected to Telemetryc. Reconnect to set it back up
                   with fresh credentials, or head back to the dashboard.
                 </p>
                 <div className="mt-5 flex items-center justify-end gap-2">

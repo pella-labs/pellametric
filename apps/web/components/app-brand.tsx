@@ -18,8 +18,8 @@ export default function AppBrand() {
   return (
     <Link
       href="/dashboard"
-      title="Pellametric — dashboard"
-      aria-label="Pellametric — go to dashboard"
+      title="Telemetryc — dashboard"
+      aria-label="Telemetryc — go to dashboard"
       aria-current={isOnDashboard ? "page" : undefined}
       className="fixed top-3 left-3 sm:top-4 sm:left-4 z-50 group flex items-center justify-center size-10 rounded-full border border-border bg-background/70 backdrop-blur hover:border-accent/60 hover:bg-card/80 transition shadow-sm"
     >

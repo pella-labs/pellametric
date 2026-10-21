@@ -23,12 +23,12 @@ export default async function MarketingLayout({
           <nav className="mk-nav" aria-label="Primary">
             <Link href="/" className="mk-wordmark">
               <img
-                src="/primary-logo.svg"
+                src="/t-logo.svg"
                 alt=""
                 aria-hidden
                 className="mk-wordmark-logo"
               />
-              Pellametric
+              Telemetryc
             </Link>
             <div className="mk-nav-links">
               <a
@@ -63,7 +63,7 @@ export default async function MarketingLayout({
             <div className="mk-footer-copy">
               <span className="mk-footer-line">
                 <img
-                  src="/primary-logo.svg"
+                  src="/t-logo.svg"
                   alt=""
                   aria-hidden
                   className="mk-footer-logo"

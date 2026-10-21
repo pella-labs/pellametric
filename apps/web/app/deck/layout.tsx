@@ -6,9 +6,9 @@ import "./deck.css";
 // SEO via robots metadata. Distribute the URL directly; search engines are
 // told to skip it.
 export const metadata: Metadata = {
-  title: "Pellametric · Pitch Deck",
+  title: "Telemetryc · Pitch Deck",
   description:
-    "Investor-facing pitch deck for Pellametric — the open-source analytics platform for AI-assisted engineering.",
+    "Investor-facing pitch deck for Telemetryc — the open-source analytics platform for AI-assisted engineering.",
   robots: {
     index: false,
     follow: false,

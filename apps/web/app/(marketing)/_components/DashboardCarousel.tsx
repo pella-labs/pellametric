@@ -6,12 +6,12 @@ const SLIDES = [
   {
     src: "/dash-overview.png",
     url: "metrics.yourteam.internal / dashboard",
-    alt: "Per-engineer Pellametric dashboard with active hours, daily output, intent mix, and tools/skills/models breakdowns.",
+    alt: "Per-engineer Telemetryc dashboard with active hours, daily output, intent mix, and tools/skills/models breakdowns.",
   },
   {
     src: "/dash-engineer.png",
     url: "metrics.yourteam.internal / team-snapshot/alejandro",
-    alt: "Engineer detail view with profile photo, KPI strip, holographic Pellametric card, and top-repo / skill / MCP / tool panels.",
+    alt: "Engineer detail view with profile photo, KPI strip, holographic Telemetryc card, and top-repo / skill / MCP / tool panels.",
   },
   {
     src: "/dash-team.png",

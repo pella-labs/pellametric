@@ -719,7 +719,7 @@ export function CardPage({
       }
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.download = `pellametric-card-${currentPage + 1}.png`;
+      link.download = `telemetryc-card-${currentPage + 1}.png`;
       link.href = url;
       link.click();
       URL.revokeObjectURL(url);
@@ -920,7 +920,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className={`top-row reveal ${show ? "show" : ""}`}>
-              <div className="brand">PELLAMETRIC</div>
+              <div className="brand">TELEMETRYC</div>
               <div className="tier">{tier}</div>
             </div>
             <div
@@ -1080,7 +1080,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row">
-              <div className="brand">PELLAMETRIC</div>
+              <div className="brand">TELEMETRYC</div>
               <div className="page-title">Identity</div>
             </div>
             <div className="wrap-insight">
@@ -1146,7 +1146,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row" style={{ marginBottom: 20 }}>
-              <div className="brand">PELLAMETRIC</div>
+              <div className="brand">TELEMETRYC</div>
               <div className="page-title">Activity</div>
             </div>
             {statView !== "codex" ? (
@@ -1291,7 +1291,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row">
-              <div className="brand">PELLAMETRIC</div>
+              <div className="brand">TELEMETRYC</div>
               <div className="page-title">Tools</div>
             </div>
             {(() => {
@@ -1402,7 +1402,7 @@ export function CardPage({
             )}
             <div style={{ position: "relative", zIndex: 1 }}>
               <div className="top-row">
-                <div className="brand">PELLAMETRIC</div>
+                <div className="brand">TELEMETRYC</div>
                 <div className="page-title">Models</div>
               </div>
               <SectionHead
@@ -1520,7 +1520,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row">
-              <div className="brand">PELLAMETRIC</div>
+              <div className="brand">TELEMETRYC</div>
               <div className="page-title">Projects</div>
             </div>
             <SectionHead
@@ -1650,7 +1650,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row">
-              <div className="brand">PELLAMETRIC</div>
+              <div className="brand">TELEMETRYC</div>
               <div className="page-title">Analytics</div>
             </div>
             <SectionHead
@@ -1769,7 +1769,7 @@ export function CardPage({
         return (
           <div className="card-content">
             <div className="top-row">
-              <div className="brand">PELLAMETRIC</div>
+              <div className="brand">TELEMETRYC</div>
               <div className="page-title">Summary</div>
             </div>
             <SectionHead
@@ -1943,7 +1943,7 @@ export function CardPage({
                       />
                     </svg>
                   </div>
-                  <div className="splash-brand">PELLAMETRIC</div>
+                  <div className="splash-brand">TELEMETRYC</div>
                   <div className="splash-sub">illuminating your code</div>
                 </div>
               </div>
@@ -2014,7 +2014,7 @@ export function CardPage({
               onClick={async () => {
                 try {
                   await navigator.share({
-                    title: `${userName}'s Pellametric Card`,
+                    title: `${userName}'s Telemetryc Card`,
                     text: "Where did my tokens go? @pellametric knows. Grab your card →",
                     url: window.location.href,
                   });

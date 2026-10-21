@@ -110,7 +110,7 @@ export function OgFrame({ children }: { children: ReactNode }) {
             display: "flex",
           }}
         >
-          Pellametric
+          Telemetryc
         </span>
       </div>
 

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 // noscript fallback, and the runtime redirect all stay in sync.
 const FOUNDERS_CALENDAR = "https://calendar.app.google/VrY8s3Ho5Ldd4Wb66";
 
-const TITLE = "Build Pellametric with us · 30-minute intro with the founding team";
+const TITLE = "Build Telemetryc with us · 30-minute intro with the founding team";
 const DESCRIPTION =
   "Measure agentic engineering. Meter the spend, map the work, scale what ships. Every token, every tool, every repo — finally counted.";
 
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     url: "/intro",
     title: TITLE,
     description: DESCRIPTION,
-    siteName: "Pellametric",
+    siteName: "Telemetryc",
   },
   twitter: {
     card: "summary_large_image",

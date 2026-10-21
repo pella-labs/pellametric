@@ -92,7 +92,7 @@ function SignInSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
           <span className="mk-sheet-brand-mark" aria-hidden>
             <img src="/primary-logo.svg" alt="" />
           </span>
-          <span className="mk-sheet-brand-text mk-sys">pellametric</span>
+          <span className="mk-sheet-brand-text mk-sys">telemetryc</span>
         </div>
         <h2 id="mk-sheet-title" className="mk-sheet-title">
           Sign in

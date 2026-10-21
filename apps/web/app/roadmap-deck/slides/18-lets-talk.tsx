@@ -29,7 +29,7 @@ export function Slide18LetsTalk(_props: { totalPages: number }) {
           <img
             className="wordmark-dot"
             src="/primary-logo.svg"
-            alt="Pellametric"
+            alt="Telemetryc"
           />
         </div>
         <div className="chrome-right">13 / LET'S TALK</div>
@@ -100,7 +100,7 @@ export function Slide18LetsTalk(_props: { totalPages: number }) {
           </div>
 
           <a
-            href="https://pellametric.com/intro"
+            href="https://telemetryc.com/intro"
             style={{
               display: "flex",
               flexDirection: "column",
@@ -134,7 +134,7 @@ export function Slide18LetsTalk(_props: { totalPages: number }) {
                 lineHeight: 1.1,
               }}
             >
-              pellametric.com/intro →
+              telemetryc.com/intro →
             </span>
           </a>
         </div>

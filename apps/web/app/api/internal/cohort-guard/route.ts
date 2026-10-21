@@ -71,7 +71,7 @@ export async function POST(req: Request) {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            text: `Pellametric cohort intersection alert: ${hits.length} pair(s) over ${THRESHOLD} overlap. Lookback ${LOOKBACK_HOURS}h.`,
+            text: `Telemetryc cohort intersection alert: ${hits.length} pair(s) over ${THRESHOLD} overlap. Lookback ${LOOKBACK_HOURS}h.`,
             hits: hits.slice(0, 25),
           }),
         });

@@ -47,7 +47,7 @@ export const githubProvider: Provider = {
     // directly in that case.
     if (!installationId) {
       throw new ProviderError("permission_denied", undefined, undefined,
-        "GitHub App not installed on this org — install Pellametric first.");
+        "GitHub App not installed on this org — install Telemetryc first.");
     }
 
     const dateClause = since ? ` created:>=${since.toISOString().slice(0, 10)}` : "";

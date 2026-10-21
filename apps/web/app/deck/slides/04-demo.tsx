@@ -9,7 +9,7 @@ export function Slide04Demo({ totalPages }: { totalPages: number }) {
 
       <div className="dashmock">
         <div className="dashmock-side">
-          <div className="brand">◼ pellametric</div>
+          <div className="brand">◼ telemetryc</div>
           {[
             ["/ Summary", true],
             ["/ Sessions", false],

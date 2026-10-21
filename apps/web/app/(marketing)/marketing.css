@@ -1402,7 +1402,7 @@
   display: none;
 }
 
-/* Tone down the holo shimmer to fit the Pellametric aesthetic */
+/* Tone down the holo shimmer to fit the Telemetryc aesthetic */
 .pellametric-marketing .mk-demo-card-host .card-holo {
   --card-opacity: 0.35;
 }

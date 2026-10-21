@@ -46,8 +46,8 @@ export default async function SetupOrgPage() {
         <div className="font-medium">GitHub organization</div>
         <div className="text-xs text-muted-foreground mt-0.5">
           {hasGithub
-            ? "Install the Pellametric App on a GitHub org you manage."
-            : "Install the Pellametric App. You'll authenticate with the org owner's GitHub on the next screen."}
+            ? "Install the Telemetryc App on a GitHub org you manage."
+            : "Install the Telemetryc App. You'll authenticate with the org owner's GitHub on the next screen."}
         </div>
       </div>
       <span className="text-xs uppercase tracking-wider text-accent shrink-0">Install →</span>
@@ -87,7 +87,7 @@ export default async function SetupOrgPage() {
               ? "Choose where your code lives. You'll become the manager of the new workspace."
               : hasGitlab
                 ? "Connect a GitLab group from your account. We can also connect a GitHub org via the App install."
-                : "Install the Pellametric App on a GitHub org, or connect a GitLab group via Group Access Token."}
+                : "Install the Telemetryc App on a GitHub org, or connect a GitLab group via Group Access Token."}
           </p>
         </div>
       </header>
@@ -103,7 +103,7 @@ export default async function SetupOrgPage() {
       )}
 
       <p className="text-xs text-muted-foreground mt-6">
-        Already connected from another account? Ask the person who connected it to invite you in pellametric.
+        Already connected from another account? Ask the person who connected it to invite you in Telemetryc.
       </p>
     </main>
   );

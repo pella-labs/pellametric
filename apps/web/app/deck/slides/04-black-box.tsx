@@ -305,7 +305,7 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
           type="button"
           onClick={() => setOn((v) => !v)}
           aria-pressed={on}
-          aria-label="Toggle pellametric"
+          aria-label="Toggle telemetryc"
           style={{
             width: 132,
             height: 64,
@@ -628,7 +628,7 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
         type="button"
         onClick={() => setOn((v) => !v)}
         aria-pressed={on}
-        aria-label="Toggle pellametric"
+        aria-label="Toggle telemetryc"
         style={{
           position: "absolute",
           left: HUB_X,

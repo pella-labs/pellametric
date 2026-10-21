@@ -175,7 +175,7 @@ export const gitlabProvider: Provider = {
   },
 
   /**
-   * Persist a GitLab group as a Pellametric org.
+   * Persist a GitLab group as a Telemetryc org.
    *   - validates the GAT against the chosen group
    *   - rejects prefix-overlapping slugs
    *   - inserts org + org_credentials + manager membership in one transaction
@@ -274,7 +274,7 @@ export const gitlabProvider: Provider = {
     const { gat, groupId, scopes } = await getOrgGat(orgId);
     if (!gitlabCanWrite(scopes)) {
       throw new ProviderError("permission_denied", undefined, undefined,
-        "This GitLab org's token is read-only. Add `api` scope (or rotate the token) to invite from Pellametric.");
+        "This GitLab org's token is read-only. Add `api` scope (or rotate the token) to invite from Telemetryc.");
     }
     const trimmed = identifier.trim();
 

@@ -84,7 +84,7 @@ async function makeStyledPdf(args: {
     const leftIconSize = 26;
     const leftIconY = headerY + (headerH - leftIconSize) / 2;
     if (brandIcon) page.drawImage(brandIcon, { x: left, y: leftIconY, width: leftIconSize, height: leftIconSize });
-    page.drawText("Pellametric", { x: leftTextX, y: leftTitleY, size: leftTitleSize, font: fontBold, color: rgb(0.95, 0.96, 0.98) });
+    page.drawText("Telemetryc", { x: leftTextX, y: leftTitleY, size: leftTitleSize, font: fontBold, color: rgb(0.95, 0.96, 0.98) });
     page.drawText("Team Report", { x: leftTextX, y: leftSubY, size: leftSubSize, font, color: rgb(0.75, 0.79, 0.86) });
 
     const rightTitleSize = 20;
@@ -284,7 +284,7 @@ async function makeStyledXlsx(args: {
     });
   } catch {}
 
-  sheet.getCell("B1").value = "Pellametric Report";
+  sheet.getCell("B1").value = "Telemetryc Report";
   sheet.getCell("B1").font = { bold: true, size: 16, color: { argb: "FF0E1726" } };
   sheet.getCell("B2").value = `${orgName} · ${provider}/${slug}`;
   sheet.getCell("B2").font = { size: 11, color: { argb: "FF334155" } };
@@ -488,7 +488,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
   }));
 
   const stamp = new Date().toISOString().slice(0, 10);
-  const baseName = `pellametric-${provider}-${slug}-${stamp}`;
+  const baseName = `telemetryc-${provider}-${slug}-${stamp}`;
 
   const byMemberForMeta = new Map<string, ExportRow[]>();
   for (const r of rows) byMemberForMeta.set(r.userName, [...(byMemberForMeta.get(r.userName) ?? []), r]);

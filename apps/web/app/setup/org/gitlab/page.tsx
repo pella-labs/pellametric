@@ -51,7 +51,7 @@ export default async function GitlabGroupListPage({
           <p className="text-sm text-muted-foreground mt-1">
             {needsManual
               ? "Paste a group path or numeric ID. Then you'll create a Group Access Token in GitLab and paste that on the next step."
-              : "Showing groups where you're Maintainer or Owner. Lower roles can't create the access token Pellametric needs."}
+              : "Showing groups where you're Maintainer or Owner. Lower roles can't create the access token Telemetryc needs."}
           </p>
         </div>
       </header>

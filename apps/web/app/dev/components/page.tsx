@@ -92,7 +92,7 @@ export default function DevComponentsPage(): React.ReactElement {
     <div className="min-h-screen bg-(--background) text-(--foreground) p-8 space-y-12">
       <header className="space-y-2">
         <p className="mk-eyebrow">_dev / components</p>
-        <h1 className="mk-heading text-3xl">Pellametric chart + data primitives</h1>
+        <h1 className="mk-heading text-3xl">Telemetryc chart + data primitives</h1>
         <p className="mk-table-cell text-(--muted-foreground) max-w-2xl">
           Showcase route for visual review of every Visx-backed and pure-SVG primitive
           shipped in Phase F1. Env-gated: not visible on prod.

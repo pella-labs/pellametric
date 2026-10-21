@@ -11,7 +11,7 @@ import {
   Space_Mono,
 } from "next/font/google";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pellametric.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://telemetryc.com";
 
 const fontSans = Geist({
   subsets: ["latin"],
@@ -57,25 +57,25 @@ const fontNumeric = Space_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Pellametric",
-    template: "%s · Pellametric",
+    default: "Telemetryc",
+    template: "%s · Telemetryc",
   },
   description:
     "Measure agentic engineering. Meter the spend. Map the work. Scale what ships.",
-  applicationName: "Pellametric",
+  applicationName: "Telemetryc",
   openGraph: {
     type: "website",
-    siteName: "Pellametric",
+    siteName: "Telemetryc",
     locale: "en_US",
     url: "/",
-    title: "Pellametric · Measure agentic engineering",
+    title: "Telemetryc · Measure agentic engineering",
     description:
       "Every token, every tool, every repo — finally counted. Analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },
   twitter: {
     card: "summary_large_image",
     site: "@pellametric",
-    title: "Pellametric · Measure agentic engineering",
+    title: "Telemetryc · Measure agentic engineering",
     description:
       "Every token, every tool, every repo — finally counted. Analytics across Claude Code, Codex and the rest of your dev-AI stack.",
   },
