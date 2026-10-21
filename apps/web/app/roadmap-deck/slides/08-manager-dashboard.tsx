@@ -22,7 +22,7 @@ export function Slide08ManagerDashboard({ totalPages }: { totalPages: number }) 
         >
           <img
             src="/dash-team.png"
-            alt="Pellametric team dashboard"
+            alt="Telemetryc team dashboard"
             style={{
               display: "block",
               width: "100%",

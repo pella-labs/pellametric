@@ -6,12 +6,12 @@ import { BrandMonolith } from "./_components/BrandMonolith";
 import { DashboardCarousel } from "./_components/DashboardCarousel";
 import { HeroGrid } from "./_components/HeroGrid";
 
-const HOME_TITLE = "Pellametric · Measure agentic engineering";
+const HOME_TITLE = "Telemetryc · Measure agentic engineering";
 const HOME_DESCRIPTION =
   "Measure agentic engineering. Meter the spend, map the work, scale what ships. Analytics across Claude Code, Codex and the rest of your dev-AI stack.";
 
 export const metadata: Metadata = {
-  title: HOME_TITLE,
+  title: { absolute: HOME_TITLE },
   description: HOME_DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
@@ -297,7 +297,7 @@ export default function MarketingHome() {
             be the one you understand the least.
           </p>
           <p className="mk-closing-body">
-            Pellametric measures it. Spend across every agent. Outcomes tied to
+            Telemetryc measures it. Spend across every agent. Outcomes tied to
             merged code. The prompts that ship, surfaced and shareable.
             Open-source, self-hostable, runs against your local sessions on day
             one. The data was always yours — now it's an instrument.

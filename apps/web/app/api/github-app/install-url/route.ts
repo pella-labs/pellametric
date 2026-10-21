@@ -1,5 +1,5 @@
 // GET /api/github-app/install-url?orgSlug=...
-// Returns the Pellametric GitHub App install URL for the given org slug, or
+// Returns the Telemetryc GitHub App install URL for the given org slug, or
 // `{ url: null }` when the App isn't configured on this server.
 
 import { NextResponse } from "next/server";

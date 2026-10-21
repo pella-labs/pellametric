@@ -151,7 +151,7 @@ export async function POST(req: Request) {
     github = {
       ok: false,
       error: url
-        ? "Install Pellametric on this GitHub org to enable invites."
+        ? "Install Telemetryc on this GitHub org to enable invites."
         : "GitHub invites are not configured on this server.",
       ...(url ? { install_url: url } : {}),
     };

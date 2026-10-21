@@ -72,7 +72,7 @@ export default async function OrgPage({
   const providerCfg = providers[providerName];
 
   // For GitLab orgs, check whether the stored GAT has write scope. If not, we
-  // hide invite-from-Pellametric flows and surface a clear "this is read-only"
+  // hide invite-from-Telemetryc flows and surface a clear "this is read-only"
   // hint with a path to upgrade the token.
   let canInvite = true;
   if (providerName === "gitlab") {
@@ -268,7 +268,7 @@ export default async function OrgPage({
       {providerName === "github" && isManager && appConfigured() && row.org.githubAppInstallationId == null && installUrl(row.org.slug) && (
         <div className="mb-4 flex items-center justify-between bg-card border border-warning/40 rounded-md px-4 py-3">
           <div className="text-sm">
-            <span className="font-medium">Install Pellametric on GitHub.</span>
+            <span className="font-medium">Install Telemetryc on GitHub.</span>
             <span className="text-muted-foreground ml-2">Enables one-click invites and reliable PR data on the team page.</span>
           </div>
           <a

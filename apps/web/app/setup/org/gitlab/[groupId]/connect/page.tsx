@@ -95,7 +95,7 @@ export default async function GitlabConnectPage({
                 <span className="text-[color:var(--ink-faint)] mx-1">·</span>
                 <span>or pick</span>
                 <code className="font-mono bg-card border border-border rounded px-1.5 py-0.5">api</code>
-                <span>if you also want to invite members from Pellametric.</span>
+                <span>if you also want to invite members from Telemetryc.</span>
               </span>
             </Field>
           </dl>

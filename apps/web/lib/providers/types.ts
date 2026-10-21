@@ -42,7 +42,7 @@ export type MemberRef = {
 
 /** Common provider interface. Each method is called from server-side route handlers. */
 export interface Provider {
-  /** Orgs/groups the user can connect to Pellametric. */
+  /** Orgs/groups the user can connect to Telemetryc. */
   listConnectableOrgs(userId: string): Promise<ConnectableOrg[]>;
 
   /** Persist a new connection. Implementation differs per provider (GitHub App callback vs GitLab GAT paste). */

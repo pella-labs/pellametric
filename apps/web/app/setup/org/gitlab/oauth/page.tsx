@@ -69,7 +69,7 @@ export default async function GitlabOauthSetupPage({
           <p className="text-sm text-muted-foreground mb-3">Click <strong className="text-foreground">Add new application</strong> and fill in:</p>
           <dl className="space-y-3 text-sm">
             <Field label="Name">
-              <span className="font-mono text-xs bg-card border border-border rounded px-2 py-1">Pellametric</span>
+              <span className="font-mono text-xs bg-card border border-border rounded px-2 py-1">Telemetryc</span>
               <span className="text-xs text-muted-foreground ml-2">(or anything you like)</span>
             </Field>
             <Field label="Redirect URI">
@@ -90,7 +90,7 @@ export default async function GitlabOauthSetupPage({
               <span className="text-xs text-muted-foreground inline-flex items-center gap-1.5 flex-wrap">
                 <CheckIcon />
                 <code className="font-mono bg-card border border-border rounded px-1.5 py-0.5">api</code>
-                <span>(full read+write — required so Pellametric can invite members on your behalf)</span>
+                <span>(full read+write — required so Telemetryc can invite members on your behalf)</span>
               </span>
             </Field>
           </dl>

@@ -61,7 +61,7 @@ async function ensureOrg(): Promise<string> {
     .values({
       slug: DEMO_ORG_SLUG,
       provider: "github",
-      name: "Pellametric Demo",
+      name: "Telemetryc Demo",
       promptRetentionDays: 30,
     })
     .returning();

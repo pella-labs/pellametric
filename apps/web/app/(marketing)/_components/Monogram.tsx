@@ -5,13 +5,15 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 
-const LOGO_SVG_URL = "/primary-logo.svg";
+const DEFAULT_LOGO_SVG_URL = "/primary-logo.svg";
 // World-space height the extruded logo should occupy after fitting, before
 // the consumer-provided `scale` prop is applied. Chosen to roughly match the
 // visual size of the previous hand-tuned monogram.
 const TARGET_WORLD_SIZE = 9;
 
 export interface PMonogramProps {
+  /** SVG file (in public/) extruded into the 3D mark. */
+  logoUrl?: string;
   color?: string | number;
   attenuationColor?: string | number;
   rimColor?: string | number;
@@ -27,6 +29,7 @@ export interface PMonogramProps {
 }
 
 export function PMonogram({
+  logoUrl = DEFAULT_LOGO_SVG_URL,
   color = "#6e8a6f",
   attenuationColor = "#0f1a10",
   rimColor = "#b07b3e",
@@ -50,10 +53,10 @@ export function PMonogram({
     let disposeScene: (() => void) | null = null;
     const abort = new AbortController();
 
-    fetch(LOGO_SVG_URL, { signal: abort.signal })
+    fetch(logoUrl, { signal: abort.signal })
       .then((r) => {
         if (!r.ok)
-          throw new Error(`Failed to load ${LOGO_SVG_URL}: ${r.status}`);
+          throw new Error(`Failed to load ${logoUrl}: ${r.status}`);
         return r.text();
       })
       .then((svgText) => {
@@ -337,6 +340,7 @@ export function PMonogram({
       disposeScene?.();
     };
   }, [
+    logoUrl,
     color,
     attenuationColor,
     rimColor,

@@ -24,7 +24,7 @@ export default async function Dashboard() {
   return (
     <main className="max-w-[1600px] mx-auto pt-20 sm:pt-24 px-4 sm:px-6 pb-16">
       <header className="mb-10 sm:mb-12 pb-5 sm:pb-6 border-b border-border">
-        <div className="mk-eyebrow mb-2">pellametric</div>
+        <div className="mk-eyebrow mb-2">telemetryc</div>
         <h1 className="mk-heading text-2xl sm:text-3xl md:text-4xl font-semibold tracking-[-0.02em]">
           Welcome back,{" "}
           <em className="not-italic text-accent">{session.user.name?.split(" ")[0] ?? "dev"}.</em>
@@ -57,7 +57,7 @@ export default async function Dashboard() {
           <div>
             <div className="mk-eyebrow mb-2">collector</div>
             <h2 className="mk-heading font-semibold text-lg mb-1.5">Run it once</h2>
-            <p className="text-sm text-muted-foreground max-w-md">Reads your local Claude Code + Codex sessions, uploads to pellametric.</p>
+            <p className="text-sm text-muted-foreground max-w-md">Reads your local Claude Code + Codex sessions, uploads to Telemetryc.</p>
           </div>
           <Link href="/setup/collector" className="mk-label border border-border px-3 py-2 hover:border-[color:var(--border-hover)] transition shrink-0 self-start">
             setup →

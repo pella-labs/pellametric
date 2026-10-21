@@ -11,7 +11,7 @@ import {
 } from "../../_og/chrome";
 
 export const runtime = "nodejs";
-export const alt = "A Pellametric card — a developer's coding-agent activity at a glance";
+export const alt = "A Telemetryc card — a developer's coding-agent activity at a glance";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
@@ -95,7 +95,7 @@ export default async function CardOg({ params }: { params: Promise<{ id: string 
                 display: "flex",
               }}
             >
-              Pellametric card.
+              Telemetryc card.
             </span>
           </span>
         }

@@ -5,12 +5,12 @@ type Step = "install" | "invite" | "collector";
 
 const COPY: Record<Step, { title: string; body: string }> = {
   install: {
-    title: "Install Pellametric on GitHub",
+    title: "Install Telemetryc on GitHub",
     body: "One click — lets us send GitHub invites and pull team-wide PR data on your behalf. The org owner has to do this once.",
   },
   invite: {
     title: "Invite your first teammate",
-    body: "Type their GitHub login. They'll get an email from GitHub to join the org and another from pellametric to start tracking.",
+    body: "Type their GitHub login. They'll get an email from GitHub to join the org and another from Telemetryc to start tracking.",
   },
   collector: {
     title: "Set up your data collector",

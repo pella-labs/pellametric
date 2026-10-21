@@ -381,7 +381,7 @@ export default function PolicyClient({
           <div className="bg-card border border-border rounded-md shadow-2xl w-[min(960px,94vw)] max-h-[90vh] overflow-auto p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
-                <img src="/icon.png" alt="Pellametric" className="h-8 w-8 rounded-sm mt-0.5" />
+                <img src="/icon.png" alt="Telemetryc" className="h-8 w-8 rounded-sm mt-0.5" />
                 <div>
                 <h3 className="text-base font-semibold">Report preview</h3>
                 <p className="text-xs text-muted-foreground mt-1">Preview PDF or Excel before download.</p>

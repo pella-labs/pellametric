@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import "../deck/deck.css";
 
 export const metadata: Metadata = {
-  title: "Pellametric · Roadmap & Vision Deck",
+  title: "Telemetryc · Roadmap & Vision Deck",
   description:
-    "Roadmap & vision deck for Pellametric — the open-source analytics platform for AI-assisted engineering.",
+    "Roadmap & vision deck for Telemetryc — the open-source analytics platform for AI-assisted engineering.",
   robots: {
     index: false,
     follow: false,

@@ -98,7 +98,7 @@ export function Slide06ThankYou(_props: { totalPages: number }) {
           <img
             className="wordmark-dot"
             src="/primary-logo.svg"
-            alt="Pellametric"
+            alt="Telemetryc"
           />
         </div>
         <div className="chrome-right">05 / THANK YOU</div>

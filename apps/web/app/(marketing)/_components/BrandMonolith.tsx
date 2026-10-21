@@ -1,12 +1,12 @@
 import { PMonogram } from "./Monogram";
 
 /**
- * BrandMonolith. Glass P monogram center-stage with two counter-rotating
+ * BrandMonolith. Glass T monogram center-stage with two counter-rotating
  * rings of product language orbiting it.
  */
 export function BrandMonolith() {
   return (
-    <section className="mk-monolith" aria-label="Pellametric brand mark">
+    <section className="mk-monolith" aria-label="Telemetryc brand mark">
       <div className="mk-monolith-stage">
         <Ring
           className="mk-ring"
@@ -25,7 +25,7 @@ export function BrandMonolith() {
           pathRadius={440}
         />
         <div className="mk-monogram-frame">
-          <PMonogram />
+          <PMonogram logoUrl="/t-logo.svg" />
         </div>
       </div>
     </section>

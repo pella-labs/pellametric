@@ -6,7 +6,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
   return (
     <div className="cover">
       <div className="cover-left">
-        <h1 className="cover-wordmark">Pellametric</h1>
+        <h1 className="cover-wordmark">Telemetryc</h1>
         <p
           className="lede"
           style={{
@@ -38,7 +38,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
       <div className="cover-right">
         <div className="cover-monogram" aria-hidden>
           <svg className="ring-text" viewBox="0 0 420 420" role="presentation">
-            <title>Pellametric wordring</title>
+            <title>Telemetryc wordring</title>
             <defs>
               <path
                 id="roadmap-cover-ring-path"
@@ -76,7 +76,7 @@ export function Slide01Cover(_props: { totalPages: number }) {
         </div>
         <div>
           <div className="label">Web</div>
-          <div className="val">pellametric.com</div>
+          <div className="val">telemetryc.com</div>
         </div>
         <div>
           <div className="label">Contact</div>

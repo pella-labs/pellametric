@@ -38,7 +38,7 @@ export default function InvitePage({ params }: { params: Promise<{ provider: str
         "GitHub invite sent";
       setMsg(`Invited · ${note}`);
     } else if (j.github && !j.github.ok) {
-      setMsg(`Invited (pellametric only) · GitHub: ${j.github.error}`);
+      setMsg(`Invited (Telemetryc only) · GitHub: ${j.github.error}`);
     } else {
       setMsg("Invited");
     }
@@ -78,7 +78,7 @@ export default function InvitePage({ params }: { params: Promise<{ provider: str
           href={installUrl}
           className="inline-block mb-4 text-xs h-8 px-3 leading-8 rounded-md bg-accent text-accent-foreground hover:opacity-90 transition"
         >
-          Install Pellametric on GitHub →
+          Install Telemetryc on GitHub →
         </a>
       )}
 
