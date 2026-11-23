@@ -53,7 +53,7 @@ export const LAUNCHD_PLIST_TMPL = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 
 export const SYSTEMD_SERVICE_TMPL = `[Unit]
-Description=pellametric collector
+Description=telemetryc collector
 After=network-online.target
 Wants=network-online.target
 
@@ -75,7 +75,7 @@ export const WINDOWS_TASK_XML_TMPL = `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
     <URI>\\Pella\\Collector</URI>
-    <Description>pellametric collector — captures Claude Code + Codex session data and ships it to your configured ingest endpoint.</Description>
+    <Description>telemetryc collector — captures Claude Code + Codex session data and ships it to your configured ingest endpoint.</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>

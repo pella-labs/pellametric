@@ -30,7 +30,7 @@ export async function POST() {
       if (accountId) {
         try {
           const r = await fetch(`https://api.github.com/user/${accountId}`, {
-            headers: { Accept: "application/vnd.github+json", "User-Agent": "pellametric-card-flow" },
+            headers: { Accept: "application/vnd.github+json", "User-Agent": "telemetryc-card-flow" },
           });
           if (r.ok) {
             const j = (await r.json()) as { login?: string };

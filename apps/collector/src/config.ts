@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 export const COLLECTOR_VERSION = "0.0.8";
-export const DEFAULT_URL = "https://pellametric.com";
+export const DEFAULT_URL = "https://telemetryc.com";
 export const DEFAULT_POLL_INTERVAL_MS = 10_000;
 
 /** `~/.pella/` — root dir for config, cursors, and log files. */
@@ -94,7 +94,7 @@ export function writeConfig(token: string, url: string): string {
   existing.PELLA_TOKEN = token;
   existing.PELLA_URL = url;
   const header =
-    "# pellametric collector config — written by `pella login`.\n" +
+    "# telemetryc collector config — written by `pella login`.\n" +
     "# Hand-editable: one KEY=VALUE per line. Comments start with #.\n";
   const body = Object.entries(existing)
     .sort(([a], [b]) => a.localeCompare(b))

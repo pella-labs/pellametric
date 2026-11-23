@@ -34,7 +34,7 @@ import {
 } from "./card-utils";
 import "./card.css";
 import "./holo.css";
-import "./card-pellametric.css";
+import "./card-telemetryc.css";
 
 /* ── Icons ── */
 const FlameIcon = ({

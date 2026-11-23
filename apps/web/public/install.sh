@@ -1,11 +1,11 @@
 #!/bin/sh
-# pellametric collector — installer (macOS + Linux).
+# telemetryc collector — installer (macOS + Linux).
 #
 # Wrapped in main() so a truncated pipe (slow network, aborted curl)
 # can't execute a partial script. Exits non-zero on any failure.
 #
 # Usage:
-#   curl -fsSL https://pellametric.com/install.sh | sh -s -- --token pm_xxx
+#   curl -fsSL https://telemetryc.com/install.sh | sh -s -- --token pm_xxx
 #
 # Flags:
 #   --token <pm_…>    API token (required; can also come from $PELLA_TOKEN)
@@ -120,7 +120,7 @@ main() {
 
   if [ -z "$token" ]; then
     err "--token is required (or set \$PELLA_TOKEN)."
-    err "get one at https://pellametric.com/setup/collector"
+    err "get one at https://telemetryc.com/setup/collector"
     exit 2
   fi
 

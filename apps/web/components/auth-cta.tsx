@@ -17,7 +17,7 @@ const COPY: Record<Variant, { signedIn: string; signedOut: string }> = {
 // to logged-in users on hydration. Once better-auth's client session
 // resolves we switch to the live value. Signed-out clicks open the shared
 // SignInSheet rather than navigating away — keeps users on the marketing
-// surface so the sheet inherits .pellametric-marketing design tokens.
+// surface so the sheet inherits .telemetryc-marketing design tokens.
 export default function AuthCta({
   initiallySignedIn,
   variant,

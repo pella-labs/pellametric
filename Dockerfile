@@ -19,7 +19,7 @@ COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_module
 COPY . .
 # NEXT_PUBLIC_* vars are inlined into the client bundle at build time, so this
 # must be the real public URL. Overridable via --build-arg for staging/previews.
-ARG NEXT_PUBLIC_BETTER_AUTH_URL=https://pellametric.com
+ARG NEXT_PUBLIC_BETTER_AUTH_URL=https://telemetryc.com
 ENV DATABASE_URL=postgresql://user:pass@localhost:5432/db \
     BETTER_AUTH_SECRET=build_placeholder_secret \
     BETTER_AUTH_URL=http://localhost:3000 \

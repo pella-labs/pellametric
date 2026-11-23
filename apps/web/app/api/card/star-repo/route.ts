@@ -31,7 +31,7 @@ export async function POST() {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/vnd.github+json",
         "Content-Length": "0",
-        "User-Agent": "pellametric-card-flow",
+        "User-Agent": "telemetryc-card-flow",
       },
     });
 

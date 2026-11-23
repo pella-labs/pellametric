@@ -102,7 +102,7 @@ export default function OnboardingOverlay({
         style={{
           top: r.top, left: r.left, width: r.width, height: r.height,
           boxShadow: "0 0 0 2px #6e8a6f, 0 0 0 8px rgba(110, 138, 111, 0.30)",
-          animation: "pellametric-pulse 1.6s ease-in-out infinite",
+          animation: "telemetryc-pulse 1.6s ease-in-out infinite",
         }}
       />
 

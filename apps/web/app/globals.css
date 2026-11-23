@@ -19,7 +19,7 @@ body {
 }
 
 /*
- * pellametric — bematist-inspired dark palette.
+ * telemetryc — bematist-inspired dark palette.
  * Warm paper-white ink on near-black, sage accent, warm amber for secondary.
  * Hex values exposed as plain #rgba so Tailwind opacity modifiers keep working.
  */
@@ -197,7 +197,7 @@ body {
   }
 }
 
-@keyframes pellametric-pulse {
+@keyframes telemetryc-pulse {
   0%, 100% { box-shadow: 0 0 0 2px #6e8a6f, 0 0 0 8px rgba(110, 138, 111, 0.30); }
   50%      { box-shadow: 0 0 0 2px #6e8a6f, 0 0 0 14px rgba(110, 138, 111, 0.06); }
 }
