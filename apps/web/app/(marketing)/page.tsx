@@ -150,7 +150,7 @@ export default function MarketingHome() {
 
       <section className="mk-video" aria-label="Product demo">
         <video
-          src="/pellametric-demo.mp4"
+          src="/telemetryc-demo.mp4"
           loop
           playsInline
           controls

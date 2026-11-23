@@ -17,7 +17,7 @@ export default async function MarketingLayout({
   const session = await auth.api.getSession({ headers: await headers() });
   const initiallySignedIn = !!session?.user;
   return (
-    <div className="pellametric-marketing">
+    <div className="telemetryc-marketing">
       <SignInSheetProvider>
         <div className="mk-container">
           <nav className="mk-nav" aria-label="Primary">

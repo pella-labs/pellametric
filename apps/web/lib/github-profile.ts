@@ -8,7 +8,7 @@ export async function fetchGithubName(login: string | null | undefined): Promise
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
-    "User-Agent": "pellametric-card-flow",
+    "User-Agent": "telemetryc-card-flow",
   };
   if (process.env.GITHUB_TOKEN) {
     headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;

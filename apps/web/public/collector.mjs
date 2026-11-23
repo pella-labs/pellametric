@@ -923,7 +923,7 @@ async function uploadBatch(opts) {
 async function runOnce(opts) {
   const HOME = os2.homedir();
   const since = opts.since ?? new Date(0);
-  console.log(`pellametric collector → ${opts.url}`);
+  console.log(`telemetryc collector → ${opts.url}`);
   console.log(`since: ${since.toISOString().slice(0, 10)}`);
   const repoCache = makeRepoCache();
   const resolver = (cwd) => resolveRepo(cwd, repoCache);
@@ -977,7 +977,7 @@ async function runOnce(opts) {
 // src/index.ts
 var args = parseArgs(process.argv.slice(2));
 var TOKEN = args.token || process.env.PELLA_TOKEN;
-var DEFAULT_URL = "https://pellametric.com";
+var DEFAULT_URL = "https://telemetryc.com";
 var URL = (args.url || process.env.PELLA_URL || DEFAULT_URL).replace(/\/$/, "");
 var SINCE = args.since ? new Date(args.since) : new Date(0);
 if (!TOKEN) {

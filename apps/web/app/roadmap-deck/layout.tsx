@@ -16,5 +16,5 @@ export const metadata: Metadata = {
 };
 
 export default function RoadmapDeckLayout({ children }: { children: ReactNode }) {
-  return <div className="pellametric-deck">{children}</div>;
+  return <div className="telemetryc-deck">{children}</div>;
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-16"?>
 <!--
-  pellametric collector — Windows Scheduled Task template.
+  telemetryc collector — Windows Scheduled Task template.
   Registered via `schtasks /Create /XML <file> /F` by `pella start`.
   Runs at the interactive user's logon (NOT SYSTEM — the collector
   watches files in $USERPROFILE) with LeastPrivilege and restarts on
@@ -11,7 +11,7 @@
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
     <URI>\Pella\Collector</URI>
-    <Description>pellametric collector — captures Claude Code + Codex session data and ships it to your configured ingest endpoint.</Description>
+    <Description>telemetryc collector — captures Claude Code + Codex session data and ships it to your configured ingest endpoint.</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>

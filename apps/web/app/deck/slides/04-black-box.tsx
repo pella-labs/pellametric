@@ -8,7 +8,7 @@ import { SlideShell } from "../components/slide-shell";
  * Problem → solution, one slide.
  *   OFF — four dev-machine AI sources dump tokens into a dead-end black box.
  *         Everything on the slide is grayed out, nothing pulses.
- *   ON  — pellametric lights the whole slide up: pulse dots stream along the
+ *   ON  — telemetryc lights the whole slide up: pulse dots stream along the
  *         connection paths, outcomes show values. A one-shot sweep animates
  *         across the stage on each OFF→ON flip.
  *
@@ -527,7 +527,7 @@ export function Slide04BlackBox({ totalPages }: { totalPages: number }) {
 
       {/* ── Source cards (always live — they represent real data on every
           dev's machine; the problem isn't the sources, it's that outcomes
-          can't be unlocked without pellametric) ───────────────────────── */}
+          can't be unlocked without telemetryc) ───────────────────────── */}
       {SOURCES.map((s, i) => {
         const Mark = s.Mark;
         return (

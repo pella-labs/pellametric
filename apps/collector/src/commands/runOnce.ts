@@ -24,7 +24,7 @@ export interface RunOnceOptions {
 export async function runOnce(opts: RunOnceOptions): Promise<void> {
   const HOME = os.homedir();
   const since = opts.since ?? new Date(0);
-  console.log(`pellametric collector → ${opts.url}`);
+  console.log(`telemetryc collector → ${opts.url}`);
   console.log(`since: ${since.toISOString().slice(0, 10)}`);
 
   const repoCache = makeRepoCache();

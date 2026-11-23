@@ -15,7 +15,7 @@ import { getInstallation, appConfigured } from "@/lib/github-app";
 
 function deriveSlug(login: string): string {
   // GitHub login is already URL-safe (alphanumerics + hyphens); use as-is so the
-  // pellametric URL matches the GitHub URL.
+  // telemetryc URL matches the GitHub URL.
   return login;
 }
 

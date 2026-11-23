@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * pellametric collector — legacy one-shot entry.
+ * telemetryc collector — legacy one-shot entry.
  *
  * Bundled into apps/web/public/collector.mjs by `bun run build` and
  * served as the curl-piped fallback from /setup/collector for users

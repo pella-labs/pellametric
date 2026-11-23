@@ -32,7 +32,7 @@ const sankeyNodes = [
   { id: "s-build", label: "build", kind: "session" as const, source: "claude" as const },
   { id: "s-debug", label: "debug", kind: "session" as const, source: "codex" as const },
   { id: "s-refactor", label: "refactor", kind: "session" as const, source: "cursor" as const },
-  { id: "c-pellametric", label: "9 commits — pellametric", kind: "commit" as const },
+  { id: "c-telemetryc", label: "9 commits — telemetryc", kind: "commit" as const },
   { id: "c-revamp", label: "3 commits — revamp", kind: "commit" as const },
   { id: "c-orphan", label: "1 commit — orphan", kind: "commit" as const },
   { id: "pr-142", label: "#142 merged", kind: "pr" as const },
@@ -41,12 +41,12 @@ const sankeyNodes = [
 ];
 
 const sankeyLinks = [
-  { source: "s-build", target: "c-pellametric", value: 240 },
-  { source: "s-debug", target: "c-pellametric", value: 80 },
+  { source: "s-build", target: "c-telemetryc", value: 240 },
+  { source: "s-debug", target: "c-telemetryc", value: 80 },
   { source: "s-debug", target: "c-revamp", value: 120 },
   { source: "s-refactor", target: "c-revamp", value: 40 },
   { source: "s-refactor", target: "c-orphan", value: 25 },
-  { source: "c-pellametric", target: "pr-142", value: 320 },
+  { source: "c-telemetryc", target: "pr-142", value: 320 },
   { source: "c-revamp", target: "pr-138", value: 160 },
   { source: "c-orphan", target: "pr-145", value: 25 },
 ];
